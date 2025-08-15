@@ -4,7 +4,8 @@
     <!-- 顯示模式：顯示卡片標題 -->
     <div 
       v-if="!isEditing" 
-      @click="startEditing"
+      @click="openCardModal"
+      @dblclick="startEditing"
       class="min-h-6"
     >
       {{ card.title }}
@@ -37,6 +38,11 @@ interface Card {
 // 接收父組件傳入的卡片資料
 const props = defineProps<{
   card: Card
+}>()
+
+// 定義事件
+const emit = defineEmits<{
+  openModal: [card: Card]
 }>()
 
 // 取得 store 實例
@@ -78,5 +84,10 @@ const saveEdit = () => {
 const cancelEdit = () => {
   isEditing.value = false
   editingTitle.value = props.card.title
+}
+
+// 開啟卡片模態框
+const openCardModal = () => {
+  emit('openModal', props.card)
 }
 </script>

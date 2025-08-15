@@ -26,7 +26,7 @@
           >
             <template #item="{ element: card }">
               <div :key="card.id">
-                <Card :card="card" />
+                <Card :card="card" @open-modal="openCardModal" />
               </div>
             </template>
           </VueDraggable>
@@ -51,16 +51,36 @@
         + 新增其他列表
       </button>
     </div>
+
+    <!-- 卡片編輯模態框 -->
+    <CardModal 
+      :show="showCardModal" 
+      :card="selectedCard" 
+      @close="closeCardModal" 
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import Card from '@/components/Card.vue'
+import CardModal from '@/components/CardModal.vue'
 import { useBoardStore } from '@/stores/boardStore'
 import VueDraggable from 'vuedraggable'
 
+// 卡片資料型別定義
+interface Card {
+  id: string
+  title: string
+  description?: string
+}
+
 // 取得看板 store 實例
 const boardStore = useBoardStore()
+
+// 模態框狀態管理
+const showCardModal = ref(false)
+const selectedCard = ref<Card | null>(null)
 
 // 處理卡片拖拉移動事件
 const onCardMove = (event: any) => {
@@ -88,5 +108,17 @@ const addNewList = () => {
   if (listTitle && listTitle.trim()) {
     boardStore.addList(listTitle.trim())
   }
+}
+
+// 開啟卡片模態框
+const openCardModal = (card: Card) => {
+  selectedCard.value = card
+  showCardModal.value = true
+}
+
+// 關閉卡片模態框
+const closeCardModal = () => {
+  showCardModal.value = false
+  selectedCard.value = null
 }
 </script>

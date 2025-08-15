@@ -4,7 +4,9 @@
       "Bash(yarn dev)",
       "Bash(yarn add @pinia/nuxt pinia)",
       "Bash(yarn add:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(nuxt prepare)",
+      "Bash(npx nuxt:*)"
     ],
     "defaultMode": "acceptEdits"
   }

@@ -2,6 +2,7 @@
 interface Card {
   id: string
   title: string
+  description?: string
 }
 
 interface List {
@@ -150,6 +151,17 @@ export const useBoardStore = defineStore('board', {
         const card = list.cards.find(card => card.id === cardId)
         if (card) {
           card.title = newTitle
+          break
+        }
+      }
+    },
+
+    // 更新卡片描述
+    updateCardDescription(cardId: string, newDescription: string) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          card.description = newDescription
           break
         }
       }

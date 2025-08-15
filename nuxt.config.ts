@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  srcDir: '.',
   alias: {
     '@': fileURLToPath(new URL('.', import.meta.url)),
     '~': fileURLToPath(new URL('.', import.meta.url))
