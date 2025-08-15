@@ -1,7 +1,11 @@
 // 看板狀態管理 Store
+import { defineStore } from 'pinia'
+
 interface Card {
   id: string
   title: string
+  content?: string // 可選的內容欄位
+  dueDate?: string // 可選的截止日期欄位
 }
 
 interface List {
@@ -17,7 +21,11 @@ interface Board {
 }
 
 export const useBoardStore = defineStore('board', {
-  state: (): { board: Board } => ({
+  state: (): { 
+    board: Board
+    isModalOpen: boolean
+    selectedCardId: string | null
+  } => ({
     board: {
       id: 'board-1',
       title: 'My Board',
@@ -47,7 +55,9 @@ export const useBoardStore = defineStore('board', {
           ]
         }
       ]
-    }
+    },
+    isModalOpen: false,
+    selectedCardId: null
   }),
   getters: {
     // 動態計算下一個可用的卡片 ID
@@ -84,6 +94,16 @@ export const useBoardStore = defineStore('board', {
         }
       }
       return maxId + 1
+    },
+
+    // 取得目前選中的卡片
+    selectedCard: (state) => {
+      if (!state.selectedCardId) return null
+      for (const list of state.board.lists) {
+        const card = list.cards.find(card => card.id === state.selectedCardId)
+        if (card) return card
+      }
+      return null
     }
   },
   actions: {
@@ -153,6 +173,34 @@ export const useBoardStore = defineStore('board', {
           break
         }
       }
+    },
+
+    // 更新卡片內容（包含標題和內容）
+    updateCard(cardId: string, updates: { title?: string; content?: string }) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          if (updates.title !== undefined) {
+            card.title = updates.title
+          }
+          if (updates.content !== undefined) {
+            card.content = updates.content
+          }
+          break
+        }
+      }
+    },
+
+    // 打開卡片模態框
+    openCardModal(cardId: string) {
+      this.selectedCardId = cardId
+      this.isModalOpen = true
+    },
+
+    // 關閉卡片模態框
+    closeCardModal() {
+      this.isModalOpen = false
+      this.selectedCardId = null
     }
   }
 })
