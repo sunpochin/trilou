@@ -106,6 +106,17 @@ export const useBoardStore = defineStore('board', {
           toList.cards.push(card)
         }
       }
+    },
+
+    // 更新卡片標題
+    updateCardTitle(cardId: string, newTitle: string) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          card.title = newTitle
+          break
+        }
+      }
     }
   }
 })

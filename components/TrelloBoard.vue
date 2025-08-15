@@ -19,7 +19,7 @@
         tag="div"
         @end="onCardMove"
       >
-        <template #item="{ element: card, index }">
+        <template #item="{ element: card }">
           <div :key="card.id">
             <Card :card="card" />
           </div>
