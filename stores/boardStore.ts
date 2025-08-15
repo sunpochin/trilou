@@ -34,27 +34,63 @@ export const useBoardStore = defineStore('board', {
           id: 'list-2',
           title: 'In Progress',
           cards: [
-            { id: 'card-1', title: '投履歷' },
-            { id: 'card-2', title: '面試' }
+            { id: 'card-3', title: '投履歷' },
+            { id: 'card-4', title: '面試' }
           ]
         },
         {
           id: 'list-3',
           title: 'Done',
           cards: [
-            { id: 'card-1', title: '繼續投履歷跟面試' },
-            { id: 'card-2', title: '得到 offer.' }
-
+            { id: 'card-5', title: '繼續投履歷跟面試' },
+            { id: 'card-6', title: '得到 offer.' }
           ]
         }
       ]
     }
   }),
+  getters: {
+    // 動態計算下一個可用的卡片 ID
+    nextCardId: (state) => {
+      let maxId = 0
+      // 遍歷所有列表的所有卡片，找出最大的數字 ID
+      for (const list of state.board.lists) {
+        for (const card of list.cards) {
+          // 提取 card-X 中的數字部分
+          const match = card.id.match(/^card-(\d+)$/)
+          if (match) {
+            const cardNum = parseInt(match[1], 10)
+            if (cardNum > maxId) {
+              maxId = cardNum
+            }
+          }
+        }
+      }
+      return maxId + 1
+    },
+
+    // 動態計算下一個可用的列表 ID
+    nextListId: (state) => {
+      let maxId = 0
+      // 遍歷所有列表，找出最大的數字 ID
+      for (const list of state.board.lists) {
+        // 提取 list-X 中的數字部分
+        const match = list.id.match(/^list-(\d+)$/)
+        if (match) {
+          const listNum = parseInt(match[1], 10)
+          if (listNum > maxId) {
+            maxId = listNum
+          }
+        }
+      }
+      return maxId + 1
+    }
+  },
   actions: {
     // 新增列表
     addList(title: string) {
       const newList: List = {
-        id: `list-${Date.now()}`,
+        id: `list-${this.nextListId}`,
         title,
         cards: []
       }
@@ -74,7 +110,7 @@ export const useBoardStore = defineStore('board', {
       const list = this.board.lists.find(list => list.id === listId)
       if (list) {
         const newCard: Card = {
-          id: `card-${Date.now()}`,
+          id: `card-${this.nextCardId}`,
           title
         }
         list.cards.push(newCard)
@@ -104,6 +140,17 @@ export const useBoardStore = defineStore('board', {
           toList.cards.splice(newIndex, 0, card)
         } else {
           toList.cards.push(card)
+        }
+      }
+    },
+
+    // 更新卡片標題
+    updateCardTitle(cardId: string, newTitle: string) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          card.title = newTitle
+          break
         }
       }
     }
