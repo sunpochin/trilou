@@ -6,7 +6,8 @@
       "Bash(yarn add:*)",
       "Bash(mv:*)",
       "Bash(nuxt prepare)",
-      "Bash(npx nuxt:*)"
+      "Bash(npx nuxt:*)",
+      "Bash(mkdir:*)"
     ],
     "defaultMode": "acceptEdits"
   }
