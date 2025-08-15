@@ -67,7 +67,7 @@ trelllo-clone/
 ├── app/                    # 應用程式進入點
 │   └── app.vue
 ├── components/             # Vue 組件
-│   ├── Card.vue           # 卡片組件
+│   ├── TaskCard.vue       # 卡片組件
 │   └── TrelloBoard.vue    # 看板主組件
 ├── stores/                 # Pinia 狀態管理
 │   └── boardStore.ts      # 看板狀態管理
