@@ -63,8 +63,13 @@ const startEditing = () => {
 
 // 儲存編輯
 const saveEdit = () => {
-  if (editingTitle.value.trim() && editingTitle.value !== props.card.title) {
-    boardStore.updateCardTitle(props.card.id, editingTitle.value.trim())
+  const newTitle = editingTitle.value.trim()
+  if (newTitle) {
+    // 只要有內容就更新，不管是否與原標題相同
+    boardStore.updateCardTitle(props.card.id, newTitle)
+  } else {
+    // 如果是空字串，恢復原始標題
+    editingTitle.value = props.card.title
   }
   isEditing.value = false
 }
