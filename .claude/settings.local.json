@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn dev)",
+      "Bash(yarn add @pinia/nuxt pinia)",
+      "Bash(yarn add:*)",
+      "Bash(mv:*)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}
