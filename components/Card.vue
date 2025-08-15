@@ -1,5 +1,6 @@
 <template>
-  <div class="card">
+  <!-- 卡片組件 -->
+  <div class="bg-white rounded px-3 py-3 mb-2 shadow-sm cursor-pointer transition-shadow duration-200 hover:shadow-md">
     {{ card.title }}
   </div>
 </template>
@@ -16,19 +17,3 @@ defineProps<{
   card: Card
 }>()
 </script>
-
-<style scoped>
-.card {
-  background-color: white;
-  border-radius: 3px;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  box-shadow: 0 1px 0 #091e4240;
-  cursor: pointer;
-  transition: box-shadow 0.2s ease;
-}
-
-.card:hover {
-  box-shadow: 0 1px 3px #091e4240;
-}
-</style>

@@ -9,6 +9,7 @@ export default defineNuxtConfig({
     '~': fileURLToPath(new URL('.', import.meta.url))
   },
   modules: [
-    '@pinia/nuxt'
+    '@pinia/nuxt',
+    '@nuxtjs/tailwindcss'
   ]
 })

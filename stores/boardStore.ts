@@ -92,14 +92,19 @@ export const useBoardStore = defineStore('board', {
       }
     },
     
-    // 移動卡片到不同列表
-    moveCard(fromListId: string, toListId: string, cardIndex: number) {
+    // 移動卡片到不同列表（支援拖拉功能）
+    moveCard(fromListId: string, toListId: string, cardIndex: number, newIndex?: number) {
       const fromList = this.board.lists.find(list => list.id === fromListId)
       const toList = this.board.lists.find(list => list.id === toListId)
       
       if (fromList && toList && fromList.cards[cardIndex]) {
         const card = fromList.cards.splice(cardIndex, 1)[0]
-        toList.cards.push(card)
+        // 如果指定了新位置，插入到指定位置，否則加到末尾
+        if (newIndex !== undefined) {
+          toList.cards.splice(newIndex, 0, card)
+        } else {
+          toList.cards.push(card)
+        }
       }
     }
   }
