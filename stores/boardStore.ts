@@ -22,32 +22,8 @@ export const useBoardStore = defineStore('board', {
     board: {
       id: 'board-1',
       title: 'My Board',
-      lists: [
-        {
-          id: 'list-1',
-          title: 'To Do',
-          cards: [
-            { id: 'card-1', title: '學習 Vue 3' },
-            { id: 'card-2', title: '完成 Trello Clone MVP' }
-          ]
-        },
-        {
-          id: 'list-2',
-          title: 'In Progress',
-          cards: [
-            { id: 'card-3', title: '投履歷' },
-            { id: 'card-4', title: '面試' }
-          ]
-        },
-        {
-          id: 'list-3',
-          title: 'Done',
-          cards: [
-            { id: 'card-5', title: '繼續投履歷跟面試' },
-            { id: 'card-6', title: '得到 offer.' }
-          ]
-        }
-      ]
+      // 初始列表為空，將從 API 獲取
+      lists: []
     }
   }),
   getters: {
@@ -88,6 +64,22 @@ export const useBoardStore = defineStore('board', {
     }
   },
   actions: {
+    // 從後端 API 非同步獲取看板資料
+    async fetchBoard() {
+      // 使用 Nuxt 的 useFetch 來呼叫我們建立的 API 端點
+      const { data, error } = await useFetch<List[]>('/api/lists');
+
+      if (error.value) {
+        console.error('獲取看板資料失敗:', error.value);
+        // 可以在此處加入錯誤處理 UI 邏輯
+        return;
+      }
+
+      if (data.value) {
+        // 將獲取到的列表資料設定到 state 中
+        this.board.lists = data.value;
+      }
+    },
     // 新增列表
     addList(title: string) {
       const newList: List = {

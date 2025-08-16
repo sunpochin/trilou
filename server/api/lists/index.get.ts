@@ -1,55 +1,27 @@
-// 獲取列表的 API 端點（可依看板 ID 篩選）
-import type { List, ApiResponse } from '@/types/api'
+export default defineEventHandler(async (event) => {
+  const supabase = serverSupabaseClient(event)
 
-export default defineEventHandler(async (event): Promise<ApiResponse<List[]>> => {
-  try {
-    const query = getQuery(event)
-    const boardId = query.board_id as string
+  const { data: { user } } = await supabase.auth.getUser()
 
-    // TODO: 這裡之後會串接 Supabase
-    // 目前返回模擬資料
-    const mockLists: List[] = [
-      {
-        id: '1',
-        board_id: boardId || '1',
-        title: '待辦事項',
-        position: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: '2',
-        board_id: boardId || '1',
-        title: '進行中',
-        position: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: '3',
-        board_id: boardId || '1',
-        title: '已完成',
-        position: 2,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ]
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
 
-    // 如果有指定看板 ID，則只返回該看板的列表
-    const filteredLists = boardId 
-      ? mockLists.filter(list => list.board_id === boardId)
-      : mockLists
+  // Fetch lists that belong to the current user.
+  // IMPORTANT: I'm assuming your 'lists' table has a 'user_id' column.
+  // If your column is named differently, please change '.eq('user_id', ...)' accordingly.
+  const { data, error } = await supabase
+    .from('lists')
+    .select('*')
+    .eq('user_id', user.id)
 
-    return {
-      data: filteredLists,
-      success: true,
-      message: '成功獲取列表資料'
-    }
-  } catch (error) {
+  if (error) {
+    console.error('Error fetching lists:', error.message)
     throw createError({
       statusCode: 500,
-      statusMessage: '獲取列表資料失敗',
-      data: { error }
+      statusMessage: 'Error fetching lists',
     })
   }
+
+  return data
 })

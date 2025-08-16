@@ -12,5 +12,15 @@ export default defineNuxtConfig({
   modules: [
     '@pinia/nuxt',
     '@nuxtjs/tailwindcss'
-  ]
+  ],
+
+  // 將環境變數暴露給前端使用
+  runtimeConfig: {
+    public: {
+      supabase: {
+        url: process.env.SUPABASE_URL,
+        key: process.env.SUPABASE_KEY
+      }
+    }
+  }
 })
