@@ -9,9 +9,9 @@ export interface Board {
 
 export interface List {
   id: string
-  board_id: string
   title: string
   position: number
+  user_id: string
   created_at: string
   updated_at: string
 }
@@ -33,9 +33,8 @@ export interface CreateBoardRequest {
 }
 
 export interface CreateListRequest {
-  board_id: string
   title: string
-  position: number
+  position?: number
 }
 
 export interface CreateCardRequest {

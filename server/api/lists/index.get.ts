@@ -1,27 +1,51 @@
+// 取得列表的 API 端點
+import { serverSupabaseClient } from '~/server/utils/supabase'
+
 export default defineEventHandler(async (event) => {
-  const supabase = serverSupabaseClient(event)
+  console.log('API called: /api/lists')
+  
+  try {
+    const supabase = serverSupabaseClient(event)
+    console.log('Supabase client created')
 
-  const { data: { user } } = await supabase.auth.getUser()
+    // 驗證用戶身份
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    console.log('Auth check result:', { user: user?.id, authError })
+    
+    if (!user) {
+      console.log('No user found, returning 401')
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    }
 
-  if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
+    console.log('Fetching lists for user:', user.id)
+ 
+    // 取得屬於當前用戶的所有列表，按位置排序
+    const { data, error } = await supabase
+      .from('lists')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('position', { ascending: true })
 
-  // Fetch lists that belong to the current user.
-  // IMPORTANT: I'm assuming your 'lists' table has a 'user_id' column.
-  // If your column is named differently, please change '.eq('user_id', ...)' accordingly.
-  const { data, error } = await supabase
-    .from('lists')
-    .select('*')
-    .eq('user_id', user.id)
+    if (error) {
+      console.error('Error fetching lists:', error.message)
+      throw createError({
+        statusCode: 500,
+        statusMessage: '取得列表失敗'
+      })
+    }
 
-  if (error) {
-    console.error('Error fetching lists:', error.message)
+    console.log('Lists fetched successfully:', data?.length || 0)
+    return data || []
+  } catch (error) {
+    console.error('Outer catch error:', error)
+    
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error
+    }
+    
     throw createError({
       statusCode: 500,
-      statusMessage: 'Error fetching lists',
+      statusMessage: '伺服器內部錯誤'
     })
   }
-
-  return data
 })

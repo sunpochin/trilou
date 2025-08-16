@@ -1,6 +1,6 @@
 # API 使用說明
 
-這個 API 為 Trello 克隆專案提供了完整的 CRUD 操作，包括看板、列表和卡片的管理。
+這個 API 為 Trello clone 專案提供了完整的 CRUD 操作，包括看板、列表和卡片的管理。
 
 ## API 端點一覽
 

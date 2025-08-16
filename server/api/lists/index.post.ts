@@ -1,47 +1,70 @@
 // 建立新列表的 API 端點
-import type { CreateListRequest, List, ApiResponse } from '@/types/api'
+import { serverSupabaseClient } from '~/server/utils/supabase'
 
-export default defineEventHandler(async (event): Promise<ApiResponse<List>> => {
+export default defineEventHandler(async (event) => {
+  const supabase = serverSupabaseClient(event)
+
+  // 驗證用戶身份
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
   try {
-    const body = await readBody<CreateListRequest>(event)
+    const body = await readBody(event)
     
     // 驗證必要欄位
-    if (!body.title || !body.board_id) {
+    if (!body.title) {
       throw createError({
         statusCode: 400,
-        statusMessage: '列表標題和看板 ID 為必填欄位'
+        statusMessage: '列表標題為必填欄位'
       })
     }
 
-    // 驗證 position 是否為有效數字
-    if (typeof body.position !== 'number' || body.position < 0) {
+    // 如果沒有提供 position，自動設定為最後一個位置
+    let position = body.position
+    if (typeof position !== 'number') {
+      // 取得當前用戶最大的 position 值
+      const { data: lastList } = await supabase
+        .from('lists')
+        .select('position')
+        .eq('user_id', user.id)
+        .order('position', { ascending: false })
+        .limit(1)
+        .single()
+      
+      position = lastList ? lastList.position + 1 : 0
+    }
+
+    // 建立新列表
+    const { data, error } = await supabase
+      .from('lists')
+      .insert({
+        title: body.title,
+        position: position,
+        user_id: user.id
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating list:', error.message)
       throw createError({
-        statusCode: 400,
-        statusMessage: '位置必須為非負數'
+        statusCode: 500,
+        statusMessage: '建立列表失敗'
       })
     }
 
-    // TODO: 這裡之後會串接 Supabase
-    // 目前返回模擬資料
-    const newList: List = {
-      id: Date.now().toString(), // 簡單的 ID 生成，之後會用 Supabase 的 UUID
-      board_id: body.board_id,
-      title: body.title,
-      position: body.position,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    return {
-      data: newList,
-      success: true,
-      message: '列表建立成功'
-    }
+    return data
   } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error
+    }
+    
+    console.error('Unexpected error:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '建立列表失敗',
-      data: { error }
+      statusMessage: '伺服器內部錯誤'
     })
   }
 })
