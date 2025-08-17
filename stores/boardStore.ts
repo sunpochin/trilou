@@ -103,27 +103,39 @@ export const useBoardStore = defineStore('board', {
     },
     // 新增列表
     async addList(title: string) {
+      console.log('🏪 [STORE] addList 被呼叫，參數:', { title })
+      
       try {
-        const { data, error } = await $fetch('/api/lists', {
+        console.log('📤 [STORE] 發送 API 請求到 /api/lists')
+        const response = await $fetch('/api/lists', {
           method: 'POST',
           body: { 
             title
           }
         })
         
-        if (error) {
-          console.error('新增列表失敗:', error)
-          return
-        }
+        console.log('📥 [STORE] API 回應:', response)
         
+        // $fetch 會直接拋出錯誤，所以這裡不需要檢查 error 欄位
         // 新增到本地狀態
         const newList: List = {
-          ...data,
+          ...response,
           cards: [] // 新列表初始沒有卡片
         }
+        console.log('✅ [STORE] 新增到本地狀態:', newList)
         this.board.lists.push(newList)
       } catch (error) {
-        console.error('新增列表錯誤:', error)
+        console.error('❌ [STORE] 新增列表錯誤:', error)
+        
+        // 顯示更詳細的錯誤資訊
+        if (error && typeof error === 'object') {
+          console.error('📋 [STORE] 錯誤詳情:', {
+            message: error.message,
+            statusCode: error.statusCode,
+            statusMessage: error.statusMessage,
+            data: error.data
+          })
+        }
       }
     },
     
