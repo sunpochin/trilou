@@ -25,33 +25,38 @@ export default defineEventHandler(async (event) => {
     // 確保用戶存在於 users 表中（如果不存在則建立）
     await ensureUserExists(supabase, user)
 
-    // 驗證用戶是否有權限在此列表建立卡片（檢查列表是否屬於該用戶）
-    const { data: listAccess } = await supabase
-      .from('lists')
-      .select('user_id')
-      .eq('id', body.list_id)
-      .single()
+    // 並行執行權限檢查和獲取 position，減少等待時間
+    const [listAccessResult, lastCardResult] = await Promise.all([
+      // 驗證用戶是否有權限在此列表建立卡片
+      supabase
+        .from('lists')
+        .select('user_id')
+        .eq('id', body.list_id)
+        .single(),
+      // 同時取得該列表中最大的 position 值（如果需要的話）
+      typeof body.position !== 'number' ? 
+        supabase
+          .from('cards')
+          .select('position')
+          .eq('list_id', body.list_id)
+          .order('position', { ascending: false })
+          .limit(1)
+          .maybeSingle() : // 使用 maybeSingle 避免沒有卡片時的錯誤
+        Promise.resolve({ data: null, error: null })
+    ])
 
-    if (!listAccess || listAccess.user_id !== user.id) {
+    // 檢查權限
+    if (!listAccessResult.data || listAccessResult.data.user_id !== user.id) {
       throw createError({
         statusCode: 403,
         message: '沒有權限在此列表建立卡片'
       })
     }
 
-    // 如果沒有提供 position，自動設定為最後一個位置
+    // 設定 position
     let position = body.position
     if (typeof position !== 'number') {
-      // 取得該列表中最大的 position 值
-      const { data: lastCard } = await supabase
-        .from('cards')
-        .select('position')
-        .eq('list_id', body.list_id)
-        .order('position', { ascending: false })
-        .limit(1)
-        .single()
-      
-      position = lastCard ? lastCard.position + 1 : 0
+      position = lastCardResult.data ? lastCardResult.data.position + 1 : 0
     }
 
     // 建立新卡片

@@ -2,22 +2,15 @@
 import { serverSupabaseClient } from '~/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
-  console.log('API called: /api/lists')
-  
   try {
     const supabase = serverSupabaseClient(event)
-    console.log('Supabase client created')
 
     // 驗證用戶身份
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('Auth check result:', { user: user?.id, authError })
     
     if (!user) {
-      console.log('No user found, returning 401')
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
-
-    console.log('Fetching lists for user:', user.id)
  
     // 簡化查詢：直接查詢用戶的列表
     const { data, error } = await supabase
@@ -34,10 +27,8 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log('Lists fetched successfully:', data?.length || 0)
     return data || []
   } catch (error) {
-    console.error('Outer catch error:', error)
     
     if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error

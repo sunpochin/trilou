@@ -13,51 +13,29 @@ export default defineEventHandler(async (event) => {
   try {
     // 從 URL query 參數中取得 list_id（可選的篩選條件）
     // 例如：/api/cards?list_id=123 會只回傳該列表的卡片
-    const query = getQuery(event)
-    const listId = query.list_id as string
+    const urlQuery = getQuery(event)
+    const listId = urlQuery.list_id as string
 
     /*
-    * 新的簡化查詢邏輯：
-    * 
-    * schema 變簡單了：lists 直接屬於 user，不需要 boards 和 board_members
-    * 步驟 1：找出用戶的所有列表 ID
-    * 步驟 2：查詢這些列表下的卡片
+    * 優化後的查詢邏輯：使用 JOIN 一次查詢取代兩次連續查詢
+    * 利用 Supabase 的 JOIN 功能，直接從 cards 表查詢並驗證用戶權限
     */
 
-    // 步驟 1：找出用戶的列表
-    let listQuery = supabase
-      .from('lists')
-      .select('id')
-      .eq('user_id', user.id)
-
-    // 如果有指定 list_id，直接使用該 ID（但仍需驗證是用戶的列表）
-    if (listId) {
-      listQuery = listQuery.eq('id', listId)
-    }
-
-    const { data: userLists, error: listError } = await listQuery
-
-    if (listError) {
-      console.error('查詢用戶列表失敗:', listError.message)
-      throw createError({
-        statusCode: 500,
-        message: '查詢用戶列表失敗'
-      })
-    }
-
-    const listIds = userLists?.map(item => item.id) || []
-
-    // 如果沒有找到任何列表，回傳空陣列
-    if (listIds.length === 0) {
-      return []
-    }
-
-    // 步驟 2：查詢這些列表下的卡片（簡單查詢）
-    const { data, error } = await supabase
+    let dbQuery = supabase
       .from('cards')
-      .select('*')
-      .in('list_id', listIds)
+      .select(`
+        *,
+        lists!inner(user_id)
+      `)
+      .eq('lists.user_id', user.id)
       .order('position', { ascending: true })
+
+    // 如果指定了 list_id，加上篩選條件
+    if (listId) {
+      dbQuery = dbQuery.eq('list_id', listId)
+    }
+
+    const { data, error } = await dbQuery
 
     // 處理資料庫錯誤
     if (error) {
@@ -68,8 +46,13 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 回傳結果：如果沒有資料就回傳空陣列
-    return data || []
+    // 清理回傳資料：移除 JOIN 的额外欄位
+    const cleanedData = data?.map(card => {
+      const { lists, ...cardData } = card as any
+      return cardData
+    }) || []
+
+    return cleanedData
 
   } catch (error) {
     // 如果是我們主動拋出的錯誤（有 statusCode），直接拋出
