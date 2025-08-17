@@ -4,21 +4,21 @@
 
 ## API 端點一覽
 
-### 看板 (Boards)
+### 看板 (boards)
 - `GET /api/boards` - 獲取所有看板
 - `POST /api/boards` - 建立新看板
 - `GET /api/boards/{id}` - 獲取特定看板
 - `PUT /api/boards/{id}` - 更新看板
 - `DELETE /api/boards/{id}` - 刪除看板
 
-### 列表 (Lists)  
+### 列表 (lists)  
 - `GET /api/lists` - 獲取列表（可用 `?board_id=` 篩選）
 - `POST /api/lists` - 建立新列表
 - `GET /api/lists/{id}` - 獲取特定列表
 - `PUT /api/lists/{id}` - 更新列表
 - `DELETE /api/lists/{id}` - 刪除列表
 
-### 卡片 (Cards)
+### 卡片 (cards)
 - `GET /api/cards` - 獲取卡片（可用 `?list_id=` 篩選）
 - `POST /api/cards` - 建立新卡片
 - `GET /api/cards/{id}` - 獲取特定卡片
@@ -70,3 +70,33 @@ const updatedCard = await $fetch('/api/cards/card-id-123', {
 2. 設定環境變數 (SUPABASE_URL, SUPABASE_ANON_KEY)
 3. 建立資料庫表格結構
 4. 替換模擬資料為實際的 Supabase 查詢
+
+
+## Database Schema
+
+### 用戶表
+users
+    id (UUID, PK)
+    email (text, unique)
+    name (text)
+    avatar_url (text)
+    created_at (timestamp)
+
+### 列表表
+lists
+    id (UUID, PK)
+    user_id (UUID, FK → users.id)
+    title (text)
+    position (int)
+    created_at (timestamp)
+
+### 卡片表
+cards
+    id (UUID, PK)
+    list_id (UUID, FK → lists.id)
+    title (text)
+    description (text, nullable)
+    due_date (timestamp, nullable)
+    position (int)
+    created_at (timestamp)
+

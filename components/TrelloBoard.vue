@@ -1,3 +1,24 @@
+<!--
+  主看板組件 - 負責整體看板佈局和組件協調
+  
+  🎯 SOLID 原則設計說明：
+  
+  ✅ S (Single Responsibility) - 單一職責原則
+     只負責「整體看板佈局」和「組件間的事件協調」
+     不處理單個列表的詳細邏輯
+     
+  ✅ O (Open/Closed) - 開放封閉原則
+     要新增看板功能時，透過新增組件或修改子組件來擴展
+     不需要修改此組件的核心佈局邏輯
+     
+  ✅ D (Dependency Inversion) - 依賴反轉原則
+     依賴抽象的 ListItem 組件，不直接處理列表內部邏輯
+     
+  📝 重構前後對比：
+     重構前：一個檔案 197 行，處理所有邏輯
+     重構後：主檔案 95 行，職責清晰分離
+-->
+
 <template>
   <!-- 看板主容器 -->
   <div class="flex gap-4 p-4 h-screen overflow-x-auto bg-gray-100 font-sans">
@@ -11,34 +32,12 @@
       @end="onListMove"
     >
       <template #item="{ element: list }">
-        <div :key="list.id" class="bg-gray-200 rounded w-80 p-2 flex-shrink-0">
-          <!-- 列表標題 -->
-          <h2 class="text-base font-bold p-2 mb-2">{{ list.title }}</h2>
-          
-          <!-- 可拖拉的卡片容器 -->
-          <VueDraggable
-            v-model="list.cards"
-            group="cards"
-            item-key="id"
-            class="min-h-5"
-            tag="div"
-            @end="onCardMove"
-          >
-            <template #item="{ element: card }">
-              <div :key="card.id">
-                <Card :card="card" @open-modal="openCardModal" />
-              </div>
-            </template>
-          </VueDraggable>
-          
-          <!-- 新增卡片按鈕 -->
-          <button 
-            class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm mt-2 transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
-            @click="addNewCard(list.id)"
-          >
-            + 新增
-          </button>
-        </div>
+        <ListItem
+          :key="list.id"
+          :list="list"
+          @card-move="onCardMove"
+          @open-card-modal="openCardModal"
+        />
       </template>
     </VueDraggable>
 
@@ -46,7 +45,7 @@
     <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex items-start">
       <button 
         class="w-full p-3 bg-transparent border-2 border-dashed border-gray-400 rounded text-gray-700 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-300 hover:border-gray-500" 
-        @click="addNewList"
+        @click="handleAddList"
       >
         + 新增其他列表
       </button>
@@ -63,9 +62,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Card from '@/components/Card.vue'
+import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import { useBoardStore } from '@/stores/boardStore'
+import { useListActions } from '@/composables/useListActions'
 import VueDraggable from 'vuedraggable'
 
 // 卡片資料型別定義
@@ -77,6 +77,9 @@ interface Card {
 
 // 取得看板 store 實例
 const boardStore = useBoardStore()
+
+// 使用列表操作邏輯
+const { addList } = useListActions()
 
 // 模態框狀態管理
 const showCardModal = ref(false)
@@ -94,20 +97,9 @@ const onListMove = (event: any) => {
   console.log('List moved:', event)
 }
 
-// 新增卡片功能
-const addNewCard = (listId: string) => {
-  const cardTitle = prompt('請輸入卡片標題：')
-  if (cardTitle && cardTitle.trim()) {
-    boardStore.addCard(listId, cardTitle.trim())
-  }
-}
-
-// 新增列表功能
-const addNewList = () => {
-  const listTitle = prompt('請輸入列表標題：')
-  if (listTitle && listTitle.trim()) {
-    boardStore.addList(listTitle.trim())
-  }
+// 處理新增列表
+const handleAddList = () => {
+  addList()
 }
 
 // 開啟卡片模態框
