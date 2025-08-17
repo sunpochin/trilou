@@ -11,71 +11,12 @@
       @end="onListMove"
     >
       <template #item="{ element: list }">
-        <div :key="list.id" class="bg-gray-200 rounded w-80 p-2 flex-shrink-0">
-          <!-- 列表標題區域 -->
-          <div class="flex justify-between items-center p-2 mb-2 relative">
-            <h2 class="text-base font-bold">{{ list.title }}</h2>
-            
-            <!-- 三點選單按鈕 -->
-            <div class="relative list-menu-container">
-              <button 
-                @click="toggleListMenu(list.id)"
-                class="p-1 rounded hover:bg-gray-300 transition-colors duration-200"
-              >
-                <svg 
-                  class="w-4 h-4 text-gray-600" 
-                  fill="currentColor" 
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
-                </svg>
-              </button>
-              
-              <!-- 下拉選單 -->
-              <div 
-                v-if="activeListMenu === list.id"
-                class="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-2 w-40 z-10"
-              >
-                <button 
-                  @click="addNewCard(list.id); activeListMenu = null"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                >
-                  新增卡片
-                </button>
-                <button 
-                  @click="deleteList(list.id); activeListMenu = null"
-                  class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
-                >
-                  刪除列表
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 可拖拉的卡片容器 -->
-          <VueDraggable
-            v-model="list.cards"
-            group="cards"
-            item-key="id"
-            class="min-h-5"
-            tag="div"
-            @end="onCardMove"
-          >
-            <template #item="{ element: card }">
-              <div :key="card.id">
-                <Card :card="card" @open-modal="openCardModal" />
-              </div>
-            </template>
-          </VueDraggable>
-          
-          <!-- 新增卡片按鈕 -->
-          <button 
-            class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm mt-2 transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
-            @click="addNewCard(list.id)"
-          >
-            + 新增
-          </button>
-        </div>
+        <ListItem
+          :key="list.id"
+          :list="list"
+          @card-move="onCardMove"
+          @open-card-modal="openCardModal"
+        />
       </template>
     </VueDraggable>
 
@@ -83,7 +24,7 @@
     <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex items-start">
       <button 
         class="w-full p-3 bg-transparent border-2 border-dashed border-gray-400 rounded text-gray-700 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-300 hover:border-gray-500" 
-        @click="addNewList"
+        @click="handleAddList"
       >
         + 新增其他列表
       </button>
@@ -99,10 +40,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import Card from '@/components/Card.vue'
+import { ref } from 'vue'
+import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import { useBoardStore } from '@/stores/boardStore'
+import { useListActions } from '@/composables/useListActions'
 import VueDraggable from 'vuedraggable'
 
 // 卡片資料型別定義
@@ -115,12 +57,12 @@ interface Card {
 // 取得看板 store 實例
 const boardStore = useBoardStore()
 
+// 使用列表操作邏輯
+const { addList } = useListActions()
+
 // 模態框狀態管理
 const showCardModal = ref(false)
 const selectedCard = ref<Card | null>(null)
-
-// 列表選單狀態管理
-const activeListMenu = ref<string | null>(null)
 
 // 處理卡片拖拉移動事件
 const onCardMove = (event: any) => {
@@ -134,20 +76,9 @@ const onListMove = (event: any) => {
   console.log('List moved:', event)
 }
 
-// 新增卡片功能
-const addNewCard = (listId: string) => {
-  const cardTitle = prompt('請輸入卡片標題：')
-  if (cardTitle && cardTitle.trim()) {
-    boardStore.addCard(listId, cardTitle.trim())
-  }
-}
-
-// 新增列表功能
-const addNewList = () => {
-  const listTitle = prompt('請輸入列表標題：')
-  if (listTitle && listTitle.trim()) {
-    boardStore.addList(listTitle.trim())
-  }
+// 處理新增列表
+const handleAddList = () => {
+  addList()
 }
 
 // 開啟卡片模態框
@@ -161,37 +92,4 @@ const closeCardModal = () => {
   showCardModal.value = false
   selectedCard.value = null
 }
-
-// 切換列表選單顯示狀態
-const toggleListMenu = (listId: string) => {
-  // 如果點擊的是已開啟的選單，則關閉；否則開啟新的選單
-  activeListMenu.value = activeListMenu.value === listId ? null : listId
-}
-
-// 刪除列表功能
-const deleteList = (listId: string) => {
-  // 確認對話框
-  if (confirm('確定要刪除這個列表嗎？此操作無法撤銷。')) {
-    boardStore.removeList(listId)
-  }
-}
-
-// 點擊外部區域關閉選單
-const handleClickOutside = (event: Event) => {
-  // 檢查點擊的元素是否在選單外部
-  const target = event.target as HTMLElement
-  if (!target.closest('.list-menu-container')) {
-    activeListMenu.value = null
-  }
-}
-
-// 組件掛載時加入事件監聽器
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-// 組件卸載時移除事件監聽器
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>
