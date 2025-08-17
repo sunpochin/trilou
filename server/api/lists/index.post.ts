@@ -1,5 +1,6 @@
 // 建立新列表的 API 端點
 import { serverSupabaseClient } from '~/server/utils/supabase'
+import { ensureUserExists } from '~/server/utils/userHelpers'
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseClient(event)
@@ -21,10 +22,13 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // 確保用戶存在於 users 表中（如果不存在則建立）
+    await ensureUserExists(supabase, user)
+
     // 如果沒有提供 position，自動設定為最後一個位置
     let position = body.position
     if (typeof position !== 'number') {
-      // 取得當前用戶最大的 position 值
+      // 取得該用戶最大的 position 值
       const { data: lastList } = await supabase
         .from('lists')
         .select('position')
@@ -41,8 +45,8 @@ export default defineEventHandler(async (event) => {
       .from('lists')
       .insert({
         title: body.title,
-        position: position,
-        user_id: user.id
+        user_id: user.id,
+        position: position
       })
       .select()
       .single()

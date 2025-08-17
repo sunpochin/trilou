@@ -1,58 +1,87 @@
-// 獲取卡片的 API 端點（可依列表 ID 篩選）
-import type { Card, ApiResponse } from '@/types/api'
+// 取得卡片的 API 端點（可依列表 ID 篩選）
+import { serverSupabaseClient } from '~/server/utils/supabase'
 
-export default defineEventHandler(async (event): Promise<ApiResponse<Card[]>> => {
+export default defineEventHandler(async (event) => {
+  const supabase = serverSupabaseClient(event)
+
+  // 驗證用戶身份 - 確保只有登入的用戶可以存取
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
   try {
+    // 從 URL query 參數中取得 list_id（可選的篩選條件）
+    // 例如：/api/cards?list_id=123 會只回傳該列表的卡片
     const query = getQuery(event)
     const listId = query.list_id as string
 
-    // TODO: 這裡之後會串接 Supabase
-    // 目前返回模擬資料
-    const mockCards: Card[] = [
-      {
-        id: '1',
-        list_id: listId || '1',
-        title: '設計使用者介面',
-        description: '建立 Trello 克隆的使用者介面設計',
-        position: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: '2',
-        list_id: listId || '1',
-        title: '實作拖拉功能',
-        description: '讓使用者可以拖拉卡片到不同列表',
-        position: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-      {
-        id: '3',
-        list_id: listId || '2',
-        title: '建立 API 端點',
-        description: '建立後端 API 來處理 CRUD 操作',
-        position: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ]
+    /*
+    * 新的簡化查詢邏輯：
+    * 
+    * schema 變簡單了：lists 直接屬於 user，不需要 boards 和 board_members
+    * 步驟 1：找出用戶的所有列表 ID
+    * 步驟 2：查詢這些列表下的卡片
+    */
 
-    // 如果有指定列表 ID，則只返回該列表的卡片
-    const filteredCards = listId 
-      ? mockCards.filter(card => card.list_id === listId)
-      : mockCards
+    // 步驟 1：找出用戶的列表
+    let listQuery = supabase
+      .from('lists')
+      .select('id')
+      .eq('user_id', user.id)
 
-    return {
-      data: filteredCards,
-      success: true,
-      message: '成功獲取卡片資料'
+    // 如果有指定 list_id，直接使用該 ID（但仍需驗證是用戶的列表）
+    if (listId) {
+      listQuery = listQuery.eq('id', listId)
     }
+
+    const { data: userLists, error: listError } = await listQuery
+
+    if (listError) {
+      console.error('查詢用戶列表失敗:', listError.message)
+      throw createError({
+        statusCode: 500,
+        statusMessage: '查詢用戶列表失敗'
+      })
+    }
+
+    const listIds = userLists?.map(item => item.id) || []
+
+    // 如果沒有找到任何列表，回傳空陣列
+    if (listIds.length === 0) {
+      return []
+    }
+
+    // 步驟 2：查詢這些列表下的卡片（簡單查詢）
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .in('list_id', listIds)
+      .order('position', { ascending: true })
+
+    // 處理資料庫錯誤
+    if (error) {
+      console.error('資料庫查詢錯誤:', error.message)
+      throw createError({
+        statusCode: 500,
+        statusMessage: '取得卡片資料失敗'
+      })
+    }
+
+    // 回傳結果：如果沒有資料就回傳空陣列
+    return data || []
+
   } catch (error) {
+    // 如果是我們主動拋出的錯誤（有 statusCode），直接拋出
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error
+    }
+    
+    // 其他未預期的錯誤
+    console.error('未預期的錯誤:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '獲取卡片資料失敗',
-      data: { error }
+      statusMessage: '伺服器內部錯誤'
     })
   }
 })

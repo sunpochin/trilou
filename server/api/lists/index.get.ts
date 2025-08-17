@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 
     console.log('Fetching lists for user:', user.id)
  
-    // 取得屬於當前用戶的所有列表，按位置排序
+    // 簡化查詢：直接查詢用戶的列表
     const { data, error } = await supabase
       .from('lists')
       .select('*')

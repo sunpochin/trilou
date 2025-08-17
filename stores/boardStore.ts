@@ -66,58 +66,132 @@ export const useBoardStore = defineStore('board', {
   actions: {
     // 從後端 API 非同步獲取看板資料
     async fetchBoard() {
-      // 使用 Nuxt 的 useFetch 來呼叫我們建立的 API 端點
-      const { data, error } = await useFetch<List[]>('/api/lists');
+      try {
+        // 同時獲取列表和卡片資料
+        const [listsResponse, cardsResponse] = await Promise.all([
+          $fetch('/api/lists'),
+          $fetch('/api/cards')
+        ])
 
-      if (error.value) {
-        console.error('獲取看板資料失敗:', error.value);
-        // 可以在此處加入錯誤處理 UI 邏輯
-        return;
-      }
+        // 建立卡片 ID 到列表 ID 的映射
+        const cardsByListId: { [listId: string]: Card[] } = {}
+        
+        if (cardsResponse) {
+          cardsResponse.forEach((card: any) => {
+            if (!cardsByListId[card.list_id]) {
+              cardsByListId[card.list_id] = []
+            }
+            cardsByListId[card.list_id].push({
+              id: card.id,
+              title: card.title,
+              description: card.description
+            })
+          })
+        }
 
-      if (data.value) {
-        // 將獲取到的列表資料設定到 state 中
-        this.board.lists = data.value;
+        // 將列表和對應的卡片組合起來
+        if (listsResponse) {
+          this.board.lists = listsResponse.map((list: any) => ({
+            id: list.id,
+            title: list.title,
+            cards: cardsByListId[list.id] || []
+          }))
+        }
+      } catch (error) {
+        console.error('獲取看板資料失敗:', error)
       }
     },
     // 新增列表
-    addList(title: string) {
-      const newList: List = {
-        id: `list-${this.nextListId}`,
-        title,
-        cards: []
+    async addList(title: string) {
+      try {
+        const { data, error } = await $fetch('/api/lists', {
+          method: 'POST',
+          body: { 
+            title
+          }
+        })
+        
+        if (error) {
+          console.error('新增列表失敗:', error)
+          return
+        }
+        
+        // 新增到本地狀態
+        const newList: List = {
+          ...data,
+          cards: [] // 新列表初始沒有卡片
+        }
+        this.board.lists.push(newList)
+      } catch (error) {
+        console.error('新增列表錯誤:', error)
       }
-      this.board.lists.push(newList)
     },
     
     // 刪除列表
-    removeList(listId: string) {
-      const index = this.board.lists.findIndex(list => list.id === listId)
-      if (index !== -1) {
-        this.board.lists.splice(index, 1)
+    async removeList(listId: string) {
+      try {
+        await $fetch(`/api/lists/${listId}`, {
+          method: 'DELETE'
+        })
+        
+        // 從本地狀態中移除
+        const index = this.board.lists.findIndex(list => list.id === listId)
+        if (index !== -1) {
+          this.board.lists.splice(index, 1)
+        }
+      } catch (error) {
+        console.error('刪除列表錯誤:', error)
       }
     },
     
     // 新增卡片到指定列表
-    addCard(listId: string, title: string) {
-      const list = this.board.lists.find(list => list.id === listId)
-      if (list) {
-        const newCard: Card = {
-          id: `card-${this.nextCardId}`,
-          title
+    async addCard(listId: string, title: string) {
+      try {
+        const { data, error } = await $fetch('/api/cards', {
+          method: 'POST',
+          body: { 
+            title,
+            list_id: listId
+          }
+        })
+        
+        if (error) {
+          console.error('新增卡片失敗:', error)
+          return
         }
-        list.cards.push(newCard)
+        
+        // 新增到本地狀態
+        const list = this.board.lists.find(list => list.id === listId)
+        if (list) {
+          const newCard: Card = {
+            id: data.id,
+            title: data.title,
+            description: data.description
+          }
+          list.cards.push(newCard)
+        }
+      } catch (error) {
+        console.error('新增卡片錯誤:', error)
       }
     },
     
     // 從列表中刪除卡片
-    removeCard(listId: string, cardId: string) {
-      const list = this.board.lists.find(list => list.id === listId)
-      if (list) {
-        const cardIndex = list.cards.findIndex(card => card.id === cardId)
-        if (cardIndex !== -1) {
-          list.cards.splice(cardIndex, 1)
+    async removeCard(listId: string, cardId: string) {
+      try {
+        await $fetch(`/api/cards/${cardId}`, {
+          method: 'DELETE'
+        })
+        
+        // 從本地狀態中移除
+        const list = this.board.lists.find(list => list.id === listId)
+        if (list) {
+          const cardIndex = list.cards.findIndex(card => card.id === cardId)
+          if (cardIndex !== -1) {
+            list.cards.splice(cardIndex, 1)
+          }
         }
+      } catch (error) {
+        console.error('刪除卡片錯誤:', error)
       }
     },
     

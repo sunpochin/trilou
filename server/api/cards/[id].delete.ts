@@ -1,7 +1,15 @@
 // 刪除卡片的 API 端點
-import type { ApiResponse } from '@/types/api'
+import { serverSupabaseClient } from '~/server/utils/supabase'
 
-export default defineEventHandler(async (event): Promise<ApiResponse<{ id: string }>> => {
+export default defineEventHandler(async (event) => {
+  const supabase = serverSupabaseClient(event)
+
+  // 驗證用戶身份
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
   try {
     const id = getRouterParam(event, 'id')
     
@@ -12,19 +20,49 @@ export default defineEventHandler(async (event): Promise<ApiResponse<{ id: strin
       })
     }
 
-    // TODO: 這裡之後會串接 Supabase
-    // 刪除卡片相對簡單，只需要刪除該卡片記錄即可
+    // 先驗證用戶是否有權限刪除此卡片（檢查卡片所屬的列表是否屬於用戶）
+    const { data: cardAccess } = await supabase
+      .from('cards')
+      .select(`
+        lists!inner (
+          user_id
+        )
+      `)
+      .eq('id', id)
+      .eq('lists.user_id', user.id)
+      .single()
 
-    return {
-      data: { id },
-      success: true,
-      message: '卡片刪除成功'
+    if (!cardAccess) {
+      throw createError({
+        statusCode: 403,
+        statusMessage: '沒有權限刪除此卡片'
+      })
     }
+
+    // 刪除卡片
+    const { error } = await supabase
+      .from('cards')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting card:', error.message)
+      throw createError({
+        statusCode: 500,
+        statusMessage: '刪除卡片失敗'
+      })
+    }
+
+    return { id }
   } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error
+    }
+    
+    console.error('Unexpected error:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '刪除卡片失敗',
-      data: { error }
+      statusMessage: '伺服器內部錯誤'
     })
   }
 })
