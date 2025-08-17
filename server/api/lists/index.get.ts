@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     
     if (!user) {
       console.log('No user found, returning 401')
-      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+      throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
 
     console.log('Fetching lists for user:', user.id)
@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
       console.error('Error fetching lists:', error.message)
       throw createError({
         statusCode: 500,
-        statusMessage: '取得列表失敗'
+        message: '取得列表失敗'
       })
     }
 
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     
     throw createError({
       statusCode: 500,
-      statusMessage: '伺服器內部錯誤'
+      message: '伺服器內部錯誤'
     })
   }
 })

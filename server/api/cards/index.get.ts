@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   // 驗證用戶身份 - 確保只有登入的用戶可以存取
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   try {
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
       console.error('查詢用戶列表失敗:', listError.message)
       throw createError({
         statusCode: 500,
-        statusMessage: '查詢用戶列表失敗'
+        message: '查詢用戶列表失敗'
       })
     }
 
@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
       console.error('資料庫查詢錯誤:', error.message)
       throw createError({
         statusCode: 500,
-        statusMessage: '取得卡片資料失敗'
+        message: '取得卡片資料失敗'
       })
     }
 
@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
     console.error('未預期的錯誤:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '伺服器內部錯誤'
+      message: '伺服器內部錯誤'
     })
   }
 })

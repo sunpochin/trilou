@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   // 驗證用戶身份
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   try {
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     if (!body.title) {
       throw createError({
         statusCode: 400,
-        statusMessage: '列表標題為必填欄位'
+        message: '列表標題為必填欄位'
       })
     }
 
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
       console.error('Error creating list:', error.message)
       throw createError({
         statusCode: 500,
-        statusMessage: '建立列表失敗'
+        message: '建立列表失敗'
       })
     }
 
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
     console.error('Unexpected error:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '伺服器內部錯誤'
+      message: '伺服器內部錯誤'
     })
   }
 })

@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   // 驗證用戶身份
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   try {
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     if (!id) {
       throw createError({
         statusCode: 400,
-        statusMessage: '列表 ID 為必填參數'
+        message: '列表 ID 為必填參數'
       })
     }
 
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     if (!body.title && typeof body.position !== 'number') {
       throw createError({
         statusCode: 400,
-        statusMessage: '至少需要提供一個要更新的欄位'
+        message: '至少需要提供一個要更新的欄位'
       })
     }
 
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     if (typeof body.position === 'number' && body.position < 0) {
       throw createError({
         statusCode: 400,
-        statusMessage: '位置必須為非負數'
+        message: '位置必須為非負數'
       })
     }
 
@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
     if (!listAccess || listAccess.user_id !== user.id) {
       throw createError({
         statusCode: 403,
-        statusMessage: '沒有權限編輯此列表'
+        message: '沒有權限編輯此列表'
       })
     }
 
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
       console.error('Error updating list:', error.message)
       throw createError({
         statusCode: 500,
-        statusMessage: '更新列表失敗'
+        message: '更新列表失敗'
       })
     }
 
@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
     console.error('Unexpected error:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '伺服器內部錯誤'
+      message: '伺服器內部錯誤'
     })
   }
 })

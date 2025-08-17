@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   // 驗證用戶身份
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   try {
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     if (!body.title || !body.list_id) {
       throw createError({
         statusCode: 400,
-        statusMessage: '卡片標題和列表 ID 為必填欄位'
+        message: '卡片標題和列表 ID 為必填欄位'
       })
     }
 
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     if (!listAccess || listAccess.user_id !== user.id) {
       throw createError({
         statusCode: 403,
-        statusMessage: '沒有權限在此列表建立卡片'
+        message: '沒有權限在此列表建立卡片'
       })
     }
 
@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
       console.error('Error creating card:', error.message)
       throw createError({
         statusCode: 500,
-        statusMessage: '建立卡片失敗'
+        message: '建立卡片失敗'
       })
     }
 
@@ -83,7 +83,7 @@ export default defineEventHandler(async (event) => {
     console.error('Unexpected error:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '伺服器內部錯誤'
+      message: '伺服器內部錯誤'
     })
   }
 })

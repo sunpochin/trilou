@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   // 驗證用戶身份
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   try {
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
     if (!id) {
       throw createError({
         statusCode: 400,
-        statusMessage: '卡片 ID 為必填參數'
+        message: '卡片 ID 為必填參數'
       })
     }
 
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
       console.error('Error fetching card:', error.message)
       throw createError({
         statusCode: error.code === 'PGRST116' ? 404 : 500,
-        statusMessage: error.code === 'PGRST116' ? '找不到指定的卡片或您沒有權限存取' : '獲取卡片資料失敗'
+        message: error.code === 'PGRST116' ? '找不到指定的卡片或您沒有權限存取' : '獲取卡片資料失敗'
       })
     }
 
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
     console.error('Unexpected error:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: '伺服器內部錯誤'
+      message: '伺服器內部錯誤'
     })
   }
 })
