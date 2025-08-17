@@ -23,7 +23,7 @@
   <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0">
     <!-- 列表標題區域 -->
     <div class="flex justify-between items-center p-2 mb-2 relative">
-      <h2 class="text-base font-bold">{{ list.title }}</h2>
+      <h2 class="text-base font-bold select-none cursor-default">{{ list.title }}</h2>
       
       <!-- 列表選單組件 -->
       <ListMenu 

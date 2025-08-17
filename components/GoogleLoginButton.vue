@@ -55,6 +55,9 @@ const signInWithGoogle = async () => {
   try {
     const { error } = await $supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`  // 會依環境自動變
+      }
     });
     if (error) {
       console.error('Google 登入失敗：', error);

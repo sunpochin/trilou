@@ -22,34 +22,51 @@
 <template>
   <!-- 看板主容器 -->
   <div class="flex gap-4 p-4 h-screen overflow-x-auto bg-gray-100 font-sans">
-    <!-- 可拖拉的列表容器 -->
-    <VueDraggable
-      v-model="boardStore.board.lists"
-      group="lists"
-      item-key="id"
-      class="flex gap-4"
-      tag="div"
-      @end="onListMove"
-    >
-      <template #item="{ element: list }">
-        <ListItem
-          :key="list.id"
-          :list="list"
-          @card-move="onCardMove"
-          @open-card-modal="openCardModal"
+    
+    <!-- 載入狀態：顯示 loading spinner -->
+    <div v-if="boardStore.isLoading" class="flex items-center justify-center w-full h-full">
+      <div class="text-center">
+        <SkeletonLoader 
+          size="lg" 
+          :text="'載入看板資料中'"
+          color="#3B82F6"
+          :animate="true"
         />
-      </template>
-    </VueDraggable>
-
-    <!-- 新增列表按鈕 -->
-    <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex items-start">
-      <button 
-        class="w-full p-3 bg-transparent border-2 border-dashed border-gray-400 rounded text-gray-700 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-300 hover:border-gray-500" 
-        @click="handleAddList"
-      >
-        + 新增其他列表
-      </button>
+        <p class="mt-4 text-gray-600 text-sm">正在從雲端獲取您的看板...</p>
+      </div>
     </div>
+
+    <!-- 載入完成：顯示實際看板內容 -->
+    <template v-else>
+      <!-- 可拖拉的列表容器 -->
+      <VueDraggable
+        v-model="boardStore.board.lists"
+        group="lists"
+        item-key="id"
+        class="flex gap-4"
+        tag="div"
+        @end="onListMove"
+      >
+        <template #item="{ element: list }">
+          <ListItem
+            :key="list.id"
+            :list="list"
+            @card-move="onCardMove"
+            @open-card-modal="openCardModal"
+          />
+        </template>
+      </VueDraggable>
+
+      <!-- 新增列表按鈕 -->
+      <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex items-start">
+        <button 
+          class="w-full p-3 bg-transparent border-2 border-dashed border-gray-400 rounded text-gray-700 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-300 hover:border-gray-500" 
+          @click="handleAddList"
+        >
+          + 新增其他列表
+        </button>
+      </div>
+    </template>
 
     <!-- 卡片編輯模態框 -->
     <CardModal 
@@ -64,6 +81,7 @@
 import { ref } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
+import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useBoardStore } from '@/stores/boardStore'
 import { useListActions } from '@/composables/useListActions'
 import VueDraggable from 'vuedraggable'
