@@ -1,4 +1,4 @@
-# Trello Clone 看板專案
+# Trilo, 看板專案，一個 trello Clone 
 
 一個使用現代化技術棧開發的 Trello 看板 clone, 具備完整的拖拉放置功能和響應式設計。
 
