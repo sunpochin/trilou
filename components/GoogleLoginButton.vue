@@ -4,6 +4,7 @@
     <button
       @click="signInWithGoogle"
       class="google-login-btn"
+      :class="{ 'loading': isLoading }"
       :disabled="isLoading"
     >
       <svg
@@ -29,15 +30,24 @@
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
         />
       </svg>
-      <span v-if="!isLoading">使用 Google 登錄</span>
-      <span v-else>登錄中...</span>
+      <span>使用 Google 登錄</span>
     </button>
+    
+    <!-- 載入動畫在按鈕下方 -->
+    <div v-if="isLoading" class="loading-message">
+      <SkeletonLoader 
+        size="sm" 
+        :text="'等待中'"
+        color="#4285F4"
+        :animate="true"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 const isLoading = ref(false);
-const { $supabase } = useNuxtApp();
+const { $supabase } = useNuxtApp() as any;
 
 // Google 登入流程
 const signInWithGoogle = async () => {
@@ -55,7 +65,7 @@ const signInWithGoogle = async () => {
   } finally {
     // 注意：OAuth 會重新導向頁面，所以這裡的 isLoading 可能不會被執行到
     // 狀態管理應由 app.vue 中的 onAuthStateChange 主導
-    isLoading.value = false;
+    // isLoading.value = false;
   }
 };
 </script>
@@ -64,7 +74,9 @@ const signInWithGoogle = async () => {
 /* Google 登入按鈕樣式 */
 .google-login-container {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
   padding: 1rem;
 }
 
@@ -80,24 +92,70 @@ const signInWithGoogle = async () => {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-width: 200px; /* 確保按鈕寬度一致 */
 }
 
 .google-login-btn:hover:not(:disabled) {
   background-color: #f8f9fa;
   border-color: #dadce0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px); /* 輕微上浮效果 */
 }
 
 .google-login-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
+.google-login-btn.loading {
+  background-color: #f8f9fa;
+  border-color: #4285F4;
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.15);
 }
 
 .google-icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+}
+
+/* 載入訊息樣式 */
+.loading-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 載入狀態動畫 */
+.google-login-btn.loading {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.15);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.25);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.15);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
