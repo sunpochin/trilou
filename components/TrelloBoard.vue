@@ -39,21 +39,19 @@
     <!-- 載入完成：顯示實際看板內容 -->
     <template v-else>
       <!-- 可拖拉的列表容器 -->
-      <draggable
-        v-model="boardStore.board.lists"
-        group="lists"
-        item-key="id"
-        class="flex gap-4"
-        @end="onListMove"
+      <draggable 
+        class="flex gap-4" 
+        :list="boardStore.board.lists" 
+        @change="onListMove"
+        tag="div"
       >
-        <template #item="{ element: list }">
-          <ListItem
-            :key="list.id"
-            :list="list"
-            @card-move="onCardMove"
-            @open-card-modal="openCardModal"
-          />
-        </template>
+        <ListItem
+          v-for="list in boardStore.board.lists" 
+          :key="list.id"
+          :list="list"
+          @card-move="onCardMove"
+          @open-card-modal="openCardModal"
+        />
       </draggable>
 
       <!-- 新增列表按鈕 -->
@@ -110,7 +108,7 @@ const onCardMove = (event: any) => {
 
 // 處理列表拖拉移動事件
 const onListMove = (event: any) => {
-  // 列表順序已經由 v-model 自動更新，無需額外處理
+  // 使用 :list 時會自動同步，無需額外處理
   console.log('List moved:', event)
 }
 

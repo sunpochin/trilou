@@ -11,7 +11,8 @@
       "Bash(yarn test:*)",
       "Bash(yarn vitest:*)",
       "Bash(yarn remove:*)",
-      "Bash(yarn install)"
+      "Bash(yarn install)",
+      "WebSearch"
     ],
     "defaultMode": "acceptEdits"
   }
