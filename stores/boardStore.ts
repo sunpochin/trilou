@@ -112,12 +112,20 @@ export const useBoardStore = defineStore('board', {
 
         // 將列表和對應的卡片組合起來
         // 每個列表都會包含其對應的卡片陣列
+        console.log('📊 [STORE] API 回應 - listsResponse:', listsResponse)
+        console.log('📊 [STORE] API 回應 - cardsResponse:', cardsResponse)
+        
         if (listsResponse) {
+          console.log(`📈 [STORE] 處理 ${listsResponse.length} 個列表`)
           this.board.lists = listsResponse.map((list: any) => ({
             id: list.id,
             title: list.title,
             cards: cardsByListId[list.id] || [] // 如果列表沒有卡片則使用空陣列
           }))
+          console.log('✅ [STORE] 最終設定的 board.lists:', this.board.lists)
+          console.log(`🎯 [STORE] 總共載入了 ${this.board.lists.length} 個列表`)
+        } else {
+          console.warn('⚠️ [STORE] listsResponse 為空或 undefined')
         }
       } catch (error) {
         console.error('獲取看板資料失敗:', error)

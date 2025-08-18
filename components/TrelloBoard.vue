@@ -39,12 +39,11 @@
     <!-- 載入完成：顯示實際看板內容 -->
     <template v-else>
       <!-- 可拖拉的列表容器 -->
-      <VueDraggable
+      <draggable
         v-model="boardStore.board.lists"
         group="lists"
         item-key="id"
         class="flex gap-4"
-        tag="div"
         @end="onListMove"
       >
         <template #item="{ element: list }">
@@ -55,7 +54,7 @@
             @open-card-modal="openCardModal"
           />
         </template>
-      </VueDraggable>
+      </draggable>
 
       <!-- 新增列表按鈕 -->
       <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex items-start">
@@ -84,7 +83,7 @@ import CardModal from '@/components/CardModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useBoardStore } from '@/stores/boardStore'
 import { useListActions } from '@/composables/useListActions'
-import VueDraggable from 'vuedraggable'
+import { VueDraggableNext as draggable } from 'vue-draggable-next'
 
 // 卡片資料型別定義
 interface Card {
@@ -114,6 +113,10 @@ const onListMove = (event: any) => {
   // 列表順序已經由 v-model 自動更新，無需額外處理
   console.log('List moved:', event)
 }
+
+// 在組件載入時記錄 lists 的數量
+console.log('🖼️ [COMPONENT] TrelloBoard 載入，目前 lists 數量:', boardStore.board.lists.length)
+console.log('🖼️ [COMPONENT] TrelloBoard lists 內容:', boardStore.board.lists)
 
 // 處理新增列表
 const handleAddList = () => {

@@ -34,7 +34,7 @@
     </div>
     
     <!-- 可拖拉的卡片容器 -->
-    <VueDraggable
+    <draggable
       v-model="list.cards"
       group="cards"
       item-key="id"
@@ -47,7 +47,7 @@
           <Card :card="card" @open-modal="$emit('open-card-modal', card)" />
         </div>
       </template>
-    </VueDraggable>
+    </draggable>
     
     <!-- 新增卡片按鈕 -->
     <button 
@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import Card from '@/components/Card.vue'
 import ListMenu from '@/components/ListMenu.vue'
-import VueDraggable from 'vuedraggable'
+import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useListActions } from '@/composables/useListActions'
 
 // 列表資料型別定義
