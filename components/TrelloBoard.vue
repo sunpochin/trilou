@@ -102,8 +102,18 @@ const selectedCard = ref<Card | null>(null)
 
 // 處理卡片拖拉移動事件
 const onCardMove = (event: any) => {
-  // 拖拉完成後的處理邏輯
-  console.log('Card moved:', event)
+  console.log('📦 [COMPONENT] Card moved event:', event)
+  
+  // vue-draggable-next 的 change 事件可能包含 added, removed, moved 等資訊
+  if (event.added) {
+    console.log('卡片被新增到列表:', event.added)
+  }
+  if (event.removed) {
+    console.log('卡片從列表被移除:', event.removed)
+  }
+  if (event.moved) {
+    console.log('卡片在列表內移動:', event.moved)
+  }
 }
 
 // 處理列表拖拉移動事件

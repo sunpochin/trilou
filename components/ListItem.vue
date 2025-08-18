@@ -35,18 +35,15 @@
     
     <!-- 可拖拉的卡片容器 -->
     <draggable
-      v-model="list.cards"
-      group="cards"
-      item-key="id"
       class="min-h-5"
+      :list="list.cards"
+      group="cards"
       tag="div"
-      @end="$emit('card-move', $event)"
+      @change="$emit('card-move', $event)"
     >
-      <template #item="{ element: card }">
-        <div :key="card.id">
-          <Card :card="card" @open-modal="$emit('open-card-modal', card)" />
-        </div>
-      </template>
+      <div v-for="card in list.cards" :key="card.id">
+        <Card :card="card" @open-modal="$emit('open-card-modal', card)" />
+      </div>
     </draggable>
     
     <!-- 新增卡片按鈕 -->

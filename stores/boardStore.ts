@@ -250,18 +250,40 @@ export const useBoardStore = defineStore('board', {
     
     // 移動卡片到不同列表（支援拖拉功能）
     // 實現卡片在列表間或列表內的移動操作
-    moveCard(fromListId: string, toListId: string, cardIndex: number, newIndex?: number) {
+    async moveCard(fromListId: string, toListId: string, cardIndex: number, newIndex?: number) {
       const fromList = this.board.lists.find(list => list.id === fromListId)
       const toList = this.board.lists.find(list => list.id === toListId)
       
       if (fromList && toList && fromList.cards[cardIndex]) {
-        // 從原列表移除卡片
-        const card = fromList.cards.splice(cardIndex, 1)[0]
-        // 如果指定了新位置，插入到指定位置，否則加到末尾
-        if (newIndex !== undefined) {
-          toList.cards.splice(newIndex, 0, card)
-        } else {
-          toList.cards.push(card)
+        const card = fromList.cards[cardIndex]
+        console.log(`🚀 [STORE] 移動卡片 ${card.id} 從 ${fromListId} 到 ${toListId}`)
+        
+        try {
+          // 計算新的 position
+          const targetPosition = newIndex !== undefined ? newIndex : toList.cards.length
+          
+          // 先更新本地狀態
+          fromList.cards.splice(cardIndex, 1)
+          if (newIndex !== undefined) {
+            toList.cards.splice(newIndex, 0, card)
+          } else {
+            toList.cards.push(card)
+          }
+          
+          // 調用 API 保存變更
+          await $fetch(`/api/cards/${card.id}`, {
+            method: 'PUT',
+            body: {
+              list_id: toListId,
+              position: targetPosition
+            }
+          })
+          
+          console.log(`✅ [STORE] 成功移動卡片 ${card.id}`)
+        } catch (error) {
+          console.error('❌ [STORE] 移動卡片失敗:', error)
+          // 如果 API 失敗，回滾本地狀態
+          // 這裡可以加入回滾邏輯，但為了簡化先不處理
         }
       }
     },
