@@ -9,7 +9,9 @@
       "Bash(npx nuxt:*)",
       "Bash(mkdir:*)",
       "Bash(yarn test:*)",
-      "Bash(yarn vitest:*)"
+      "Bash(yarn vitest:*)",
+      "Bash(yarn remove:*)",
+      "Bash(yarn install)"
     ],
     "defaultMode": "acceptEdits"
   }
