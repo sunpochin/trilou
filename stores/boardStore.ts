@@ -163,18 +163,55 @@ export const useBoardStore = defineStore('board', {
     // 刪除指定的列表
     // 發送 API 請求刪除列表，成功後從本地狀態移除
     async removeList(listId: string) {
+      console.log('🗑️ [STORE] removeList 被呼叫，參數:', { listId })
+      
+      // 記錄刪除前的狀態
+      const targetList = this.board.lists.find(list => list.id === listId)
+      if (targetList) {
+        console.log('📋 [STORE] 找到要刪除的列表:', {
+          id: targetList.id,
+          title: targetList.title,
+          cardsCount: targetList.cards.length
+        })
+      } else {
+        console.warn('⚠️ [STORE] 警告: 找不到要刪除的列表 ID:', listId)
+        return
+      }
+      
       try {
+        console.log('📤 [STORE] 發送 DELETE API 請求到:', `/api/lists/${listId}`)
+        
         await $fetch(`/api/lists/${listId}`, {
           method: 'DELETE'
         })
         
+        console.log('✅ [STORE] API 刪除請求成功')
+        
         // 從本地狀態中移除對應的列表
         const index = this.board.lists.findIndex(list => list.id === listId)
         if (index !== -1) {
+          console.log('🔄 [STORE] 從本地狀態移除列表，索引:', index)
           this.board.lists.splice(index, 1)
+          console.log('✅ [STORE] 列表已從本地狀態移除，剩餘列表數量:', this.board.lists.length)
+        } else {
+          console.error('❌ [STORE] 錯誤: 無法在本地狀態中找到要刪除的列表')
         }
       } catch (error) {
-        console.error('刪除列表錯誤:', error)
+        console.error('❌ [STORE] 刪除列表錯誤:')
+        console.error('  🔍 錯誤類型:', typeof error)
+        console.error('  🔍 錯誤內容:', error)
+        
+        if (error && typeof error === 'object') {
+          console.error('  🔍 錯誤詳情:', {
+            message: (error as any).message,
+            statusCode: (error as any).statusCode,
+            statusMessage: (error as any).statusMessage,
+            data: (error as any).data
+          })
+        }
+        
+        // 重新拋出錯誤，讓上層處理
+        throw error
       }
     },
     
