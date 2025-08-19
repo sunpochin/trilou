@@ -283,67 +283,61 @@ export const useBoardStore = defineStore('board', {
       }
     },
     
-    // 移動卡片到不同列表（支援拖拉功能）
-    // 實現卡片在列表間或列表內的移動操作
-    async moveCard(fromListId: string, toListId: string, cardIndex: number, newIndex?: number) {
-      const fromList = this.board.lists.find(list => list.id === fromListId)
-      const toList = this.board.lists.find(list => list.id === toListId)
+    // 🎯 方案B：完整的卡片移動 + 排序業務邏輯（單一職責）
+    // Vue Draggable 已經更新了 UI 狀態，這個函數只負責：
+    // 1. 重新計算所有受影響列表的 position
+    // 2. 批次更新到資料庫
+    // 3. 錯誤處理和資料一致性
+    async moveCardAndReorder(affectedListIds: string[]) {
+      console.log(`🚀 [STORE] 開始重新整理受影響列表的 position:`, affectedListIds)
       
-      if (fromList && toList && fromList.cards[cardIndex]) {
-        const card = fromList.cards[cardIndex]
-        console.log(`🚀 [STORE] 移動卡片 ${card.id} 從 ${fromListId} 到 ${toListId}`)
+      try {
+        const updatePromises: Promise<any>[] = []
         
-        try {
-          // 先更新本地狀態
-          fromList.cards.splice(cardIndex, 1)
-          if (newIndex !== undefined) {
-            toList.cards.splice(newIndex, 0, card)
-          } else {
-            toList.cards.push(card)
+        // 🎯 重新整理所有受影響列表的卡片 position
+        for (const listId of affectedListIds) {
+          const list = this.board.lists.find(l => l.id === listId)
+          if (!list) {
+            console.warn(`⚠️ [STORE] 找不到列表 ${listId}`)
+            continue
           }
           
-          // 🎯 重點：重新整理所有受影響列表的卡片 position
-          const listsToUpdate = new Set([fromList, toList]) // 使用 Set 避免重複
-          const updatePromises: Promise<any>[] = []
+          console.log(`📝 [STORE] 重新整理列表 "${list.title}" 的 ${list.cards.length} 張卡片`)
           
-          for (const list of listsToUpdate) {
-            console.log(`📝 [STORE] 重新整理列表 "${list.title}" 的卡片順序`)
+          // 為每張卡片重新分配連續的 position 值 (0, 1, 2, 3...)
+          list.cards.forEach((card, index) => {
+            const newPosition = index
+            console.log(`  📌 [STORE] 卡片 "${card.title}" 新位置: ${newPosition}`)
             
-            // 為每張卡片重新分配連續的 position 值 (0, 1, 2, 3...)
-            list.cards.forEach((cardInList, index) => {
-              const newPosition = index
-              console.log(`  📌 [STORE] 卡片 "${cardInList.title}" 新位置: ${newPosition}`)
-              
-              // 批次收集所有需要更新的 API 請求
-              updatePromises.push(
-                $fetch(`/api/cards/${cardInList.id}`, {
-                  method: 'PUT',
-                  body: {
-                    list_id: list.id,  // 確保卡片屬於正確的列表
-                    position: newPosition
-                  }
-                }).then(() => {
-                  console.log(`✅ [STORE] 已更新卡片 ${cardInList.id} 位置為 ${newPosition}`)
-                }).catch((error) => {
-                  console.error(`❌ [STORE] 更新卡片 ${cardInList.id} 失敗:`, error)
-                  throw error
-                })
-              )
-            })
-          }
-          
-          console.log(`📤 [STORE] 批次更新 ${updatePromises.length} 張卡片的位置...`)
-          
-          // 批次執行所有 API 更新請求
-          await Promise.all(updatePromises)
-          
-          console.log(`✅ [STORE] 成功移動卡片並重新整理所有位置`)
-          
-        } catch (error) {
-          console.error('❌ [STORE] 移動卡片失敗:', error)
-          // TODO: 如果 API 失敗，應該回滾本地狀態
-          // 這裡可以加入回滾邏輯，恢復移動前的狀態
+            // 批次收集所有需要更新的 API 請求
+            updatePromises.push(
+              $fetch(`/api/cards/${card.id}`, {
+                method: 'PUT',
+                body: {
+                  list_id: listId,  // 確保卡片屬於正確的列表
+                  position: newPosition
+                }
+              }).then(() => {
+                console.log(`✅ [STORE] 已更新卡片 ${card.id} 位置為 ${newPosition}`)
+              }).catch((error) => {
+                console.error(`❌ [STORE] 更新卡片 ${card.id} 失敗:`, error)
+                throw error
+              })
+            )
+          })
         }
+        
+        console.log(`📤 [STORE] 批次更新 ${updatePromises.length} 張卡片的位置...`)
+        
+        // 批次執行所有 API 更新請求
+        await Promise.all(updatePromises)
+        
+        console.log(`✅ [STORE] 成功重新整理所有受影響列表的位置`)
+        
+      } catch (error) {
+        console.error('❌ [STORE] 重新整理卡片位置失敗:', error)
+        console.error('🔄 [STORE] 建議重新載入看板資料以確保一致性')
+        throw error
       }
     },
 

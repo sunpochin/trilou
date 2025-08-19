@@ -28,11 +28,10 @@
       <div class="text-center">
         <SkeletonLoader 
           size="lg" 
-          :text="'正在從雲端獲取您的資料中...'"
+          :text="MESSAGES.board.loadingFromCloud"
           color="#3B82F6"
           :animate="true"
         />
-        <!-- <p class="mt-4 text-gray-600 text-sm">正在從雲端獲取您的看板...</p> -->
       </div>
     </div>
 
@@ -60,7 +59,7 @@
           class="w-full p-3 bg-transparent border-2 border-dashed border-gray-400 rounded text-gray-700 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-300 hover:border-gray-500" 
           @click="handleAddList"
         >
-          + 新增其他列表
+          + {{ MESSAGES.list.addNew }}
         </button>
       </div>
     </template>
@@ -83,6 +82,7 @@ import { useBoardStore } from '@/stores/boardStore'
 import { useListActions } from '@/composables/useListActions'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import type { CardUI } from '@/types'
+import { MESSAGES } from '@/constants/messages'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
@@ -113,7 +113,7 @@ const onCardMove = async (event: any) => {
   // 處理卡片在同一列表內移動的情況
   if (event.moved) {
     console.log('🔄 [COMPONENT] 卡片在列表內移動:', event.moved)
-    const { element: card, newIndex, oldIndex } = event.moved
+    const { element: card } = event.moved
     
     // 🎯 找到卡片所在的列表
     let currentListId = null
@@ -125,13 +125,12 @@ const onCardMove = async (event: any) => {
       }
     }
     
-    if (currentListId && card.id) {
+    if (currentListId) {
       try {
-        console.log(`🚀 [COMPONENT] 呼叫 moveCard 重新整理整個列表的位置`)
-        // ✅ 使用 boardStore.moveCard 來正確處理位置重新分配
-        // 同一列表內移動：fromListId = toListId = currentListId
-        await boardStore.moveCard(currentListId, currentListId, oldIndex, newIndex)
-        console.log('✅ [COMPONENT] 成功更新整個列表的卡片位置')
+        console.log(`🚀 [COMPONENT] 同一列表內移動，重新整理列表 ${currentListId} 的位置`)
+        // ✅ Vue Draggable 已經更新了 UI，我們只需要重新排序 position
+        await boardStore.moveCardAndReorder([currentListId])
+        console.log('✅ [COMPONENT] 成功更新列表內卡片位置')
       } catch (error) {
         console.error('❌ [COMPONENT] 更新卡片位置失敗:', error)
         // 可選：重新載入資料以確保一致性
@@ -142,19 +141,15 @@ const onCardMove = async (event: any) => {
   
   // 處理卡片從列表移除的情況（跨列表移動）
   if (event.removed) {
-    console.log('📤 [COMPONENT] 卡片從列表被移除:', event.removed)
-    const { element: card, oldIndex } = event.removed
+    console.log('📤 [COMPONENT] 卡片從列表被移除（跨列表移動）:', event.removed)
+    const { element: card } = event.removed
     
-    // 🎯 跨列表移動：找到卡片的新位置
+    // 🎯 找到卡片現在在哪個列表中（Vue Draggable 已經移動了）
     let targetListId = null
-    let newIndex = 0
-    
-    // 查找卡片現在在哪個列表中（Vue Draggable 已經移動了）
     for (const list of boardStore.board.lists) {
-      const foundCardIndex = list.cards.findIndex(c => c.id === card.id)
-      if (foundCardIndex !== -1) {
+      const foundCard = list.cards.find(c => c.id === card.id)
+      if (foundCard) {
         targetListId = list.id
-        newIndex = foundCardIndex
         break
       }
     }
@@ -171,8 +166,8 @@ const onCardMove = async (event: any) => {
     if (sourceListId && targetListId && sourceListId !== targetListId) {
       try {
         console.log(`🚀 [COMPONENT] 跨列表移動：${sourceListId} → ${targetListId}`)
-        // ✅ 使用 boardStore.moveCard 來正確處理位置重新分配
-        await boardStore.moveCard(sourceListId, targetListId, oldIndex, newIndex)
+        // ✅ Vue Draggable 已經更新了 UI，我們只需要重新排序兩個列表的 position
+        await boardStore.moveCardAndReorder([sourceListId, targetListId])
         console.log('✅ [COMPONENT] 成功完成跨列表移動並重新整理位置')
       } catch (error) {
         console.error('❌ [COMPONENT] 跨列表移動失敗:', error)
