@@ -26,7 +26,7 @@
       <!-- 非編輯狀態：顯示標題 -->
       <h2 
         v-if="!isEditingTitle" 
-        class="text-base font-bold select-none cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+        class="w-full text-base font-bold select-none cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
         @click="startEditTitle"
       >
         {{ list.title }}
@@ -37,7 +37,7 @@
         v-else
         ref="titleInput"
         v-model="editingTitle"
-        class="text-base font-bold bg-white border-2 border-blue-400 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
+        class="w-full text-base font-bold bg-white border-2 border-blue-400 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
         @keydown.enter="saveTitle"
         @blur="saveTitle"
         @keydown.esc="cancelEdit"

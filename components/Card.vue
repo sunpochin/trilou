@@ -8,7 +8,7 @@
       @dblclick="startEditing"
       class="min-h-6 cursor-pointer pr-8"
     >
-      {{ card.title }}, pos: {{ card.position }}, id: {{ card.id }}
+      {{ card.title }}  (pos: {{ card.position }})
     </div>
     
     <!-- 刪除按鈕 - 只在 hover 時顯示 -->
