@@ -61,8 +61,8 @@ export const useBoardStore = defineStore('board', {
   },
   // Actions: 定義可以修改狀態的操作
   actions: {
-    // 🚀 優化後的看板資料獲取 - 使用單一 JOIN 查詢提升性能
-    // 替代原本的多次 API 調用，大幅減少網路延遲
+    // 🔙 恢復穩定的分開查詢 - 簡單可靠的資料獲取
+    // 使用分開的 API 調用，確保排序邏輯正確且易於除錯
     async fetchBoard() {
       // 開始載入時設定 loading 狀態
       this.isLoading = true
@@ -76,29 +76,52 @@ export const useBoardStore = defineStore('board', {
           await new Promise(resolve => setTimeout(resolve, 800))
         }
         
-        // ✨ 關鍵改進：使用單一 API 調用獲取完整看板資料
-        // 替代原本的 Promise.all([lists, cards]) 兩次調用
-        const boardResponse = await $fetch('/api/board')
-        
+        // 🎯 使用穩定的分開查詢：先拿 lists，再拿 cards
+        const [listsResponse, cardsResponse] = await Promise.all([
+          $fetch('/api/lists'),
+          $fetch('/api/cards')
+        ])
+
         const fetchTime = Date.now() - startTime
         console.log(`⚡ [STORE] API 調用完成，耗時: ${fetchTime}ms`)
 
-        if (boardResponse && boardResponse.lists) {
-          // 直接使用 API 回傳的結構化資料，進行型別轉換
-          this.board = {
-            id: boardResponse.id,
-            title: boardResponse.title,
-            lists: (boardResponse.lists as any[]).map((list: any) => ({
-              id: list.id,
-              title: list.title,
-              cards: (list.cards || []).map((card: any) => ({
-                id: card.id,
-                title: card.title,
-                description: card.description,
-                position: card.position
-              }))
-            }))
-          }
+        // 建立卡片 ID 到列表 ID 的映射
+        // 將卡片按所屬列表分組，方便後續組合
+        const cardsByListId: { [listId: string]: Card[] } = {}
+        
+        if (cardsResponse) {
+          console.log(`📋 [STORE] 處理 ${cardsResponse.length} 張卡片`)
+          cardsResponse.forEach((card: any) => {
+            if (!cardsByListId[card.list_id]) {
+              cardsByListId[card.list_id] = []
+            }
+            cardsByListId[card.list_id].push({
+              id: card.id,
+              title: card.title,
+              description: card.description,
+              position: card.position
+            })
+          })
+          
+          // 🎯 確保每個列表的卡片都按 position 排序
+          Object.keys(cardsByListId).forEach(listId => {
+            cardsByListId[listId].sort((a, b) => (a.position || 0) - (b.position || 0))
+            console.log(`📝 [STORE] 列表 ${listId} 的卡片排序:`)
+            cardsByListId[listId].forEach((card, index) => {
+              console.log(`  ${index}: "${card.title}" (position: ${card.position})`)
+            })
+          })
+        }
+
+        // 將列表和對應的卡片組合起來
+        // 每個列表都會包含其對應的卡片陣列
+        if (listsResponse) {
+          console.log(`📈 [STORE] 處理 ${listsResponse.length} 個列表`)
+          this.board.lists = listsResponse.map((list: any) => ({
+            id: list.id,
+            title: list.title,
+            cards: cardsByListId[list.id] || [] // 如果列表沒有卡片則使用空陣列
+          }))
           
           // 統計載入的資料
           const listsCount = this.board.lists.length
@@ -109,10 +132,8 @@ export const useBoardStore = defineStore('board', {
           console.log(`  🎯 ${cardsCount} 張卡片`)
           console.log(`  ⚡ 總耗時: ${Date.now() - startTime}ms`)
           console.log('✅ [STORE] 看板資料載入完成')
-          
         } else {
-          console.warn('⚠️ [STORE] API 回應格式異常:', boardResponse)
-          // 設定預設空看板
+          console.warn('⚠️ [STORE] listsResponse 為空或 undefined')
           this.board.lists = []
         }
         
