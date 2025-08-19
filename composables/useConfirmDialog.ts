@@ -11,14 +11,19 @@
  * ```typescript
  * const { showConfirm } = useConfirmDialog()
  * 
- * const confirmed = await showConfirm({
- *   title: '刪除確認',
- *   message: '確定要刪除這個項目嗎？',
- *   dangerMode: true
- * })
- * 
- * if (confirmed) {
- *   // 用戶點擊確認
+ * try {
+ *   const confirmed = await showConfirm({
+ *     title: '刪除確認',
+ *     message: '確定要刪除這個項目嗎？',
+ *     dangerMode: true
+ *   })
+ *   
+ *   if (confirmed) {
+ *     // 用戶點擊確認
+ *   }
+ * } catch (error) {
+ *   // 對話框已經開啟時會拋出錯誤
+ *   console.log('對話框忙碌中，請稍後再試')
  * }
  * ```
  * 
@@ -27,6 +32,7 @@
  * - 統一的視覺風格
  * - 支援鍵盤操作 (ESC/Enter)
  * - Promise 介面易於使用
+ * - 防止重複進入，避免 Promise 洩漏
  */
 
 interface ConfirmOptions {
@@ -61,7 +67,19 @@ export const useConfirmDialog = () => {
    * @returns Promise<boolean> - true: 確認, false: 取消
    */
   const showConfirm = (options: ConfirmOptions): Promise<boolean> => {
-    console.log('🎭 [CONFIRM] 顯示確認對話框:', options)
+    // 🛡️ 防止重複進入：如果對話框已經開啟，拒絕新的請求
+    if (confirmState.value.show) {
+      if (import.meta.dev) {
+        console.warn('⚠️ [CONFIRM] 對話框已開啟，忽略重複顯示')
+        console.warn('   📋 當前對話框:', confirmState.value.message)
+        console.warn('   🚫 被拒絕的對話框:', options.message)
+      }
+      return Promise.reject(new Error('Confirm dialog already open'))
+    }
+    
+    if (import.meta.dev) {
+      console.log('🎭 [CONFIRM] 顯示確認對話框:', options)
+    }
     
     return new Promise((resolve) => {
       // 設定對話框狀態

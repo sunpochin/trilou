@@ -113,6 +113,11 @@ const handleKeydown = (event: KeyboardEvent) => {
 watch(
   () => props.show,
   (visible) => {
+    // 🛡️ 安全檢查：確保在瀏覽器環境中且函數已定義
+    if (typeof document === 'undefined' || typeof handleKeydown !== 'function') {
+      return
+    }
+
     if (visible) {
       console.log('🎯 [DIALOG] 開始監聽鍵盤事件 (Enter/Esc)')
       document.addEventListener('keydown', handleKeydown)
@@ -127,6 +132,10 @@ watch(
 // 組件卸載時確保移除監聽器（安全清理）
 onUnmounted(() => {
   console.log('🧹 [DIALOG] 組件卸載，清理鍵盤監聽器')
-  document.removeEventListener('keydown', handleKeydown)
+  
+  // 🛡️ 安全檢查：確保在瀏覽器環境中且函數已定義
+  if (typeof document !== 'undefined' && typeof handleKeydown === 'function') {
+    document.removeEventListener('keydown', handleKeydown)
+  }
 })
 </script>
