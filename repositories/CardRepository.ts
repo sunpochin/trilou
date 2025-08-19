@@ -249,9 +249,8 @@ export class CardRepository {
       title: apiCard.title,
       description: apiCard.description,
       listId: apiCard.list_id, // 轉換 snake_case to camelCase
-      position: apiCard.position,
-      created_at: apiCard.created_at,
-      updated_at: apiCard.updated_at
+      position: apiCard.position
+      // 不包含 API 特有欄位：created_at, updated_at（符合 CardUI 介面）
     }
   }
 
