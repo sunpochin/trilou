@@ -104,65 +104,34 @@ const onCardMove = async (event: any) => {
   // 處理卡片被新增到列表的情況（從其他列表移動過來）
   if (event.added) {
     console.log('🔄 [COMPONENT] 卡片被新增到列表:', event.added)
-    const { element: card, newIndex } = event.added
-    
-    // 透過事件傳遞的 event.target 或透過 DOM 查找獲取目標列表 ID
-    let targetListId = null
-    
-    // 方法1: 透過事件目標元素查找
-    if (event.to) {
-      const listContainer = event.to.closest('[data-list-id]')
-      if (listContainer) {
-        targetListId = listContainer.getAttribute('data-list-id')
-      }
-    }
-    
-    // 方法2: 如果方法1失敗，嘗試透過組件狀態查找
-    if (!targetListId) {
-      // 查找卡片現在在哪個列表中
-      for (const list of boardStore.board.lists) {
-        const foundCard = list.cards.find(c => c.id === card.id)
-        if (foundCard) {
-          targetListId = list.id
-          break
-        }
-      }
-    }
-    
-    if (targetListId && card.id) {
-      try {
-        // 調用 API 更新卡片的列表和位置
-        await $fetch(`/api/cards/${card.id}`, {
-          method: 'PUT',
-          body: {
-            list_id: targetListId,
-            position: newIndex
-          }
-        })
-        console.log('✅ [COMPONENT] 成功更新卡片列表和位置')
-      } catch (error) {
-        console.error('❌ [COMPONENT] 更新卡片失敗:', error)
-        // 可選：重新載入資料以確保一致性
-        // await boardStore.fetchBoard()
-      }
-    }
+    // 🎯 跨列表移動會觸發兩個事件：removed + added
+    // 我們需要等 removed 事件處理完成，才處理 added
+    // 但這裡可以先記錄，實際的 moveCard 邏輯交給 removed 事件處理
+    console.log('📝 [COMPONENT] 跨列表移動的 added 事件，由 removed 事件統一處理')
   }
   
   // 處理卡片在同一列表內移動的情況
   if (event.moved) {
     console.log('🔄 [COMPONENT] 卡片在列表內移動:', event.moved)
-    const { element: card, newIndex } = event.moved
+    const { element: card, newIndex, oldIndex } = event.moved
     
-    if (card.id) {
+    // 🎯 找到卡片所在的列表
+    let currentListId = null
+    for (const list of boardStore.board.lists) {
+      const foundCard = list.cards.find(c => c.id === card.id)
+      if (foundCard) {
+        currentListId = list.id
+        break
+      }
+    }
+    
+    if (currentListId && card.id) {
       try {
-        // 只更新位置，不改變列表
-        await $fetch(`/api/cards/${card.id}`, {
-          method: 'PUT',
-          body: {
-            position: newIndex
-          }
-        })
-        console.log('✅ [COMPONENT] 成功更新卡片位置')
+        console.log(`🚀 [COMPONENT] 呼叫 moveCard 重新整理整個列表的位置`)
+        // ✅ 使用 boardStore.moveCard 來正確處理位置重新分配
+        // 同一列表內移動：fromListId = toListId = currentListId
+        await boardStore.moveCard(currentListId, currentListId, oldIndex, newIndex)
+        console.log('✅ [COMPONENT] 成功更新整個列表的卡片位置')
       } catch (error) {
         console.error('❌ [COMPONENT] 更新卡片位置失敗:', error)
         // 可選：重新載入資料以確保一致性
@@ -171,9 +140,44 @@ const onCardMove = async (event: any) => {
     }
   }
   
-  // 處理卡片從列表移除的情況（記錄用）
+  // 處理卡片從列表移除的情況（跨列表移動）
   if (event.removed) {
     console.log('📤 [COMPONENT] 卡片從列表被移除:', event.removed)
+    const { element: card, oldIndex } = event.removed
+    
+    // 🎯 跨列表移動：找到卡片的新位置
+    let targetListId = null
+    let newIndex = 0
+    
+    // 查找卡片現在在哪個列表中（Vue Draggable 已經移動了）
+    for (const list of boardStore.board.lists) {
+      const foundCardIndex = list.cards.findIndex(c => c.id === card.id)
+      if (foundCardIndex !== -1) {
+        targetListId = list.id
+        newIndex = foundCardIndex
+        break
+      }
+    }
+    
+    // 找到原來的列表 ID
+    let sourceListId = null
+    if (event.from) {
+      const sourceContainer = event.from.closest('[data-list-id]')
+      if (sourceContainer) {
+        sourceListId = sourceContainer.getAttribute('data-list-id')
+      }
+    }
+    
+    if (sourceListId && targetListId && sourceListId !== targetListId) {
+      try {
+        console.log(`🚀 [COMPONENT] 跨列表移動：${sourceListId} → ${targetListId}`)
+        // ✅ 使用 boardStore.moveCard 來正確處理位置重新分配
+        await boardStore.moveCard(sourceListId, targetListId, oldIndex, newIndex)
+        console.log('✅ [COMPONENT] 成功完成跨列表移動並重新整理位置')
+      } catch (error) {
+        console.error('❌ [COMPONENT] 跨列表移動失敗:', error)
+      }
+    }
   }
 }
 

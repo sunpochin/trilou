@@ -15,7 +15,8 @@
       "WebSearch",
       "Bash(yarn run typecheck)",
       "Bash(yarn run:*)",
-      "Bash(npx nuxi typecheck)"
+      "Bash(npx nuxi typecheck)",
+      "Bash(rm:*)"
     ],
     "defaultMode": "acceptEdits"
   }
