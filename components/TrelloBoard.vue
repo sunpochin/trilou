@@ -28,11 +28,11 @@
       <div class="text-center">
         <SkeletonLoader 
           size="lg" 
-          :text="'載入看板資料中'"
+          :text="'正在從雲端獲取您的資料中...'"
           color="#3B82F6"
           :animate="true"
         />
-        <p class="mt-4 text-gray-600 text-sm">正在從雲端獲取您的看板...</p>
+        <!-- <p class="mt-4 text-gray-600 text-sm">正在從雲端獲取您的看板...</p> -->
       </div>
     </div>
 
@@ -178,9 +178,40 @@ const onCardMove = async (event: any) => {
 }
 
 // 處理列表拖拉移動事件
-const onListMove = (event: any) => {
-  // 使用 :list 時會自動同步，無需額外處理
-  console.log('List moved:', event)
+const onListMove = async (event: any) => {
+  console.log('📋 [COMPONENT] List moved event:', event)
+  
+  // 🎯 Vue Draggable 的 :list 屬性會自動修改 boardStore.board.lists 陣列順序
+  // 這就是為什麼 UI 立即更新的原因！
+  
+  // 但是我們需要將新的順序保存到資料庫
+  if (event.moved) {
+    console.log('🔄 [COMPONENT] 列表在看板內移動:', event.moved)
+    
+    try {
+      // 更新每個列表的 position 值並發送到 API
+      console.log('💾 [COMPONENT] 保存新的列表順序到資料庫...')
+      
+      const updatePromises = boardStore.board.lists.map((list, index) => {
+        console.log(`📝 [COMPONENT] 更新列表 "${list.title}" 位置為 ${index}`)
+        
+        return $fetch(`/api/lists/${list.id}`, {
+          method: 'PUT',
+          body: {
+            position: index
+          }
+        })
+      })
+      
+      await Promise.all(updatePromises)
+      console.log('✅ [COMPONENT] 所有列表位置已更新到資料庫')
+      
+    } catch (error) {
+      console.error('❌ [COMPONENT] 更新列表順序失敗:', error)
+      // 可選：重新載入資料以確保一致性
+      // await boardStore.fetchBoard()
+    }
+  }
 }
 
 // 在組件載入時記錄 lists 的數量

@@ -49,7 +49,7 @@ onMounted(() => {
     <!-- 如果使用者已登入，顯示 Trello 看板和使用者資訊 -->
     <div v-if="user">
       <header class="p-4 bg-gray-200 flex justify-between items-center">
-        <h1 class="text-xl font-bold">Trilo 看板</h1>
+        <h1 class="text-xl font-bold">Trilou 看板</h1>
         <div class="flex items-center gap-4">
           <span class="text-sm">{{ user.email }}</span>
           <button @click="handleLogout" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm">登出</button>
@@ -61,7 +61,7 @@ onMounted(() => {
     <!-- 如果使用者未登入，顯示登入頁面 -->
     <div v-else class="flex items-center justify-center h-screen bg-gray-100">
       <div class="p-8 bg-white rounded shadow-md w-full max-w-sm text-center">
-        <h1 class="text-2xl font-bold mb-6">歡迎來到催落(Trilo), 您的記事小幫手 </h1>
+        <h1 class="text-2xl font-bold mb-6">歡迎來到催落(u), 您的記事小幫手 </h1>
         <p class="text-gray-600 mb-8">請用 Goolge Acount 登入</p>
         <GoogleLoginButton />
       </div>

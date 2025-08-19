@@ -12,7 +12,10 @@
       "Bash(yarn vitest:*)",
       "Bash(yarn remove:*)",
       "Bash(yarn install)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(yarn run typecheck)",
+      "Bash(yarn run:*)",
+      "Bash(npx nuxi typecheck)"
     ],
     "defaultMode": "acceptEdits"
   }

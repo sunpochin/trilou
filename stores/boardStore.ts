@@ -99,7 +99,7 @@ export const useBoardStore = defineStore('board', {
 
         // 將列表和對應的卡片組合起來
         // 每個列表都會包含其對應的卡片陣列
-        console.log('📊 [STORE] API 回應 - listsResponse:', listsResponse)
+        // console.log('📊 [STORE] API 回應 - listsResponse:', listsResponse)
         // console.log('📊 [STORE] API 回應 - cardsResponse:', cardsResponse)
         
         if (listsResponse) {
@@ -284,9 +284,6 @@ export const useBoardStore = defineStore('board', {
         console.log(`🚀 [STORE] 移動卡片 ${card.id} 從 ${fromListId} 到 ${toListId}`)
         
         try {
-          // 計算新的 position
-          const targetPosition = newIndex !== undefined ? newIndex : toList.cards.length
-          
           // 先更新本地狀態
           fromList.cards.splice(cardIndex, 1)
           if (newIndex !== undefined) {
@@ -295,20 +292,47 @@ export const useBoardStore = defineStore('board', {
             toList.cards.push(card)
           }
           
-          // 調用 API 保存變更
-          await $fetch(`/api/cards/${card.id}`, {
-            method: 'PUT',
-            body: {
-              list_id: toListId,
-              position: targetPosition
-            }
-          })
+          // 🎯 重點：重新整理所有受影響列表的卡片 position
+          const listsToUpdate = new Set([fromList, toList]) // 使用 Set 避免重複
+          const updatePromises: Promise<any>[] = []
           
-          console.log(`✅ [STORE] 成功移動卡片 ${card.id}`)
+          for (const list of listsToUpdate) {
+            console.log(`📝 [STORE] 重新整理列表 "${list.title}" 的卡片順序`)
+            
+            // 為每張卡片重新分配連續的 position 值 (0, 1, 2, 3...)
+            list.cards.forEach((cardInList, index) => {
+              const newPosition = index
+              console.log(`  📌 [STORE] 卡片 "${cardInList.title}" 新位置: ${newPosition}`)
+              
+              // 批次收集所有需要更新的 API 請求
+              updatePromises.push(
+                $fetch(`/api/cards/${cardInList.id}`, {
+                  method: 'PUT',
+                  body: {
+                    list_id: list.id,  // 確保卡片屬於正確的列表
+                    position: newPosition
+                  }
+                }).then(() => {
+                  console.log(`✅ [STORE] 已更新卡片 ${cardInList.id} 位置為 ${newPosition}`)
+                }).catch((error) => {
+                  console.error(`❌ [STORE] 更新卡片 ${cardInList.id} 失敗:`, error)
+                  throw error
+                })
+              )
+            })
+          }
+          
+          console.log(`📤 [STORE] 批次更新 ${updatePromises.length} 張卡片的位置...`)
+          
+          // 批次執行所有 API 更新請求
+          await Promise.all(updatePromises)
+          
+          console.log(`✅ [STORE] 成功移動卡片並重新整理所有位置`)
+          
         } catch (error) {
           console.error('❌ [STORE] 移動卡片失敗:', error)
-          // 如果 API 失敗，回滾本地狀態
-          // 這裡可以加入回滾邏輯，但為了簡化先不處理
+          // TODO: 如果 API 失敗，應該回滾本地狀態
+          // 這裡可以加入回滾邏輯，恢復移動前的狀態
         }
       }
     },
