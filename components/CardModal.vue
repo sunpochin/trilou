@@ -18,6 +18,7 @@
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           type="text"
           placeholder="輸入卡片標題..."
+          @keydown.enter="updateTitle"
         />
       </div>
 
@@ -26,16 +27,20 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
         <textarea
           v-model="localDescription"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          rows="4"
+          :class="[
+            'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all duration-200',
+            isDescriptionEditing ? 'min-h-32' : 'min-h-16'
+          ]"
+          :rows="isDescriptionEditing ? 6 : 2"
           placeholder="新增更詳細的描述..."
+          @click="startDescriptionEdit"
         ></textarea>
       </div>
 
-      <!-- 按鈕區域 -->
-      <div class="flex justify-end gap-2">
+      <!-- 按鈕區域 - 只有在編輯描述時才顯示 -->
+      <div v-if="isDescriptionEditing" class="flex justify-end gap-2">
         <button
-          @click="closeModal"
+          @click="cancelDescriptionEdit"
           class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
         >
           取消
@@ -78,6 +83,7 @@ const boardStore = useBoardStore()
 // 本地編輯狀態
 const localTitle = ref('')
 const localDescription = ref('')
+const isDescriptionEditing = ref(false)
 
 // 監聽卡片變化，更新本地狀態
 watch(() => props.card, (newCard) => {
@@ -92,13 +98,33 @@ const closeModal = () => {
   emit('close')
 }
 
-// 儲存變更
-const saveChanges = () => {
+// 更新標題（即時更新，不關閉模態框）
+const updateTitle = () => {
   if (props.card && localTitle.value.trim()) {
-    // 更新標題
     boardStore.updateCardTitle(props.card.id, localTitle.value.trim())
+  }
+}
+
+// 開始編輯描述
+const startDescriptionEdit = () => {
+  isDescriptionEditing.value = true
+}
+
+// 取消編輯描述
+const cancelDescriptionEdit = () => {
+  isDescriptionEditing.value = false
+  // 恢復原始描述
+  if (props.card) {
+    localDescription.value = props.card.description || ''
+  }
+}
+
+// 儲存變更（僅儲存描述）
+const saveChanges = () => {
+  if (props.card) {
     // 更新描述
     boardStore.updateCardDescription(props.card.id, localDescription.value.trim())
+    isDescriptionEditing.value = false
     closeModal()
   }
 }

@@ -398,6 +398,25 @@ export const useBoardStore = defineStore('board', {
           break // 找到後立即停止搜尋
         }
       }
+    },
+
+    // 更新指定列表的標題
+    // 找到對應的列表並更新其標題，同時寫入資料庫
+    async updateListTitle(listId: string, newTitle: string) {
+      try {
+        const list = this.board.lists.find(list => list.id === listId)
+        if (list) {
+          // 先更新前端狀態
+          list.title = newTitle
+          
+          // 🎯 使用 Repository 模式：透過 ListRepository 更新資料庫
+          await listRepository.updateListTitle(listId, newTitle)
+          console.log(`✅ [STORE] 成功更新列表標題: "${newTitle}"`)
+        }
+      } catch (error) {
+        console.error('❌ [STORE] 更新列表標題失敗:', error)
+        throw error
+      }
     }
   }
 })

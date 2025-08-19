@@ -137,6 +137,34 @@ export class ListRepository {
   }
 
   /**
+   * ✏️ 更新列表標題
+   * 
+   * 🤔 這個函數做什麼？
+   * - 更新指定列表的標題
+   * - 用於使用者編輯列表名稱時同步到資料庫
+   * 
+   * 🔧 參數說明：
+   * @param listId - 要更新的列表 ID
+   * @param title - 新的列表標題
+   * @returns Promise<void> - 不回傳資料
+   */
+  async updateListTitle(listId: string, title: string): Promise<void> {
+    try {
+      console.log(`🚀 [LIST-REPO] 開始更新列表標題: ${listId} → "${title}"`)
+      
+      await $fetch(`/api/lists/${listId}`, {
+        method: 'PUT',
+        body: { title }
+      })
+      
+      console.log('✅ [LIST-REPO] 列表標題更新完成')
+      
+    } catch (error) {
+      throw this.handleError(error, '更新列表標題失敗')
+    }
+  }
+
+  /**
    * 🔄 批量更新列表位置
    * 
    * 🤔 這個函數做什麼？

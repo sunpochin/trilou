@@ -21,6 +21,18 @@
 import { serverSupabaseClient } from '@/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
+  // 為查詢結果建立明確的 TypeScript 型別
+  type CardWithList = {
+    id: string
+    title: string
+    list_id: string
+    lists: {
+      id: string
+      title: string
+      user_id: string
+    }
+  }
+
   const supabase = serverSupabaseClient(event)
 
   // 🔐 步驟1: 驗證用戶身份
@@ -64,7 +76,7 @@ export default defineEventHandler(async (event) => {
       `)
       .eq('id', id)
       .eq('lists.user_id', user.id)
-      .single()
+      .single<CardWithList>() // ✨ 套用明確型別
 
     if (queryError) {
       console.error('❌ [API] 查詢卡片錯誤:', queryError.message)
@@ -82,12 +94,13 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // ✅ 現在 cardInfo.lists 有了明確的型別，不再需要 as any
     console.log('📊 [API] 找到要刪除的卡片:', {
       id: cardInfo.id,
       title: cardInfo.title,
       listId: cardInfo.list_id,
-      listTitle: (cardInfo.lists as any).title,
-      listOwner: (cardInfo.lists as any).user_id
+      listTitle: cardInfo.lists.title,
+      listOwner: cardInfo.lists.user_id
     })
 
     // 🗑️ 步驟3: 執行刪除操作
@@ -112,7 +125,7 @@ export default defineEventHandler(async (event) => {
     console.log('✅ [API] Supabase 刪除操作成功!')
     console.log('🎉 [API] 卡片刪除流程完成!')
     console.log('📋 [API] 已刪除卡片:', cardInfo.title)
-    console.log('📁 [API] 所屬列表:', (cardInfo.lists as any).title)
+    console.log('📁 [API] 所屬列表:', cardInfo.lists.title)
 
     return { 
       id,
@@ -120,7 +133,7 @@ export default defineEventHandler(async (event) => {
       deletedCard: {
         id: cardInfo.id,
         title: cardInfo.title,
-        listTitle: (cardInfo.lists as any).title
+        listTitle: cardInfo.lists.title
       }
     }
   } catch (error) {

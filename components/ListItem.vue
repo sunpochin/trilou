@@ -23,7 +23,25 @@
   <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0" :data-list-id="list.id">
     <!-- 列表標題區域 -->
     <div class="cursor-pointer flex justify-between items-center p-2 mb-2 relative">
-      <h2 class="text-base font-bold select-none ">{{ list.title }}</h2>
+      <!-- 非編輯狀態：顯示標題 -->
+      <h2 
+        v-if="!isEditingTitle" 
+        class="text-base font-bold select-none cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+        @click="startEditTitle"
+      >
+        {{ list.title }}
+      </h2>
+      
+      <!-- 編輯狀態：顯示輸入框 -->
+      <input
+        v-else
+        ref="titleInput"
+        v-model="editingTitle"
+        class="text-base font-bold bg-white border-2 border-blue-400 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
+        @keydown.enter="saveTitle"
+        @blur="saveTitle"
+        @keydown.esc="cancelEdit"
+      />
       
       <!-- 列表選單組件 -->
       <ListMenu 
@@ -51,7 +69,7 @@
       class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm mt-2 transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
       @click="handleAddCard"
     >
-      + 新增
+      + 新增卡片
     </button>
   </div>
 </template>
@@ -61,18 +79,12 @@ import Card from '@/components/Card.vue'
 import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useListActions } from '@/composables/useListActions'
+import { useBoardStore } from '@/stores/boardStore'
+import { ref, nextTick } from 'vue'
 
-// 列表資料型別定義
-interface List {
-  id: string
-  title: string
-  cards: Array<{
-    id: string
-    title: string
-    description?: string
-    position?: number
-  }>
-}
+// 使用統一的型別定義
+import type { ListUI } from '@/types'
+type List = ListUI
 
 // 組件 props
 const props = defineProps<{
@@ -88,6 +100,12 @@ defineEmits<{
 // 使用列表操作邏輯
 const { addCard, deleteList } = useListActions()
 
+// 使用 store 和編輯狀態
+const boardStore = useBoardStore()
+const isEditingTitle = ref(false)
+const editingTitle = ref('')
+const titleInput = ref<HTMLInputElement | null>(null)
+
 // 處理新增卡片
 const handleAddCard = () => {
   addCard(props.list.id)
@@ -96,5 +114,38 @@ const handleAddCard = () => {
 // 處理刪除列表
 const handleDeleteList = () => {
   deleteList(props.list.id)
+}
+
+// 開始編輯標題
+const startEditTitle = async () => {
+  isEditingTitle.value = true
+  editingTitle.value = props.list.title
+  
+  // 等待 DOM 更新後聚焦並全選文字
+  await nextTick()
+  if (titleInput.value) {
+    titleInput.value.focus()
+    titleInput.value.select()
+  }
+}
+
+// 儲存標題變更
+const saveTitle = async () => {
+  if (editingTitle.value.trim() && editingTitle.value.trim() !== props.list.title) {
+    try {
+      await boardStore.updateListTitle(props.list.id, editingTitle.value.trim())
+    } catch (error) {
+      console.error('更新列表標題失敗:', error)
+      // 失敗時恢復原始標題
+      editingTitle.value = props.list.title
+    }
+  }
+  isEditingTitle.value = false
+}
+
+// 取消編輯
+const cancelEdit = () => {
+  editingTitle.value = props.list.title
+  isEditingTitle.value = false
 }
 </script>
