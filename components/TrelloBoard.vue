@@ -154,24 +154,73 @@ const onCardMove = async (event: any) => {
       }
     }
     
-    // 找到原來的列表 ID
+    // 🔧 改良版：多重方式嘗試找到原來的列表 ID
     let sourceListId = null
+    
+    // 方法 1：嘗試從 DOM 元素獲取
     if (event.from) {
       const sourceContainer = event.from.closest('[data-list-id]')
       if (sourceContainer) {
         sourceListId = sourceContainer.getAttribute('data-list-id')
+        console.log('✅ [COMPONENT] 方法1成功獲取 sourceListId:', sourceListId)
       }
     }
     
-    if (sourceListId && targetListId && sourceListId !== targetListId) {
+    // 方法 2：如果方法1失敗，使用排除法推算
+    if (!sourceListId && targetListId) {
+      console.log('⚠️ [COMPONENT] 方法1失敗，嘗試方法2：排除法推算 sourceListId')
+      // 假設只有兩個列表發生變化，找出不是 targetListId 的那個
+      for (const list of boardStore.board.lists) {
+        if (list.id !== targetListId) {
+          // 檢查這個列表是否有位置變化（表示有卡片被移出）
+          const hasGaps = list.cards.some((c, index) => c.position !== undefined && c.position !== index)
+          if (hasGaps) {
+            sourceListId = list.id
+            console.log('✅ [COMPONENT] 方法2推算出 sourceListId:', sourceListId)
+            break
+          }
+        }
+      }
+    }
+    
+    // 方法 3：如果前兩種方法都失敗，重新整理所有列表
+    if (!sourceListId && targetListId) {
+      console.log('⚠️ [COMPONENT] 方法1和2都失敗，使用方法3：重新整理所有列表')
       try {
-        console.log(`🚀 [COMPONENT] 跨列表移動：${sourceListId} → ${targetListId}`)
-        // ✅ Vue Draggable 已經更新了 UI，我們只需要重新排序兩個列表的 position
-        await boardStore.moveCardAndReorder([sourceListId, targetListId])
+        const allListIds = boardStore.board.lists.map(list => list.id)
+        await boardStore.moveCardAndReorder(allListIds)
+        console.log('✅ [COMPONENT] 方法3：成功重新整理所有列表位置')
+        return // 早期返回，避免重複執行
+      } catch (error) {
+        console.error('❌ [COMPONENT] 方法3失敗:', error)
+      }
+    }
+    
+    // 🎯 執行跨列表移動邏輯
+    if (targetListId) {
+      // 只要能識別到 targetListId，就執行更新
+      const listsToUpdate = sourceListId ? [sourceListId, targetListId] : [targetListId]
+      
+      try {
+        console.log(`🚀 [COMPONENT] 跨列表移動：${sourceListId || '未知'} → ${targetListId}`)
+        console.log(`📋 [COMPONENT] 需要更新的列表:`, listsToUpdate)
+        
+        await boardStore.moveCardAndReorder(listsToUpdate)
         console.log('✅ [COMPONENT] 成功完成跨列表移動並重新整理位置')
       } catch (error) {
         console.error('❌ [COMPONENT] 跨列表移動失敗:', error)
+        // 🔄 最後的恢復策略：重新載入資料確保一致性
+        console.log('🔄 [COMPONENT] 嘗試重新載入看板資料...')
+        // 可以選擇是否重新載入（可能會影響用戶體驗）
+        // await boardStore.fetchBoard()
       }
+    } else {
+      console.warn('⚠️ [COMPONENT] 無法識別 targetListId，跳過跨列表移動處理')
+      console.log('📊 [COMPONENT] 當前看板狀態:', {
+        listsCount: boardStore.board.lists.length,
+        cardId: card.id,
+        cardTitle: card.title
+      })
     }
   }
 }
