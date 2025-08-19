@@ -11,14 +11,14 @@
 export const MESSAGES = {
   // 🏠 應用程式基本資訊
   app: {
-    name: 'Trilo',
-    fullName: 'Trilo - 您的記事小幫手',
+    name: 'Trilou',
+    fullName: 'Trilou - 您的記事小幫手',
     tagline: '讓任務管理變得簡單又有趣'
   },
 
   // 🔐 登入相關文案
   login: {
-    welcomeTitle: '歡迎使用 Trilo 📋',
+    welcomeTitle: '歡迎使用 Trilou 📋',
     welcomeSubtitle: '您的個人任務管理工具',
     googlePrompt: '請用 Google 帳號登入',
     privacyNote: '我們只用來驗證身份，不會存取您的其他資料',
