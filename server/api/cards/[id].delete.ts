@@ -18,7 +18,7 @@
  * 4. 執行刪除操作
  * 5. 回傳結果
  */
-import { serverSupabaseClient } from '~/server/utils/supabase'
+import { serverSupabaseClient } from '@/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseClient(event)

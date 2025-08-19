@@ -1,5 +1,5 @@
 // 取得卡片的 API 端點（可依列表 ID 篩選）
-import { serverSupabaseClient } from '~/server/utils/supabase'
+import { serverSupabaseClient } from '@/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseClient(event)
