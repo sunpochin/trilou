@@ -61,64 +61,74 @@ export const useBoardStore = defineStore('board', {
   },
   // Actions: 定義可以修改狀態的操作
   actions: {
-    // 從後端 API 非同步獲取看板資料
-    // 同時載入所有列表和卡片，並建立正確的關聯
+    // 🚀 優化後的看板資料獲取 - 使用單一 JOIN 查詢提升性能
+    // 替代原本的多次 API 調用，大幅減少網路延遲
     async fetchBoard() {
       // 開始載入時設定 loading 狀態
       this.isLoading = true
+      const startTime = Date.now()
       
       try {
+        console.log('🚀 [STORE] 開始獲取看板資料...')
+        
         // 為了更好地展示載入效果，添加一點延遲（僅在開發環境）
-        if (process.dev) {
-          await new Promise(resolve => setTimeout(resolve, 1500))
+        if (import.meta.dev) {
+          await new Promise(resolve => setTimeout(resolve, 800))
         }
         
-        // 同時獲取列表和卡片資料
-        const [listsResponse, cardsResponse] = await Promise.all([
-          $fetch('/api/lists'),
-          $fetch('/api/cards')
-        ])
-
-        // 建立卡片 ID 到列表 ID 的映射
-        // 將卡片按所屬列表分組，方便後續組合
-        const cardsByListId: { [listId: string]: Card[] } = {}
+        // ✨ 關鍵改進：使用單一 API 調用獲取完整看板資料
+        // 替代原本的 Promise.all([lists, cards]) 兩次調用
+        const boardResponse = await $fetch('/api/board')
         
-        if (cardsResponse) {
-          cardsResponse.forEach((card: any) => {
-            if (!cardsByListId[card.list_id]) {
-              cardsByListId[card.list_id] = []
-            }
-            cardsByListId[card.list_id].push({
-              id: card.id,
-              title: card.title,
-              description: card.description,
-              position: card.position
-            })
-          })
-        }
+        const fetchTime = Date.now() - startTime
+        console.log(`⚡ [STORE] API 調用完成，耗時: ${fetchTime}ms`)
 
-        // 將列表和對應的卡片組合起來
-        // 每個列表都會包含其對應的卡片陣列
-        // console.log('📊 [STORE] API 回應 - listsResponse:', listsResponse)
-        // console.log('📊 [STORE] API 回應 - cardsResponse:', cardsResponse)
-        
-        if (listsResponse) {
-          console.log(`📈 [STORE] 處理 ${listsResponse.length} 個列表`)
-          this.board.lists = listsResponse.map((list: any) => ({
-            id: list.id,
-            title: list.title,
-            cards: cardsByListId[list.id] || [] // 如果列表沒有卡片則使用空陣列
-          }))
-          console.log('✅ [STORE] 最終設定的 board.lists:', this.board.lists)
-          console.log(`🎯 [STORE] 總共載入了 ${this.board.lists.length} 個列表`)
+        if (boardResponse && boardResponse.lists) {
+          // 直接使用 API 回傳的結構化資料，進行型別轉換
+          this.board = {
+            id: boardResponse.id,
+            title: boardResponse.title,
+            lists: (boardResponse.lists as any[]).map((list: any) => ({
+              id: list.id,
+              title: list.title,
+              cards: (list.cards || []).map((card: any) => ({
+                id: card.id,
+                title: card.title,
+                description: card.description,
+                position: card.position
+              }))
+            }))
+          }
+          
+          // 統計載入的資料
+          const listsCount = this.board.lists.length
+          const cardsCount = this.board.lists.reduce((total, list) => total + list.cards.length, 0)
+          
+          console.log('📊 [STORE] 載入統計:')
+          console.log(`  📋 ${listsCount} 個列表`)
+          console.log(`  🎯 ${cardsCount} 張卡片`)
+          console.log(`  ⚡ 總耗時: ${Date.now() - startTime}ms`)
+          console.log('✅ [STORE] 看板資料載入完成')
+          
         } else {
-          console.warn('⚠️ [STORE] listsResponse 為空或 undefined')
+          console.warn('⚠️ [STORE] API 回應格式異常:', boardResponse)
+          // 設定預設空看板
+          this.board.lists = []
         }
+        
       } catch (error) {
-        console.error('獲取看板資料失敗:', error)
+        const errorTime = Date.now() - startTime
+        console.error(`❌ [STORE] 獲取看板資料失敗，耗時: ${errorTime}ms`)
+        console.error('  🔍 錯誤詳情:', error)
+        
+        // 設定預設空看板以避免 UI 錯誤
+        this.board.lists = []
+        
       } finally {
         // 無論成功或失敗，都要關閉 loading 狀態
         this.isLoading = false
+        const totalTime = Date.now() - startTime
+        console.log(`🏁 [STORE] fetchBoard 完成，總耗時: ${totalTime}ms`)
       }
     },
     // 新增列表到看板
