@@ -111,13 +111,24 @@ export const useBoardStore = defineStore('board', {
         }
 
         // 將列表和對應的卡片組合起來
-        // Repository 已經轉換好格式，直接使用
+        // Repository 已經轉換好格式，但我們再次確保排序正確
         if (listsResponse) {
           console.log(`📈 [STORE] 處理 ${listsResponse.length} 個列表`)
-          this.board.lists = listsResponse.map((list: List) => ({
+          
+          // 🎯 組合列表和卡片，並確保按 position 排序
+          const listsWithCards: List[] = listsResponse.map((list: List) => ({
             ...list,
             cards: cardsByListId[list.id] || [] // 如果列表沒有卡片則使用空陣列
           }))
+          
+          // 🔄 按 position 排序，確保重新載入後順序一致
+          // 雖然 Repository 已經排序，但為了絕對確保一致性，我們再次排序
+          this.board.lists = listsWithCards.sort((a, b) => (a.position || 0) - (b.position || 0))
+          
+          console.log('📋 [STORE] 列表已按 position 排序:')
+          this.board.lists.forEach((list, index) => {
+            console.log(`  ${index}: "${list.title}" (position: ${list.position})`)
+          })
           
           // 統計載入的資料
           const listsCount = this.board.lists.length
@@ -261,6 +272,37 @@ export const useBoardStore = defineStore('board', {
         console.error('❌ [STORE] 新增卡片錯誤:', error)
         // 重新拋出錯誤，讓呼叫者可以處理
         throw error
+      }
+    },
+
+    // 儲存列表位置順序到資料庫
+    // 透過 Repository 模式處理列表位置更新
+    async saveListPositions() {
+      try {
+        console.log('🚀 [STORE] 開始儲存列表位置順序...')
+        
+        // 準備更新資料：將每個列表的當前位置收集起來
+        const updates = this.board.lists.map((list, index) => {
+          console.log(`📝 [STORE] 列表 "${list.title}" 位置: ${index}`)
+          return {
+            id: list.id,
+            position: index
+          }
+        })
+        
+        // 🎯 使用 Repository 模式：透過 ListRepository 批量更新
+        await listRepository.batchUpdateListPositions(updates)
+        
+        // 🔄 同步本地 position 屬性，方便之後的排序邏輯
+        this.board.lists.forEach((list, index) => {
+          list.position = index
+        })
+        
+        console.log('✅ [STORE] 列表位置順序已儲存並同步')
+        
+      } catch (error) {
+        console.error('❌ [STORE] 儲存列表位置失敗:', error)
+        throw error // 重新拋出錯誤讓組件可以處理
       }
     },
     

@@ -237,22 +237,11 @@ const onListMove = async (event: any) => {
     console.log('🔄 [COMPONENT] 列表在看板內移動:', event.moved)
     
     try {
-      // 更新每個列表的 position 值並發送到 API
-      console.log('💾 [COMPONENT] 保存新的列表順序到資料庫...')
-      
-      const updatePromises = boardStore.board.lists.map((list, index) => {
-        console.log(`📝 [COMPONENT] 更新列表 "${list.title}" 位置為 ${index}`)
-        
-        return $fetch(`/api/lists/${list.id}`, {
-          method: 'PUT',
-          body: {
-            position: index
-          }
-        })
-      })
-      
-      await Promise.all(updatePromises)
-      console.log('✅ [COMPONENT] 所有列表位置已更新到資料庫')
+      // 🎯 委派給 Store 處理：符合 SRP (單一職責原則)
+      // 組件只負責佈局協調，資料儲存由 Store 負責
+      console.log('💾 [COMPONENT] 委派保存列表順序到 Store...')
+      await boardStore.saveListPositions()
+      console.log('✅ [COMPONENT] 列表位置已更新')
       
     } catch (error) {
       console.error('❌ [COMPONENT] 更新列表順序失敗:', error)

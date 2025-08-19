@@ -109,6 +109,72 @@ export class ListRepository {
   }
 
   /**
+   * 🔄 更新列表位置
+   * 
+   * 🤔 這個函數做什麼？
+   * - 更新單個列表的 position 屬性
+   * - 用於拖拉移動列表時同步到資料庫
+   * 
+   * 🔧 參數說明：
+   * @param listId - 要更新的列表 ID
+   * @param position - 新的位置索引
+   * @returns Promise<void> - 不回傳資料
+   */
+  async updateListPosition(listId: string, position: number): Promise<void> {
+    try {
+      console.log(`🚀 [LIST-REPO] 開始更新列表位置: ${listId} → position: ${position}`)
+      
+      await $fetch(`/api/lists/${listId}`, {
+        method: 'PUT',
+        body: { position }
+      })
+      
+      console.log('✅ [LIST-REPO] 列表位置更新完成')
+      
+    } catch (error) {
+      throw this.handleError(error, '更新列表位置失敗')
+    }
+  }
+
+  /**
+   * 🔄 批量更新列表位置
+   * 
+   * 🤔 這個函數做什麼？
+   * - 批量更新多個列表的位置
+   * - 專為拖拉重新排序設計
+   * - 提高效能，確保資料一致性
+   * 
+   * 🔧 參數說明：
+   * @param updates - 要更新的列表陣列，包含 id 和 position
+   * @returns Promise<void> - 不回傳資料
+   */
+  async batchUpdateListPositions(updates: Array<{id: string, position: number}>): Promise<void> {
+    if (updates.length === 0) {
+      console.log('📝 [LIST-REPO] 沒有列表需要更新')
+      return
+    }
+
+    try {
+      console.log(`🚀 [LIST-REPO] 批量更新 ${updates.length} 個列表的位置`)
+      
+      const updatePromises = updates.map(({ id, position }) => {
+        console.log(`📝 [LIST-REPO] 更新列表 ${id}: position=${position}`)
+        
+        return $fetch(`/api/lists/${id}`, {
+          method: 'PUT',
+          body: { position }
+        })
+      })
+
+      await Promise.all(updatePromises)
+      console.log('✅ [LIST-REPO] 批量更新完成')
+      
+    } catch (error) {
+      throw this.handleError(error, '批量更新列表位置失敗')
+    }
+  }
+
+  /**
    * 🔄 轉換單個列表格式
    * 
    * @param apiList - API 回傳的列表資料
