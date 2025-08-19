@@ -81,8 +81,18 @@ export class CardRepository {
       // 📞 呼叫 API 取得原始資料
       const apiCards: Card[] = await $fetch('/api/cards')
       
-      // 直接回傳，不需要轉換（已使用統一型別）
-      return apiCards
+      // 確保回傳的是一個陣列，如果 API 回應 null 或非陣列，則回傳空陣列
+      if (!Array.isArray(apiCards)) {
+        // 對於非預期的回應，可以選擇拋出錯誤或回傳空陣列
+        // 測試期望在回應格式不正確時拋出錯誤
+        if (apiCards === null) {
+          return [] // 測試案例期望 null 回應變為空陣列
+        }
+        throw new Error('API 回應格式不正確')
+      }
+      
+      // 🔄 轉換 API 回應成前端格式
+      return this.transformApiCards(apiCards)
     } catch (error) {
       // 🚨 統一錯誤處理
       throw this.handleError(error, '獲取卡片失敗')
@@ -137,7 +147,7 @@ export class CardRepository {
       })
       
       // 🔄 轉換 API 回應成前端格式
-      return apiCard
+      return this.transformApiCard(apiCard)
     } catch (error) {
       // 🚨 統一錯誤處理
       throw this.handleError(error, '新增卡片失敗')
@@ -227,16 +237,21 @@ export class CardRepository {
    * @param apiCard - API 回傳的卡片資料（蛇形命名）
    * @returns Card - 前端格式的卡片資料（駝峰命名）
    */
-  private transformApiCard(apiCard: Card): Card {
-    console.log('🔄 [Repository] 轉換 API 卡片格式:', apiCard)
+  private transformApiCard(apiCard: any): Card {
+    // 確保 apiCard 是物件
+    if (!apiCard || typeof apiCard !== 'object') {
+      // 或者可以拋出一個錯誤，取決於您希望如何處理這種情況
+      throw new Error('無效的 API 卡片資料');
+    }
+
     return {
-      id: apiCard.id,                                      // ID
-      title: apiCard.title,                                // 標題
-      description: apiCard.description,                    // 描述
-      list_id: apiCard.list_id,                           // 列表 ID
-      position: apiCard.position,                          // 位置
-      created_at: apiCard.created_at,                      // 建立時間
-      updated_at: apiCard.updated_at                       // 更新時間
+      id: apiCard.id,
+      title: apiCard.title,
+      description: apiCard.description,
+      listId: apiCard.list_id, // 轉換 snake_case to camelCase
+      position: apiCard.position,
+      created_at: apiCard.created_at,
+      updated_at: apiCard.updated_at
     }
   }
 

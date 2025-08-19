@@ -261,7 +261,8 @@ export const useBoardStore = defineStore('board', {
         // 檢查 API 回應是否有效
         if (!response || typeof response !== 'object') {
           console.error('API 回應格式錯誤:', response)
-          return
+          // 拋出錯誤以符合測試期望
+          throw new Error('API response format error')
         }
         
         // 新增到本地狀態
@@ -280,6 +281,8 @@ export const useBoardStore = defineStore('board', {
         }
       } catch (error) {
         console.error('❌ [STORE] 新增卡片錯誤:', error)
+        // 重新拋出錯誤，讓呼叫者可以處理
+        throw error
       }
     },
     

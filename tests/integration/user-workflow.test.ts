@@ -36,6 +36,25 @@ describe('用戶工作流程整合測試', () => {
     setActivePinia(createPinia())
     boardStore = useBoardStore()
     cardActions = useCardActions()
+
+    // 設定初始看板狀態
+    boardStore.board.lists = [
+      {
+        id: 'list-1',
+        title: '待辦事項',
+        cards: []
+      },
+      {
+        id: 'list-2', 
+        title: '進行中',
+        cards: []
+      },
+      {
+        id: 'list-3',
+        title: '已完成',
+        cards: []
+      }
+    ]
     
     // 預設 API 成功回應
     mockFetch.mockResolvedValue({ success: true })
@@ -90,6 +109,9 @@ describe('用戶工作流程整合測試', () => {
       expect(boardStore.board.lists[0].cards).toHaveLength(1)
       expect(boardStore.board.lists[0].cards[0].title).toBe('學習 Vue.js')
 
+      // 清除 addCard 的呼叫紀錄，專注測試 moveCard
+      mockFetch.mockClear()
+
       // 🔄 步驟 3: 移動卡片到不同列表
       console.log('🔄 [WORKFLOW] 步驟 3: 移動卡片')
       
@@ -108,7 +130,7 @@ describe('用戶工作流程整合測試', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/cards/card-1', {
         method: 'PUT',
         body: {
-          listId: 'list-2',
+          list_id: 'list-2', // API應使用蛇形命名
           position: 0
         }
       })

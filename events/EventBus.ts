@@ -166,6 +166,10 @@ export class EventBus {
       if (index > -1) {
         // 從陣列中移除這個函數
         eventListeners.splice(index, 1)
+        // 如果移除後陣列為空，就從 Map 中刪除這個事件，避免記憶體洩漏
+        if (eventListeners.length === 0) {
+          this.listeners.delete(event)
+        }
       }
     }
   }
@@ -231,10 +235,13 @@ export class EventBus {
   once<K extends keyof AppEvents>(event: K, callback: EventCallback<AppEvents[K]>): void {
     // 建立一個包裝函數
     const onceCallback = (data: AppEvents[K]) => {
-      // 先執行使用者提供的回調函數
-      callback(data)
-      // 執行完後立刻移除這個監聽器，確保只執行一次
-      this.off(event, onceCallback)
+      try {
+        // 先執行使用者提供的回調函數
+        callback(data)
+      } finally {
+        // 執行完後立刻移除這個監聽器，確保只執行一次
+        this.off(event, onceCallback)
+      }
     }
     // 註冊這個包裝函數作為監聽器
     this.on(event, onceCallback)
