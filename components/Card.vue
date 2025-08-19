@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type { CardUI } from '@/types'
 
 // 使用統一的卡片型別定義
@@ -62,6 +63,9 @@ const emit = defineEmits<{
 
 // 取得 store 實例
 const boardStore = useBoardStore()
+
+// 取得確認對話框功能
+const { showConfirm } = useConfirmDialog()
 
 // 編輯狀態管理
 const isEditing = ref(false)
@@ -110,9 +114,17 @@ const openCardModal = () => {
 const deleteCard = async () => {
   console.log('🗑️ [CARD] deleteCard 被呼叫，卡片:', props.card)
   
-  // 顯示確認對話框
+  // 顯示漂亮的確認對話框
   console.log('💬 [CARD] 顯示刪除確認對話框...')
-  if (!confirm(`確定要刪除卡片 "${props.card.title}" 嗎？此操作無法撤銷。`)) {
+  const confirmed = await showConfirm({
+    title: '刪除卡片',
+    message: `確定要刪除卡片 "${props.card.title}" 嗎？此操作無法撤銷。`,
+    confirmText: '刪除',
+    cancelText: '取消',
+    dangerMode: true
+  })
+  
+  if (!confirmed) {
     console.log('❌ [CARD] 用戶取消刪除操作')
     return
   }

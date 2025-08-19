@@ -46,6 +46,8 @@
  * 💡 簡單說：讓組件只要按按鈕，不用管底層怎麼運作
  */
 import { useBoardStore } from '@/stores/boardStore'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { useInputDialog } from '@/composables/useInputDialog'
 
 // 引入新的 design patterns
 import { Validator } from '@/validators/ValidationStrategy'
@@ -54,12 +56,26 @@ import { eventBus } from '@/events/EventBus'
 
 export const useListActions = () => {
   const boardStore = useBoardStore()
+  const { showConfirm } = useConfirmDialog()
+  const { showInput } = useInputDialog()
 
   // 新增卡片功能 - 使用 Strategy Pattern 驗證
   const addCard = async (listId: string) => {
-    const cardTitle = prompt('請輸入卡片標題：')
+    // 顯示漂亮的輸入對話框
+    const cardTitle = await showInput({
+      title: '新增卡片',
+      message: '請輸入新卡片的標題',
+      placeholder: '卡片標題...',
+      confirmText: '新增',
+      cancelText: '取消'
+    })
     
-    if (!cardTitle) return
+    if (!cardTitle) {
+      console.log('❌ [COMPOSABLE] 用戶取消或未輸入卡片標題')
+      return
+    }
+    
+    console.log('✅ [COMPOSABLE] 用戶輸入卡片標題:', cardTitle)
     
     // 使用驗證策略
     const validation = Validator.validateCardTitle(cardTitle)
@@ -110,9 +126,22 @@ export const useListActions = () => {
   const deleteList = async (listId: string) => {
     console.log('🗑️ [COMPOSABLE] deleteList 被呼叫，參數:', { listId })
     
-    // 顯示確認對話框
+    // 找到要刪除的列表資訊
+    const targetList = boardStore.board.lists.find(list => list.id === listId)
+    const listTitle = targetList?.title || '未知列表'
+    const cardsCount = targetList?.cards.length || 0
+    
+    // 顯示漂亮的確認對話框
     console.log('💬 [COMPOSABLE] 顯示刪除確認對話框...')
-    if (!confirm('確定要刪除這個列表嗎？此操作無法撤銷。')) {
+    const confirmed = await showConfirm({
+      title: '刪除列表',
+      message: `確定要刪除列表 "${listTitle}" 嗎？${cardsCount > 0 ? `此列表包含 ${cardsCount} 張卡片，` : ''}此操作無法撤銷。`,
+      confirmText: '刪除',
+      cancelText: '取消',
+      dangerMode: true
+    })
+    
+    if (!confirmed) {
       console.log('❌ [COMPOSABLE] 用戶取消刪除操作')
       return
     }
@@ -172,9 +201,21 @@ export const useListActions = () => {
 
   // 新增列表功能 - 使用驗證策略
   const addList = async () => {
-    const listTitle = prompt('請輸入列表標題：')
+    // 顯示漂亮的輸入對話框
+    const listTitle = await showInput({
+      title: '新增列表',
+      message: '請輸入新列表的標題',
+      placeholder: '列表標題...',
+      confirmText: '新增',
+      cancelText: '取消'
+    })
     
-    if (!listTitle) return
+    if (!listTitle) {
+      console.log('❌ [COMPOSABLE] 用戶取消或未輸入列表標題')
+      return
+    }
+    
+    console.log('✅ [COMPOSABLE] 用戶輸入列表標題:', listTitle)
     
     // 驗證列表標題
     const validation = Validator.validateListTitle(listTitle)

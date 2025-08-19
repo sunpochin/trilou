@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import TrelloBoard from '@/components/TrelloBoard.vue';
 import GoogleLoginButton from '@/components/GoogleLoginButton.vue';
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import InputDialog from '@/components/InputDialog.vue';
 import { useBoardStore } from '@/stores/boardStore';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { useInputDialog } from '@/composables/useInputDialog';
 
 // 從 Nuxt app 取得 Supabase client
 const { $supabase } = useNuxtApp();
 // 取得 Pinia store
 const boardStore = useBoardStore();
+
+// 取得確認對話框功能
+const { confirmState, handleConfirm, handleCancel } = useConfirmDialog();
+
+// 取得輸入對話框功能
+const { inputState, handleConfirm: handleInputConfirm, handleCancel: handleInputCancel } = useInputDialog();
 
 // 響應式變數，用於儲存使用者物件
 const user = ref<any>(null);
@@ -56,5 +66,30 @@ onMounted(() => {
         <GoogleLoginButton />
       </div>
     </div>
+
+    <!-- 全域確認對話框 -->
+    <ConfirmDialog
+      :show="confirmState.show"
+      :title="confirmState.title"
+      :message="confirmState.message"
+      :confirm-text="confirmState.confirmText"
+      :cancel-text="confirmState.cancelText"
+      :danger-mode="confirmState.dangerMode"
+      @confirm="handleConfirm"
+      @cancel="handleCancel"
+    />
+
+    <!-- 全域輸入對話框 -->
+    <InputDialog
+      :show="inputState.show"
+      :title="inputState.title"
+      :message="inputState.message"
+      :placeholder="inputState.placeholder"
+      :confirm-text="inputState.confirmText"
+      :cancel-text="inputState.cancelText"
+      :initial-value="inputState.initialValue"
+      @confirm="handleInputConfirm"
+      @cancel="handleInputCancel"
+    />
   </div>
 </template>
