@@ -21,7 +21,8 @@ export interface CardUI {
   description?: string
   position?: number
   listId: string                        // UI 採用 camelCase，由 Repository 從 list_id 轉換而來
-  // 不包含 API 特有欄位：created_at, updated_at
+  createdAt?: Date                      // 卡片建立時間
+  updatedAt?: Date                      // 卡片最後更新時間
 }
 
 export interface ListUI {
