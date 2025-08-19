@@ -42,7 +42,9 @@ describe('Card Workflow Integration', () => {
         title: '新建立的卡片',
         description: '',
         listId: 'list_todo',  // 已轉換成駝峰命名
-        position: 5
+        position: 5,
+        created_at: '2024-01-05T10:00:00Z',
+        updated_at: '2024-01-05T10:00:00Z'
       })
       
       expect($fetch).toHaveBeenCalledWith('/api/cards', {
@@ -166,7 +168,9 @@ describe('Card Workflow Integration', () => {
         title: 'API 卡片',
         description: 'API 描述',
         listId: 'list_api',  // 轉換成駝峰命名
-        position: 3
+        position: 3,
+        created_at: '2024-01-01T10:00:00Z',
+        updated_at: '2024-01-01T11:00:00Z'
       })
       
       // 進一步測試：使用 EntityFactory 建立相似卡片

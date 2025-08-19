@@ -1,5 +1,7 @@
 // 看板狀態管理 Store
 import type { CardUI, ListUI, BoardUI } from '@/types'
+import { cardRepository } from '@/repositories/CardRepository'
+import { listRepository } from '@/repositories/ListRepository'
 
 // 使用統一的型別定義
 type Card = CardUI
@@ -76,31 +78,26 @@ export const useBoardStore = defineStore('board', {
           await new Promise(resolve => setTimeout(resolve, 800))
         }
         
-        // 🎯 使用穩定的分開查詢：先拿 lists，再拿 cards
+        // 🎯 使用 Repository 模式：透過 Repository 層獲取資料
         const [listsResponse, cardsResponse] = await Promise.all([
-          $fetch('/api/lists'),
-          $fetch('/api/cards')
+          listRepository.getAllLists(),
+          cardRepository.getAllCards()
         ])
 
         const fetchTime = Date.now() - startTime
         console.log(`⚡ [STORE] API 調用完成，耗時: ${fetchTime}ms`)
 
         // 建立卡片 ID 到列表 ID 的映射
-        // 將卡片按所屬列表分組，方便後續組合
+        // Repository 已經轉換好格式，直接使用
         const cardsByListId: { [listId: string]: Card[] } = {}
         
         if (cardsResponse) {
           console.log(`📋 [STORE] 處理 ${cardsResponse.length} 張卡片`)
-          cardsResponse.forEach((card: any) => {
-            if (!cardsByListId[card.list_id]) {
-              cardsByListId[card.list_id] = []
+          cardsResponse.forEach((card: Card) => {
+            if (!cardsByListId[card.listId]) {
+              cardsByListId[card.listId] = []
             }
-            cardsByListId[card.list_id].push({
-              id: card.id,
-              title: card.title,
-              description: card.description,
-              position: card.position
-            })
+            cardsByListId[card.listId].push(card)
           })
           
           // 🎯 確保每個列表的卡片都按 position 排序
@@ -114,12 +111,11 @@ export const useBoardStore = defineStore('board', {
         }
 
         // 將列表和對應的卡片組合起來
-        // 每個列表都會包含其對應的卡片陣列
+        // Repository 已經轉換好格式，直接使用
         if (listsResponse) {
           console.log(`📈 [STORE] 處理 ${listsResponse.length} 個列表`)
-          this.board.lists = listsResponse.map((list: any) => ({
-            id: list.id,
-            title: list.title,
+          this.board.lists = listsResponse.map((list: List) => ({
+            ...list,
             cards: cardsByListId[list.id] || [] // 如果列表沒有卡片則使用空陣列
           }))
           
@@ -247,32 +243,15 @@ export const useBoardStore = defineStore('board', {
     },
     
     // 新增卡片到指定列表
-    // 發送 API 請求建立新卡片，成功後加入對應列表的本地狀態
+    // 使用 Repository 模式建立新卡片，成功後加入對應列表的本地狀態
     async addCard(listId: string, title: string) {
       try {
-        const response = await $fetch('/api/cards', {
-          method: 'POST',
-          body: { 
-            title,
-            list_id: listId
-          }
-        })
-        
-        // 檢查 API 回應是否有效
-        if (!response || typeof response !== 'object') {
-          console.error('API 回應格式錯誤:', response)
-          return
-        }
+        // 🎯 使用 Repository 模式：透過 CardRepository 建立卡片
+        const newCard = await cardRepository.createCard(title, listId)
         
         // 新增到本地狀態
         const list = this.board.lists.find(list => list.id === listId)
         if (list) {
-          const newCard: Card = {
-            id: response.id || '',
-            title: response.title || title,
-            description: response.description || '',
-            position: response.position
-          }
           list.cards.push(newCard)
           console.log('✅ [STORE] 成功新增卡片:', newCard)
         } else {
@@ -280,6 +259,8 @@ export const useBoardStore = defineStore('board', {
         }
       } catch (error) {
         console.error('❌ [STORE] 新增卡片錯誤:', error)
+        // 重新拋出錯誤，讓呼叫者可以處理
+        throw error
       }
     },
     
@@ -313,7 +294,7 @@ export const useBoardStore = defineStore('board', {
       console.log(`🚀 [STORE] 開始重新整理受影響列表的 position:`, affectedListIds)
       
       try {
-        const updatePromises: Promise<any>[] = []
+        const updates: Array<{id: string, listId: string, position: number}> = []
         
         // 🎯 重新整理所有受影響列表的卡片 position
         for (const listId of affectedListIds) {
@@ -330,28 +311,19 @@ export const useBoardStore = defineStore('board', {
             const newPosition = index
             console.log(`  📌 [STORE] 卡片 "${card.title}" 新位置: ${newPosition}`)
             
-            // 批次收集所有需要更新的 API 請求
-            updatePromises.push(
-              $fetch(`/api/cards/${card.id}`, {
-                method: 'PUT',
-                body: {
-                  list_id: listId,  // 確保卡片屬於正確的列表
-                  position: newPosition
-                }
-              }).then(() => {
-                console.log(`✅ [STORE] 已更新卡片 ${card.id} 位置為 ${newPosition}`)
-              }).catch((error) => {
-                console.error(`❌ [STORE] 更新卡片 ${card.id} 失敗:`, error)
-                throw error
-              })
-            )
+            // 收集所有需要更新的卡片資訊
+            updates.push({
+              id: card.id,
+              listId: listId,
+              position: newPosition
+            })
           })
         }
         
-        console.log(`📤 [STORE] 批次更新 ${updatePromises.length} 張卡片的位置...`)
+        console.log(`📤 [STORE] 準備批次更新 ${updates.length} 張卡片的位置...`)
         
-        // 批次執行所有 API 更新請求
-        await Promise.all(updatePromises)
+        // 🎯 使用 Repository 模式：透過 CardRepository 批次更新
+        await cardRepository.batchUpdateCards(updates)
         
         console.log(`✅ [STORE] 成功重新整理所有受影響列表的位置`)
         

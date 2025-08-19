@@ -9,6 +9,13 @@
 
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import { ref, readonly } from 'vue'
+import { defineStore } from 'pinia'
+
+// 全域 Mock Vue 和 Pinia
+global.ref = ref
+global.readonly = readonly
+global.defineStore = defineStore
 
 // 全域 Mock Nuxt 的 $fetch 函數
 global.$fetch = vi.fn()
