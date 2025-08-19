@@ -29,13 +29,9 @@
  * - 使用駝峰命名（camelCase）：listId
  * - 符合 JavaScript 的慣例
  */
-interface Card {
-  id: string           // 卡片唯一識別碼
-  title: string        // 卡片標題
-  description?: string // 卡片描述（可選）
-  listId: string       // 所屬列表 ID（駝峰命名）
-  position: number     // 在列表中的位置
-}
+import type { Card } from '@/types/api'
+
+// Repository 使用 API 型別，因為它直接與後端互動
 
 /**
  * 🌐 API 回應格式介面 - 後端回傳的格式
@@ -45,13 +41,7 @@ interface Card {
  * - API 格式可能隨時改變，但不想影響前端
  * - 清楚區分「外部資料」vs「內部資料」
  */
-interface ApiCard {
-  id: string           // 卡片唯一識別碼
-  title: string        // 卡片標題
-  description?: string // 卡片描述（可選）
-  list_id: string      // 所屬列表 ID（蛇形命名）
-  position: number     // 在列表中的位置
-}
+// ApiCard 現在使用統一的 Card 型別
 
 export class CardRepository {
   /**
@@ -89,10 +79,10 @@ export class CardRepository {
   async getAllCards(): Promise<Card[]> {
     try {
       // 📞 呼叫 API 取得原始資料
-      const apiCards: ApiCard[] = await $fetch('/api/cards')
+      const apiCards: Card[] = await $fetch('/api/cards')
       
-      // 🔄 轉換成前端格式
-      return this.transformApiCards(apiCards)
+      // 直接回傳，不需要轉換（已使用統一型別）
+      return apiCards
     } catch (error) {
       // 🚨 統一錯誤處理
       throw this.handleError(error, '獲取卡片失敗')
@@ -138,7 +128,7 @@ export class CardRepository {
     try {
       // 📞 呼叫 API 新增卡片
       // 注意：這裡要把 listId 轉換成 list_id
-      const apiCard: ApiCard = await $fetch('/api/cards', {
+      const apiCard: Card = await $fetch('/api/cards', {
         method: 'POST',
         body: { 
           title,                // 標題保持不變
@@ -147,7 +137,7 @@ export class CardRepository {
       })
       
       // 🔄 轉換 API 回應成前端格式
-      return this.transformApiCard(apiCard)
+      return apiCard
     } catch (error) {
       // 🚨 統一錯誤處理
       throw this.handleError(error, '新增卡片失敗')
@@ -237,13 +227,16 @@ export class CardRepository {
    * @param apiCard - API 回傳的卡片資料（蛇形命名）
    * @returns Card - 前端格式的卡片資料（駝峰命名）
    */
-  private transformApiCard(apiCard: ApiCard): Card {
+  private transformApiCard(apiCard: Card): Card {
+    console.log('🔄 [Repository] 轉換 API 卡片格式:', apiCard)
     return {
-      id: apiCard.id,                                      // ID 保持不變
-      title: apiCard.title,                                // 標題保持不變
-      description: apiCard.description,                    // 描述保持不變
-      listId: apiCard.list_id,                            // 🔄 關鍵轉換：list_id → listId
-      position: apiCard.position                           // 位置保持不變
+      id: apiCard.id,                                      // ID
+      title: apiCard.title,                                // 標題
+      description: apiCard.description,                    // 描述
+      list_id: apiCard.list_id,                           // 列表 ID
+      position: apiCard.position,                          // 位置
+      created_at: apiCard.created_at,                      // 建立時間
+      updated_at: apiCard.updated_at                       // 更新時間
     }
   }
 
@@ -268,7 +261,7 @@ export class CardRepository {
    * @param apiCards - API 回傳的卡片陣列（蛇形命名）
    * @returns Card[] - 前端格式的卡片陣列（駝峰命名）
    */
-  private transformApiCards(apiCards: ApiCard[]): Card[] {
+  private transformApiCards(apiCards: Card[]): Card[] {
     // 使用 map 對每張卡片執行格式轉換
     return apiCards.map(card => this.transformApiCard(card))
   }

@@ -38,36 +38,16 @@
  * - 當作「規格書」，告訴工廠要生產什麼樣的產品
  */
 
-// 卡片的規格
-interface Card {
-  id: string           // 唯一識別碼，像是身分證號碼
-  title: string        // 卡片標題，必填
-  description: string  // 卡片描述，可以為空
-  position: number     // 在列表中的位置（數字越小越靠前）
-  listId: string       // 屬於哪個列表
-  createdAt: Date      // 建立時間
-  updatedAt: Date      // 最後更新時間
-}
+// EntityFactory 使用 API 型別，因為要建立資料庫實體
+import type { Card } from '@/types/api'
 
-// 列表的規格
-interface List {
-  id: string           // 唯一識別碼
-  title: string        // 列表標題
-  position: number     // 在看板中的位置
-  cards: Card[]        // 這個列表包含的所有卡片
-  createdAt: Date      // 建立時間
-  updatedAt: Date      // 最後更新時間
-}
+import type { List } from '@/types/api'
 
-// 看板的規格
-interface Board {
-  id: string           // 唯一識別碼
-  title: string        // 看板標題
-  description: string  // 看板描述
-  lists: List[]        // 這個看板包含的所有列表
-  createdAt: Date      // 建立時間
-  updatedAt: Date      // 最後更新時間
-}
+// 使用統一的型別定義
+
+import type { Board } from '@/types/api'
+
+// 使用統一的型別定義
 
 /**
  * 🛠️ 建立參數介面 - 工廠的「訂單格式」

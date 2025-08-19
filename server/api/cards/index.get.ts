@@ -16,18 +16,26 @@ export default defineEventHandler(async (event) => {
     const urlQuery = getQuery(event)
     const listId = urlQuery.list_id as string
 
+    console.log(`🔍 [CARDS-API] 查詢用戶 ${user.id} 的卡片`, listId ? `(列表 ${listId})` : '(所有列表)')
+
     /*
-    * 優化後的查詢邏輯：使用 JOIN 一次查詢取代兩次連續查詢
+    * 🎯 重點優化：使用 JOIN 一次查詢取代兩次連續查詢
     * 利用 Supabase 的 JOIN 功能，直接從 cards 表查詢並驗證用戶權限
+    * 同時確保按照正確的順序排序：先按 list_id，再按 position
     */
 
     let dbQuery = supabase
       .from('cards')
       .select(`
-        *,
+        id,
+        title,
+        description, 
+        position,
+        list_id,
         lists!inner(user_id)
       `)
       .eq('lists.user_id', user.id)
+      .order('list_id', { ascending: true })
       .order('position', { ascending: true })
 
     // 如果指定了 list_id，加上篩選條件
@@ -39,18 +47,26 @@ export default defineEventHandler(async (event) => {
 
     // 處理資料庫錯誤
     if (error) {
-      console.error('資料庫查詢錯誤:', error.message)
+      console.error('❌ [CARDS-API] 資料庫查詢錯誤:', error.message)
       throw createError({
         statusCode: 500,
         message: '取得卡片資料失敗'
       })
     }
 
+    console.log(`📊 [CARDS-API] 查詢結果: 找到 ${data?.length || 0} 個 Cards`)
+
     // 清理回傳資料：移除 JOIN 的额外欄位
     const cleanedData = data?.map(card => {
       const { lists, ...cardData } = card as any
       return cardData
     }) || []
+
+    // 🔍 Debug: 顯示卡片的排序情況
+    console.log('📋 [CARDS-API] 卡片排序詳情:')
+    cleanedData.forEach((card: any, index: number) => {
+      console.log(`  ${index}: "${card.title}" (list: ${card.list_id}, position: ${card.position})`)
+    })
 
     return cleanedData
 
@@ -61,7 +77,7 @@ export default defineEventHandler(async (event) => {
     }
     
     // 其他未預期的錯誤
-    console.error('未預期的錯誤:', error)
+    console.error('❌ [CARDS-API] 未預期的錯誤:', error)
     throw createError({
       statusCode: 500,
       message: '伺服器內部錯誤'

@@ -4,22 +4,15 @@
 
 ## API 端點一覽
 
-### 看板 (boards)
-- `GET /api/boards` - 獲取所有看板
-- `POST /api/boards` - 建立新看板
-- `GET /api/boards/{id}` - 獲取特定看板
-- `PUT /api/boards/{id}` - 更新看板
-- `DELETE /api/boards/{id}` - 刪除看板
-
 ### 列表 (lists)  
-- `GET /api/lists` - 獲取列表（可用 `?board_id=` 篩選）
+- `GET /api/lists` - 獲取列表（按 position 排序）
 - `POST /api/lists` - 建立新列表
 - `GET /api/lists/{id}` - 獲取特定列表
 - `PUT /api/lists/{id}` - 更新列表
 - `DELETE /api/lists/{id}` - 刪除列表
 
 ### 卡片 (cards)
-- `GET /api/cards` - 獲取卡片（可用 `?list_id=` 篩選）
+- `GET /api/cards` - 獲取卡片（可用 `?list_id=` 篩選，按 list_id, position 排序）
 - `POST /api/cards` - 建立新卡片
 - `GET /api/cards/{id}` - 獲取特定卡片
 - `PUT /api/cards/{id}` - 更新卡片（支援移動到不同列表）
@@ -38,11 +31,27 @@ const response = await $fetch('/api/boards', {
 })
 ```
 
-### 獲取特定看板的所有列表
+### 獲取完整看板資料
 ```javascript
-const lists = await $fetch('/api/lists', {
-  query: { board_id: 'board-id-123' }
+// 🎯 分開查詢，確保排序正確
+const [lists, cards] = await Promise.all([
+  $fetch('/api/lists'),
+  $fetch('/api/cards')
+])
+
+// 手動組合資料
+const cardsByListId = {}
+cards.forEach(card => {
+  if (!cardsByListId[card.list_id]) {
+    cardsByListId[card.list_id] = []
+  }
+  cardsByListId[card.list_id].push(card)
 })
+
+const boardData = lists.map(list => ({
+  ...list,
+  cards: cardsByListId[list.id] || []
+}))
 ```
 
 ### 移動卡片到不同列表
@@ -56,20 +65,28 @@ const updatedCard = await $fetch('/api/cards/card-id-123', {
 })
 ```
 
+## 架構設計
+
+### 🎯 簡單可靠的分開查詢
+- **分開的 API 端點** 讓邏輯更清晰，除錯更容易
+- **明確的排序邏輯** `/api/lists` 按 position，`/api/cards` 按 list_id, position
+- **手動組合資料** 在前端完全掌控資料結構
+- **穩定性優先** 簡單的邏輯比複雜的優化更可靠
+
 ## 注意事項
 
-1. **目前狀態**: 所有 API 端點目前返回模擬資料，標記了 `TODO` 的地方之後會串接 Supabase
+1. **排序保證**: `/api/cards` 確保按照正確的順序回傳，reload 後保持卡片順序
 2. **錯誤處理**: 所有端點都有適當的錯誤處理和驗證
 3. **型別安全**: 使用 TypeScript 型別定義確保資料一致性
 4. **RESTful 設計**: 遵循 REST API 設計原則
 
-## 後續整合 Supabase
+## Supabase 整合狀態
 
-當準備整合 Supabase 時，需要：
-1. 安裝 Supabase 客戶端 (`npm install @supabase/supabase-js`)
-2. 設定環境變數 (SUPABASE_URL, SUPABASE_ANON_KEY)
-3. 建立資料庫表格結構
-4. 替換模擬資料為實際的 Supabase 查詢
+✅ **已完成整合**:
+- 用戶認證系統
+- 資料庫表格結構
+- JOIN 查詢優化
+- 所有 CRUD 操作
 
 
 ## Database Schema

@@ -11,26 +11,26 @@ export default defineEventHandler(async (event) => {
     if (!user) {
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
- 
-    // 簡化查詢：直接查詢用戶的列表
-    console.log(`🔍 [API] 查詢用戶 ${user.id} 的列表`)
+
+    console.log(`🔍 [LISTS-API] 查詢用戶 ${user.id} 的列表`)
     
+    // 查詢用戶的列表，按 position 排序
     const { data, error } = await supabase
       .from('lists')
-      .select('*')
+      .select('id, title, position')
       .eq('user_id', user.id)
       .order('position', { ascending: true })
 
     if (error) {
-      console.error('❌ [API] Error fetching lists:', error.message)
+      console.error('❌ [LISTS-API] Error fetching lists:', error.message)
       throw createError({
         statusCode: 500,
         message: '取得列表失敗'
       })
     }
 
-    console.log(`📊 [API] 查詢結果: 找到 ${data?.length || 0} 個列表`)
-    console.log('📋 [API] 列表詳情:', data)
+    console.log(`📊 [LISTS-API] 查詢結果: 找到 ${data?.length || 0} 個列表`)
+    console.log('📋 [LISTS-API] 列表詳情:', data)
     
     return data || []
   } catch (error) {

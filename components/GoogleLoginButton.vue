@@ -37,7 +37,7 @@
     <div v-if="isLoading" class="loading-message">
       <SkeletonLoader 
         size="sm" 
-        :text="'等待中'"
+        :text="'登入中....'"
         color="#4285F4"
         :animate="true"
       />
