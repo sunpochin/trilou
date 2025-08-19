@@ -76,7 +76,7 @@ interface Props {
 }
 
 // 定義 Props 預設值
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   title: '確認操作',
   confirmText: '確認',
   cancelText: '取消',
@@ -108,12 +108,25 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
-// 監聽鍵盤事件
-onMounted(() => {
-  document.addEventListener('keydown', handleKeydown)
-})
+// 🎯 僅在顯示時監聽鍵盤事件，避免對整個 App 造成干擾
+// 當 show 變為 true 時才開始監聽，變為 false 時停止監聽
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) {
+      console.log('🎯 [DIALOG] 開始監聽鍵盤事件 (Enter/Esc)')
+      document.addEventListener('keydown', handleKeydown)
+    } else {
+      console.log('🎯 [DIALOG] 停止監聽鍵盤事件')
+      document.removeEventListener('keydown', handleKeydown)
+    }
+  },
+  { immediate: true } // 立即執行一次，處理初始狀態
+)
 
+// 組件卸載時確保移除監聽器（安全清理）
 onUnmounted(() => {
+  console.log('🧹 [DIALOG] 組件卸載，清理鍵盤監聽器')
   document.removeEventListener('keydown', handleKeydown)
 })
 </script>
