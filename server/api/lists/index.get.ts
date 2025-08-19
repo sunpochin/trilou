@@ -29,8 +29,8 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log(`📊 [API] 查詢結果: 找到 ${data?.length || 0} 個列表`)
-    console.log('📋 [API] 列表詳情:', data)
+    // console.log(`📊 [API] 查詢結果: 找到 ${data?.length || 0} 個列表`)
+    // console.log('📋 [API] 列表詳情:', data)
     
     return data || []
   } catch (error) {

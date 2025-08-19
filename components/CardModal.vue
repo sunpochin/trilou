@@ -56,11 +56,10 @@ import { ref, watch } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
 
 // 定義卡片資料型別
-interface Card {
-  id: string
-  title: string
-  description?: string
-}
+import type { CardUI } from '@/types'
+
+// 使用統一的卡片型別定義
+type Card = CardUI
 
 // 接收父組件傳入的屬性
 const props = defineProps<{

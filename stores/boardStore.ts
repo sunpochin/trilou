@@ -1,24 +1,10 @@
 // 看板狀態管理 Store
-// 定義卡片資料結構
-interface Card {
-  id: string              // 卡片唯一識別碼
-  title: string           // 卡片標題
-  description?: string    // 卡片描述（可選）
-}
+import type { CardUI, ListUI, BoardUI } from '@/types'
 
-// 定義列表資料結構
-interface List {
-  id: string     // 列表唯一識別碼
-  title: string  // 列表標題
-  cards: Card[]  // 列表包含的卡片陣列
-}
-
-// 定義看板資料結構
-interface Board {
-  id: string     // 看板唯一識別碼
-  title: string  // 看板標題
-  lists: List[]  // 看板包含的列表陣列
-}
+// 使用統一的型別定義
+type Card = CardUI
+type List = ListUI  
+type Board = BoardUI
 
 // 匯出看板狀態管理 Store
 export const useBoardStore = defineStore('board', {
@@ -105,7 +91,8 @@ export const useBoardStore = defineStore('board', {
             cardsByListId[card.list_id].push({
               id: card.id,
               title: card.title,
-              description: card.description
+              description: card.description,
+              position: card.position
             })
           })
         }
@@ -113,7 +100,7 @@ export const useBoardStore = defineStore('board', {
         // 將列表和對應的卡片組合起來
         // 每個列表都會包含其對應的卡片陣列
         console.log('📊 [STORE] API 回應 - listsResponse:', listsResponse)
-        console.log('📊 [STORE] API 回應 - cardsResponse:', cardsResponse)
+        // console.log('📊 [STORE] API 回應 - cardsResponse:', cardsResponse)
         
         if (listsResponse) {
           console.log(`📈 [STORE] 處理 ${listsResponse.length} 個列表`)
@@ -215,7 +202,8 @@ export const useBoardStore = defineStore('board', {
           const newCard: Card = {
             id: response.id || '',
             title: response.title || title,
-            description: response.description || ''
+            description: response.description || '',
+            position: response.position
           }
           list.cards.push(newCard)
           console.log('✅ [STORE] 成功新增卡片:', newCard)

@@ -46,6 +46,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    console.log(`📊 [API] Cards 查詢結果: 找到 ${data?.length || 0} 個列表`)
+    console.log('📋 [API] Cards 列表詳情:', data)
+
     // 清理回傳資料：移除 JOIN 的额外欄位
     const cleanedData = data?.map(card => {
       const { lists, ...cardData } = card as any

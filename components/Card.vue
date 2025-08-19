@@ -8,7 +8,7 @@
       @dblclick="startEditing"
       class="min-h-6"
     >
-      {{ card.title }}
+      {{ card.title }}, pos: {{ card.position }}, {{ card.id }}, {{ card.description }}
     </div>
     
     <!-- 編輯模式：顯示輸入框 -->
@@ -28,12 +28,10 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
+import type { CardUI } from '@/types'
 
-// 定義卡片資料型別
-interface Card {
-  id: string
-  title: string
-}
+// 使用統一的卡片型別定義
+type Card = CardUI
 
 // 接收父組件傳入的卡片資料
 const props = defineProps<{

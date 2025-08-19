@@ -54,11 +54,11 @@ export default defineEventHandler(async (event) => {
       console.log('📌 [LISTS POST] 最終 position:', position)
     }
 
-    console.log('💾 [LISTS POST] 準備插入資料:', {
-      title: body.title,
-      user_id: user.id,
-      position: position
-    })
+    // console.log('💾 [LISTS POST] 準備插入資料:', {
+    //   title: body.title,
+    //   user_id: user.id,
+    //   position: position
+    // })
 
     // 建立新列表
     const { data, error } = await supabase
