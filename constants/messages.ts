@@ -64,7 +64,7 @@ export const MESSAGES = {
     addNew: '新增卡片',
     edit: '編輯卡片',
     delete: '刪除卡片',
-    deleteConfirm: '確定要刪除此卡片嗎？',
+    deleteConfirm: '確定要刪除卡片 "{title}" 嗎？此操作無法撤銷。',
     untitled: '未命名卡片',
     
     // 新增/編輯卡片

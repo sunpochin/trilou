@@ -14,9 +14,13 @@
       "Bash(yarn install)",
       "WebSearch",
       "Bash(yarn run typecheck)",
-      "Bash(yarn run:*)",
+      "Bash(yarn run lint)",
+      "Bash(yarn run build)",
+      "Bash(yarn run preview)",
       "Bash(npx nuxi typecheck)",
-      "Bash(rm:*)"
+      "Bash(rm -rf ./.nuxt)",
+      "Bash(rm -rf ./.output)",
+      "Bash(rm /Users/pac/codes/trilo/server/api/board/index.get.ts)"
     ],
     "defaultMode": "acceptEdits"
   }

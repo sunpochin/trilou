@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
-import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { useCardActions } from '@/composables/useCardActions'
 import type { CardUI } from '@/types'
 
 // 使用統一的卡片型別定義
@@ -64,8 +64,8 @@ const emit = defineEmits<{
 // 取得 store 實例
 const boardStore = useBoardStore()
 
-// 取得確認對話框功能
-const { showConfirm } = useConfirmDialog()
+// 取得卡片操作功能
+const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction } = useCardActions()
 
 // 編輯狀態管理
 const isEditing = ref(false)
@@ -91,7 +91,7 @@ const saveEdit = () => {
   const newTitle = editingTitle.value.trim()
   if (newTitle) {
     // 只要有內容就更新，不管是否與原標題相同
-    boardStore.updateCardTitle(props.card.id, newTitle)
+    updateCardTitleAction(props.card.id, newTitle)
   } else {
     // 如果是空字串，恢復原始標題
     editingTitle.value = props.card.title
@@ -116,63 +116,7 @@ const deleteCard = async () => {
   
   // 顯示漂亮的確認對話框
   console.log('💬 [CARD] 顯示刪除確認對話框...')
-  const confirmed = await showConfirm({
-    title: '刪除卡片',
-    message: `確定要刪除卡片 "${props.card.title}" 嗎？此操作無法撤銷。`,
-    confirmText: '刪除',
-    cancelText: '取消',
-    dangerMode: true
-  })
-  
-  if (!confirmed) {
-    console.log('❌ [CARD] 用戶取消刪除操作')
-    return
-  }
-  
-  console.log('✅ [CARD] 用戶確認刪除，開始執行刪除流程...')
-  
-  try {
-    console.log('📤 [CARD] 發送 DELETE API 請求到:', `/api/cards/${props.card.id}`)
-    
-    // 為了 UI 美觀，「先」從本地狀態中移除卡片（需要找到卡片所屬的列表）
-    console.log('🔄 [CARD] 更新本地狀態，從列表中移除卡片...')
-    
-    // 遍歷所有列表找到包含此卡片的列表
-    for (const list of boardStore.board.lists) {
-      const cardIndex = list.cards.findIndex(card => card.id === props.card.id)
-      if (cardIndex !== -1) {
-        console.log(`📋 [CARD] 在列表 "${list.title}" 中找到卡片，索引: ${cardIndex}`)
-        list.cards.splice(cardIndex, 1)
-        console.log('✅ [CARD] 卡片已從本地狀態移除')
-        break
-      }
-    }
-    
-    // 「再」直接呼叫 API 刪除卡片
-    await $fetch(`/api/cards/${props.card.id}`, {
-      method: 'DELETE'
-    })
-    console.log('✅ [CARD] API 刪除請求成功')
-    
-    console.log('🎉 [CARD] 卡片刪除流程完成')
-    
-  } catch (error) {
-    console.error('❌ [CARD] 刪除卡片過程中發生錯誤:')
-    console.error('  🔍 錯誤類型:', typeof error)
-    console.error('  🔍 錯誤內容:', error)
-    
-    if (error && typeof error === 'object') {
-      console.error('  🔍 錯誤詳情:', {
-        message: (error as any).message,
-        statusCode: (error as any).statusCode,
-        statusMessage: (error as any).statusMessage,
-        data: (error as any).data
-      })
-    }
-    
-    // 顯示錯誤訊息給用戶
-    alert('刪除卡片失敗，請稍後再試')
-    console.log('💥 [CARD] 錯誤處理完成')
-  }
+  // 委託給 composable 處理完整的刪除流程
+  await deleteCardAction(props.card)
 }
 </script>
