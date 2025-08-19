@@ -29,7 +29,10 @@
  * - 使用駝峰命名（camelCase）：listId
  * - 符合 JavaScript 的慣例
  */
-import type { Card } from '@/types/api'
+import type { CardUI } from '@/types'
+
+// 使用統一的卡片型別定義
+type Card = CardUI
 
 // Repository 使用 API 型別，因為它直接與後端互動
 
@@ -255,6 +258,60 @@ export class CardRepository {
   }
 
   /**
+   * 📊 取得所有卡片 - 已有方法，供參考
+   * 
+   * 🎯 這個方法已經存在於上面，供 boardStore.fetchBoard() 使用
+   */
+  
+  /**
+   * 🔄 批量更新卡片位置 - 新增方法
+   * 
+   * 🤔 這個函數做什麼？
+   * - 批量更新多張卡片的 list_id 和 position
+   * - 專為 drag & drop 功能設計
+   * - 一次 API 呼叫完成所有更新，提高效能
+   * 
+   * 💡 為什麼要批量更新？
+   * - 拖拽時可能影響多張卡片的位置
+   * - 減少 API 呼叫次數
+   * - 確保資料一致性（要麼全部成功，要麼全部失敗）
+   * 
+   * 🔧 參數說明：
+   * @param updates - 要更新的卡片清單，包含 id, listId, position
+   * @returns Promise<void> - 不回傳資料，只確保更新成功
+   */
+  async batchUpdateCards(updates: Array<{id: string, listId: string, position: number}>): Promise<void> {
+    if (updates.length === 0) {
+      console.log('📝 [REPO] 沒有卡片需要更新')
+      return
+    }
+
+    try {
+      console.log(`🚀 [REPO] 批量更新 ${updates.length} 張卡片`)
+      
+      // 將每個更新轉換為 API 呼叫
+      const updatePromises = updates.map(({ id, listId, position }) => {
+        console.log(`📝 [REPO] 更新卡片 ${id}: listId=${listId}, position=${position}`)
+        
+        return $fetch(`/api/cards/${id}`, {
+          method: 'PUT',
+          body: {
+            list_id: listId,  // 轉換為 API 格式（蛇形命名）
+            position: position
+          }
+        })
+      })
+
+      // 批量執行所有更新
+      await Promise.all(updatePromises)
+      console.log('✅ [REPO] 批量更新完成')
+      
+    } catch (error) {
+      throw this.handleError(error, '批量更新卡片失敗')
+    }
+  }
+
+  /**
    * 🔄 轉換多張卡片格式 - 批量翻譯員
    * 
    * 🤔 這個函數做什麼？
@@ -341,3 +398,6 @@ export class CardRepository {
     throw new Error(message)
   }
 }
+
+// 匯出單例實例，供整個應用程式使用
+export const cardRepository = new CardRepository()
