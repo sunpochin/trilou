@@ -260,8 +260,9 @@ export const useListActions = () => {
   const updateListTitle = async (listId: string, newTitle: string) => {
     console.log('📝 [COMPOSABLE] updateListTitle 被呼叫，參數:', { listId, newTitle })
     
-    // 基本驗證：確保標題不為空
-    if (!newTitle.trim()) {
+    // 基本驗證：先標準化字串，再驗證與使用
+    const normalizedTitle = newTitle.trim()
+    if (!normalizedTitle) {
       console.warn('❌ [COMPOSABLE] 列表標題不能為空')
       const errorNotification = NotificationBuilder
         .error('列表標題不能為空')
@@ -270,8 +271,8 @@ export const useListActions = () => {
       return
     }
     
-    // 驗證標題長度和格式
-    const validation = Validator.validateListTitle(newTitle)
+    // 驗證標題長度和格式（使用標準化後的版本）
+    const validation = Validator.validateListTitle(normalizedTitle)
     if (!validation.isValid) {
       const notification = NotificationBuilder
         .error(`列表標題不符合規範：${validation.errors.join(', ')}`)
@@ -282,15 +283,31 @@ export const useListActions = () => {
     }
 
     try {
+      // 檢查列表是否存在與是否有實質變更，避免多餘請求
+      const target = boardStore.board.lists.find(l => l.id === listId)
+      if (!target) {
+        console.warn('❌ [COMPOSABLE] 找不到對應的列表，無法更新標題')
+        const notFoundNotification = NotificationBuilder
+          .error('找不到對應的列表，請重新整理後再試')
+          .build()
+        showNotification(notFoundNotification)
+        return
+      }
+      
+      if (target.title?.trim() === normalizedTitle) {
+        console.log('ℹ️ [COMPOSABLE] 標題未變更，略過更新')
+        return
+      }
+      
       console.log('📤 [COMPOSABLE] 呼叫 boardStore.updateListTitle()...')
-      await boardStore.updateListTitle(listId, newTitle.trim())
+      await boardStore.updateListTitle(listId, normalizedTitle)
       console.log('✅ [COMPOSABLE] boardStore.updateListTitle() 執行成功')
       
       // 發布事件通知其他組件
       console.log('📢 [COMPOSABLE] 發布 list:title-updated 事件...')
       eventBus.emit('list:title-updated', { 
         listId, 
-        newTitle: newTitle.trim() 
+        newTitle: normalizedTitle 
       })
       
       console.log('🎉 [COMPOSABLE] 建立成功通知...')
