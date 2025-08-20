@@ -1,6 +1,6 @@
 // 建立新卡片的 API 端點
 import { serverSupabaseClient } from '@/server/utils/supabase'
-import { ensureUserExists } from '~/server/utils/userHelpers'
+import { ensureUserExists } from '@/server/utils/userHelpers'
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseClient(event)
