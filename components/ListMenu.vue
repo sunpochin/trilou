@@ -23,7 +23,7 @@
   <div class="relative list-menu-container">
     <!-- 三點選單按鈕 -->
     <button 
-      @click="toggleMenu"
+      @click="handleToggleMenu"
       class="p-1 rounded hover:bg-gray-300 transition-colors duration-200"
     >
       <svg 
@@ -58,7 +58,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
-import { useBoardStore } from '@/stores/boardStore'
+import { useListMenu } from '@/composables/useListMenu'
 
 // 組件 props（用於標識選單所屬的列表）
 const props = defineProps<{
@@ -71,38 +71,39 @@ const emit = defineEmits<{
   'delete-list': []
 }>()
 
-// 使用全域看板狀態管理
-const boardStore = useBoardStore()
+// 使用選單管理 composable（依賴反轉原則）
+// 組件不直接依賴 boardStore，而是透過抽象層 useListMenu
+const { openMenuId, toggleMenu, closeAllMenus } = useListMenu()
 
-// 計算當前選單是否開啟（基於全域狀態）
+// 計算當前選單是否開啟（基於 composable 提供的響應式狀態）
 // 只有當全域開啟的選單 ID 等於當前列表 ID 時，此選單才是開啟狀態
-const isMenuOpen = computed(() => boardStore.openMenuId === props.listId)
+const isMenuOpen = computed(() => openMenuId.value === props.listId)
 
 // 切換選單顯示狀態
-// 使用全域狀態管理，確保同時只有一個選單開啟
-const toggleMenu = () => {
-  boardStore.toggleMenu(props.listId)
+// 透過 composable 統一管理，確保同時只有一個選單開啟
+const handleToggleMenu = () => {
+  toggleMenu(props.listId)
 }
 
 // 處理新增卡片
 const handleAddCard = () => {
   emit('add-card')
   // 執行動作後關閉選單
-  boardStore.closeAllMenus()
+  closeAllMenus()
 }
 
 // 處理刪除列表
 const handleDeleteList = () => {
   emit('delete-list')
   // 執行動作後關閉選單
-  boardStore.closeAllMenus()
+  closeAllMenus()
 }
 
 // 點擊外部區域關閉所有選單
 const handleClickOutside = (event: Event) => {
   const target = event.target as HTMLElement
   if (!target.closest('.list-menu-container')) {
-    boardStore.closeAllMenus()
+    closeAllMenus()
   }
 }
 
