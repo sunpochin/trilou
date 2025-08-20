@@ -11,7 +11,7 @@ type Board = BoardUI
 // 匯出看板狀態管理 Store
 export const useBoardStore = defineStore('board', {
   // 定義 Store 的狀態
-  state: (): { board: Board; isLoading: boolean } => ({
+  state: (): { board: Board; isLoading: boolean; openMenuId: string | null } => ({
     board: {
       id: 'board-1',
       title: 'My Board',
@@ -19,7 +19,9 @@ export const useBoardStore = defineStore('board', {
       lists: []
     },
     // 載入狀態，用於顯示 loading spinner
-    isLoading: false
+    isLoading: false,
+    // 目前開啟的選單 ID，同時只能有一個選單開啟
+    openMenuId: null
   }),
   // Getters: 計算派生狀態
   getters: {
@@ -398,6 +400,66 @@ export const useBoardStore = defineStore('board', {
           break // 找到後立即停止搜尋
         }
       }
+    },
+
+    // 更新指定列表的標題（帶回滾，避免後端失敗時前端狀態髒掉）
+    // 1) 先做輸入清理與存在性檢查  2) 樂觀更新  3) 失敗回滾
+    async updateListTitle(listId: string, newTitle: string) {
+      // ✂️ 先修剪標題，避免空白字串
+      const title = newTitle.trim()
+      if (!title) {
+        console.warn('⚠️ [STORE] newTitle 為空，已略過更新')
+        return
+      }
+      
+      // 🔍 找到目標列表
+      const list = this.board.lists.find(l => l.id === listId)
+      if (!list) {
+        console.warn('⚠️ [STORE] 找不到列表，無法更新標題:', listId)
+        return
+      }
+
+      const prevTitle = list.title
+      console.log(`🔄 [STORE] 開始更新列表標題: "${prevTitle}" → "${title}"`)
+      
+      // ✅ 樂觀更新前端狀態（立即顯示給用戶，提升體驗）
+      list.title = title
+      
+      try {
+        // 🎯 使用 Repository 模式：透過 ListRepository 更新資料庫
+        await listRepository.updateListTitle(listId, title)
+        console.log(`✅ [STORE] 成功更新列表標題: "${title}"`)
+      } catch (error) {
+        // 🔄 失敗回滾：恢復原始標題，確保 UI 與後端一致
+        list.title = prevTitle
+        console.error('❌ [STORE] 更新列表標題失敗，已回滾至原標題:', prevTitle)
+        console.error('  🔍 錯誤詳情:', error)
+        throw error
+      }
+    },
+
+    // 設定開啟的選單 ID，關閉其他所有選單
+    // 實現「同時只能有一個選單開啟」的全域狀態控制
+    setOpenMenu(listId: string | null) {
+      this.openMenuId = listId
+    },
+
+    // 切換指定選單的開啟狀態
+    // 如果該選單已開啟則關閉，如果其他選單開啟則切換到該選單
+    toggleMenu(listId: string) {
+      if (this.openMenuId === listId) {
+        // 如果點擊的是已開啟的選單，則關閉它
+        this.openMenuId = null
+      } else {
+        // 如果點擊的是其他選單，則開啟它（自動關閉之前開啟的選單）
+        this.openMenuId = listId
+      }
+    },
+
+    // 關閉所有選單
+    // 通常在點擊外部區域時呼叫
+    closeAllMenus() {
+      this.openMenuId = null
     }
   }
 })

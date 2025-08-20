@@ -1,5 +1,5 @@
 // 取得列表的 API 端點
-import { serverSupabaseClient } from '~/server/utils/supabase'
+import { serverSupabaseClient } from '@/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
   try {

@@ -18,9 +18,21 @@
  * 4. 執行刪除操作
  * 5. 回傳結果
  */
-import { serverSupabaseClient } from '~/server/utils/supabase'
+import { serverSupabaseClient } from '@/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
+  // 為查詢結果建立明確的 TypeScript 型別
+  type CardWithList = {
+    id: string
+    title: string
+    list_id: string
+    lists: {
+      id: string
+      title: string
+      user_id: string
+    }
+  }
+
   const supabase = serverSupabaseClient(event)
 
   // 🔐 步驟1: 驗證用戶身份
@@ -64,16 +76,18 @@ export default defineEventHandler(async (event) => {
       `)
       .eq('id', id)
       .eq('lists.user_id', user.id)
-      .single()
+      .maybeSingle<CardWithList>() // ✅ 查無資料時不回傳錯誤，交由下方 !cardInfo 處理為 404
 
+    // 處理真正的查詢錯誤（如資料庫連線問題、SQL 語法錯誤等）
     if (queryError) {
-      console.error('❌ [API] 查詢卡片錯誤:', queryError.message)
+      console.error('❌ [API] 資料庫查詢錯誤:', queryError.message)
       throw createError({
         statusCode: 500,
         message: '查詢卡片失敗'
       })
     }
 
+    // 處理業務邏輯錯誤：找不到卡片或無權限存取
     if (!cardInfo) {
       console.log('❌ [API] 錯誤: 找不到要刪除的卡片或無權限刪除')
       throw createError({
@@ -82,12 +96,13 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // ✅ 現在 cardInfo.lists 有了明確的型別，不再需要 as any
     console.log('📊 [API] 找到要刪除的卡片:', {
       id: cardInfo.id,
       title: cardInfo.title,
       listId: cardInfo.list_id,
-      listTitle: (cardInfo.lists as any).title,
-      listOwner: (cardInfo.lists as any).user_id
+      listTitle: cardInfo.lists.title,
+      listOwner: cardInfo.lists.user_id
     })
 
     // 🗑️ 步驟3: 執行刪除操作
@@ -112,7 +127,7 @@ export default defineEventHandler(async (event) => {
     console.log('✅ [API] Supabase 刪除操作成功!')
     console.log('🎉 [API] 卡片刪除流程完成!')
     console.log('📋 [API] 已刪除卡片:', cardInfo.title)
-    console.log('📁 [API] 所屬列表:', (cardInfo.lists as any).title)
+    console.log('📁 [API] 所屬列表:', cardInfo.lists.title)
 
     return { 
       id,
@@ -120,7 +135,7 @@ export default defineEventHandler(async (event) => {
       deletedCard: {
         id: cardInfo.id,
         title: cardInfo.title,
-        listTitle: (cardInfo.lists as any).title
+        listTitle: cardInfo.lists.title
       }
     }
   } catch (error) {

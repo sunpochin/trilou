@@ -252,8 +252,11 @@ export class CardRepository {
       title: apiCard.title,
       description: apiCard.description,
       listId: apiCard.list_id, // 轉換 snake_case to camelCase
-      position: apiCard.position
-      // 不包含 API 特有欄位：created_at, updated_at（符合 CardUI 介面）
+      position: apiCard.position,
+      // 如果 API 回應包含 created_at，則轉換為 Date 物件
+      createdAt: apiCard.created_at ? new Date(apiCard.created_at) : undefined,
+      // 如果 API 回應包含 updated_at，則轉換為 Date 物件
+      updatedAt: apiCard.updated_at ? new Date(apiCard.updated_at) : undefined
     }
   }
 

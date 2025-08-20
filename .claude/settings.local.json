@@ -21,7 +21,8 @@
       "Bash(rm -rf ./.nuxt)",
       "Bash(rm -rf ./.output)",
       "Bash(rm /Users/pac/codes/trilo/server/api/board/index.get.ts)",
-      "Bash(npm run test:unit:*)"
+      "Bash(npm run test:unit:*)",
+      "Bash(npx nuxi typecheck:*)"
     ],
     "defaultMode": "acceptEdits"
   }
