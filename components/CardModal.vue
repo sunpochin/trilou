@@ -58,7 +58,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useBoardStore } from '@/stores/boardStore'
+import { useCardActions } from '@/composables/useCardActions'
 
 // 定義卡片資料型別
 import type { CardUI } from '@/types'
@@ -77,8 +77,8 @@ const emit = defineEmits<{
   close: []
 }>()
 
-// 取得 store 實例
-const boardStore = useBoardStore()
+// 使用卡片操作 composable（遵循依賴反轉原則）
+const { updateCardTitle, updateCardDescription } = useCardActions()
 
 // 本地編輯狀態
 const localTitle = ref('')
@@ -101,7 +101,7 @@ const closeModal = () => {
 // 更新標題（即時更新，不關閉模態框）
 const updateTitle = () => {
   if (props.card && localTitle.value.trim()) {
-    boardStore.updateCardTitle(props.card.id, localTitle.value.trim())
+    updateCardTitle(props.card.id, localTitle.value.trim())
   }
 }
 
@@ -123,7 +123,7 @@ const cancelDescriptionEdit = () => {
 const saveChanges = () => {
   if (props.card) {
     // 更新描述
-    boardStore.updateCardDescription(props.card.id, localDescription.value.trim())
+    updateCardDescription(props.card.id, localDescription.value.trim())
     isDescriptionEditing.value = false
     closeModal()
   }
