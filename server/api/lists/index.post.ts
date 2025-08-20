@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
         .eq('user_id', user.id)
         .order('position', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle() // ✅ 查無資料時不回傳錯誤
       
       console.log('📈 [LISTS POST] Position 查詢結果:', { lastList, positionError: positionError?.message })
       position = lastList ? lastList.position + 1 : 0
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
         position: position
       })
       .select()
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
     if (error) {
       console.error('❌ [LISTS POST] Supabase 插入錯誤:', {
@@ -81,6 +81,13 @@ export default defineEventHandler(async (event) => {
       throw createError({
         statusCode: 500,
         message: '建立列表失敗'
+      })
+    }
+
+    if (!data) {
+      throw createError({
+        statusCode: 500,
+        message: '建立列表失敗：無法取得新列表資料'
       })
     }
 

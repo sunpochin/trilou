@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
         .from('lists')
         .select('user_id')
         .eq('id', body.list_id)
-        .single(),
+        .maybeSingle(), // ✅ 查無資料時不回傳錯誤
       // 同時取得該列表中最大的 position 值（如果需要的話）
       typeof body.position !== 'number' ? 
         supabase
@@ -44,6 +44,15 @@ export default defineEventHandler(async (event) => {
           .maybeSingle() : // 使用 maybeSingle 避免沒有卡片時的錯誤
         Promise.resolve({ data: null, error: null })
     ])
+
+    // 處理查詢錯誤
+    if (listAccessResult.error) {
+      console.error('Error checking list access:', listAccessResult.error.message)
+      throw createError({
+        statusCode: 500,
+        message: '檢查列表權限失敗'
+      })
+    }
 
     // 檢查權限
     if (!listAccessResult.data || listAccessResult.data.user_id !== user.id) {
@@ -69,13 +78,20 @@ export default defineEventHandler(async (event) => {
         list_id: body.list_id
       })
       .select()
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
     if (error) {
       console.error('Error creating card:', error.message)
       throw createError({
         statusCode: 500,
         message: '建立卡片失敗'
+      })
+    }
+
+    if (!data) {
+      throw createError({
+        statusCode: 500,
+        message: '建立卡片失敗：無法取得新卡片資料'
       })
     }
 

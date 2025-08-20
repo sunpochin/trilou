@@ -38,11 +38,20 @@ export default defineEventHandler(async (event) => {
     }
 
     // 驗證用戶是否有權限編輯此列表（檢查列表是否屬於用戶）
-    const { data: listAccess } = await supabase
+    const { data: listAccess, error: accessError } = await supabase
       .from('lists')
       .select('user_id')
       .eq('id', id)
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤，交由下方 !listAccess 處理為 403
+
+    // 處理真正的查詢錯誤
+    if (accessError) {
+      console.error('Error checking list access:', accessError.message)
+      throw createError({
+        statusCode: 500,
+        message: '檢查列表權限失敗'
+      })
+    }
 
     if (!listAccess || listAccess.user_id !== user.id) {
       throw createError({
@@ -62,13 +71,20 @@ export default defineEventHandler(async (event) => {
       .update(updateData)
       .eq('id', id)
       .select()
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
     if (error) {
       console.error('Error updating list:', error.message)
       throw createError({
         statusCode: 500,
         message: '更新列表失敗'
+      })
+    }
+
+    if (!data) {
+      throw createError({
+        statusCode: 404,
+        message: '找不到要更新的列表'
       })
     }
 

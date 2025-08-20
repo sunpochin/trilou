@@ -26,13 +26,20 @@ export default defineEventHandler(async (event) => {
       .select('*')
       .eq('id', id)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
     if (error) {
       console.error('Error fetching list:', error.message)
       throw createError({
-        statusCode: error.code === 'PGRST116' ? 404 : 500,
-        message: error.code === 'PGRST116' ? '找不到指定的列表或您沒有權限存取' : '獲取列表資料失敗'
+        statusCode: 500,
+        message: '獲取列表資料失敗'
+      })
+    }
+
+    if (!data) {
+      throw createError({
+        statusCode: 404,
+        message: '找不到指定的列表或您沒有權限存取'
       })
     }
 
