@@ -25,7 +25,19 @@
       
       <!-- 右下角：標籤區域 -->
       <div class="flex gap-1">
-        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-sm">MCP</span>
+        <span 
+          v-if="card.status"
+          class="text-xs px-2 py-1 rounded-sm font-medium"
+          :class="getStatusTagClass(card.status)"
+        >
+          {{ formatStatus(card.status) }}
+        </span>
+        <span 
+          v-else
+          class="bg-gray-400 text-white text-xs px-2 py-1 rounded-sm"
+        >
+          一般
+        </span>
       </div>
     </div>
     
@@ -133,5 +145,31 @@ const deleteCard = async () => {
   console.log('💬 [CARD] 顯示刪除確認對話框...')
   // 委託給 composable 處理完整的刪除流程
   await deleteCardAction(props.card)
+}
+
+// 格式化 status 顯示文字
+const formatStatus = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'todo': '待辦',
+    'in-progress': '進行中',
+    'done': '完成',
+    'blocked': '阻塞',
+    'review': '審核中',
+    'testing': '測試中'
+  }
+  return statusMap[status] || status
+}
+
+// 取得 status tag 的 CSS 類別
+const getStatusTagClass = (status: string): string => {
+  const statusClasses: Record<string, string> = {
+    'todo': 'bg-gray-500 text-white',
+    'in-progress': 'bg-blue-500 text-white',
+    'done': 'bg-green-500 text-white',
+    'blocked': 'bg-red-500 text-white',
+    'review': 'bg-yellow-500 text-white',
+    'testing': 'bg-purple-500 text-white'
+  }
+  return statusClasses[status] || 'bg-gray-400 text-white'
 }
 </script>

@@ -137,7 +137,7 @@ export class CardRepository {
    * @returns Promise<Card> - 新建立的卡片（前端格式）
    * @throws Error - 如果新增失敗或驗證失敗
    */
-  async createCard(title: string, listId: string): Promise<Card> {
+  async createCard(title: string, listId: string, status?: string): Promise<Card> {
     try {
       // 📞 呼叫 API 新增卡片
       // 注意：這裡要把 listId 轉換成 list_id
@@ -145,7 +145,8 @@ export class CardRepository {
         method: 'POST',
         body: { 
           title,                // 標題保持不變
-          list_id: listId       // 🔄 駝峰轉蛇形：listId → list_id
+          list_id: listId,      // 🔄 駝峰轉蛇形：listId → list_id
+          status: status        // AI 生成任務的狀態標籤
         }
       })
       
@@ -253,6 +254,7 @@ export class CardRepository {
       description: apiCard.description,
       listId: apiCard.list_id, // 轉換 snake_case to camelCase
       position: apiCard.position,
+      status: apiCard.status, // AI 生成任務的狀態標籤
       // 如果 API 回應包含 created_at，則轉換為 Date 物件
       createdAt: apiCard.created_at ? new Date(apiCard.created_at) : undefined,
       // 如果 API 回應包含 updated_at，則轉換為 Date 物件

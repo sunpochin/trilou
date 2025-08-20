@@ -3,6 +3,7 @@ import TrelloBoard from '@/components/TrelloBoard.vue';
 import GoogleLoginButton from '@/components/GoogleLoginButton.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import InputDialog from '@/components/InputDialog.vue';
+import AiTaskModal from '@/components/AiTaskModal.vue';
 import { useBoardStore } from '@/stores/boardStore';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useInputDialog } from '@/composables/useInputDialog';
@@ -21,6 +22,9 @@ const { inputState, handleConfirm: handleInputConfirm, handleCancel: handleInput
 
 // 響應式變數，用於儲存使用者物件
 const user = ref<any>(null);
+
+// AI 生成任務模態框的顯示狀態
+const showAiModal = ref(false);
 
 // 處理登出邏輯
 const handleLogout = async () => {
@@ -73,7 +77,15 @@ onMounted(() => {
     <!-- 如果使用者已登入，顯示 Trello 看板和使用者資訊 -->
     <div v-if="user">
       <header class="p-4 bg-gray-200 flex justify-between items-center">
-        <h1 class="text-xl font-bold">{{ MESSAGES.board.title }}</h1>
+        <div class="flex items-center gap-4">
+          <h1 class="text-xl font-bold">{{ MESSAGES.board.title }}</h1>
+          <button 
+            @click="showAiModal = true" 
+            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition-colors duration-200"
+          >
+            AI 生成任務
+          </button>
+        </div>
         <div class="flex items-center gap-4">
           <span class="text-sm">{{ user.email }}</span>
           <button @click="handleLogout" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm">
@@ -120,6 +132,12 @@ onMounted(() => {
       :initial-value="inputState.initialValue"
       @confirm="handleInputConfirm"
       @cancel="handleInputCancel"
+    />
+
+    <!-- AI 任務生成模態框 -->
+    <AiTaskModal
+      :show="showAiModal"
+      @close="showAiModal = false"
     />
   </div>
 </template>

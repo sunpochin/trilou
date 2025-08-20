@@ -22,5 +22,16 @@ export default defineNuxtConfig({
         key: process.env.SUPABASE_KEY
       }
     }
+  },
+
+  // 開發模式代理設定，解決 CORS 問題
+  nitro: {
+    devProxy: {
+      '/api/mcp': {
+        target: 'http://localhost:8000/mcp',
+        changeOrigin: true,
+        prependPath: true
+      }
+    }
   }
 })
