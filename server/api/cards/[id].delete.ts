@@ -76,16 +76,18 @@ export default defineEventHandler(async (event) => {
       `)
       .eq('id', id)
       .eq('lists.user_id', user.id)
-      .single<CardWithList>() // ✨ 套用明確型別
+      .maybeSingle<CardWithList>() // ✅ 查無資料時不回傳錯誤，交由下方 !cardInfo 處理為 404
 
+    // 處理真正的查詢錯誤（如資料庫連線問題、SQL 語法錯誤等）
     if (queryError) {
-      console.error('❌ [API] 查詢卡片錯誤:', queryError.message)
+      console.error('❌ [API] 資料庫查詢錯誤:', queryError.message)
       throw createError({
         statusCode: 500,
         message: '查詢卡片失敗'
       })
     }
 
+    // 處理業務邏輯錯誤：找不到卡片或無權限存取
     if (!cardInfo) {
       console.log('❌ [API] 錯誤: 找不到要刪除的卡片或無權限刪除')
       throw createError({

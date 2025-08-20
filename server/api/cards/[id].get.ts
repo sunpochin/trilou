@@ -33,13 +33,21 @@ export default defineEventHandler(async (event) => {
       `)
       .eq('id', id)
       .eq('lists.user_id', user.id)
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤，交由下方 !data 處理為 404
 
     if (error) {
-      console.error('Error fetching card:', error.message)
+      console.error('❌ [API] 資料庫查詢錯誤:', error.message)
       throw createError({
-        statusCode: error.code === 'PGRST116' ? 404 : 500,
-        message: error.code === 'PGRST116' ? '找不到指定的卡片或您沒有權限存取' : '獲取卡片資料失敗'
+        statusCode: 500,
+        message: '獲取卡片資料失敗'
+      })
+    }
+
+    if (!data) {
+      console.log('❌ [API] 找不到指定的卡片或無權限存取')
+      throw createError({
+        statusCode: 404,
+        message: '找不到指定的卡片或您沒有權限存取'
       })
     }
 

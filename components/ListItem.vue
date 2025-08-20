@@ -79,7 +79,6 @@ import Card from '@/components/Card.vue'
 import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useListActions } from '@/composables/useListActions'
-import { useBoardStore } from '@/stores/boardStore'
 import { ref, nextTick } from 'vue'
 
 // 使用統一的型別定義
@@ -97,11 +96,10 @@ defineEmits<{
   'open-card-modal': [card: any]
 }>()
 
-// 使用列表操作邏輯
-const { addCard, deleteList } = useListActions()
+// 使用列表操作邏輯 - 透過 composable 統一處理所有列表相關操作
+const { addCard, deleteList, updateListTitle } = useListActions()
 
-// 使用 store 和編輯狀態
-const boardStore = useBoardStore()
+// 編輯狀態
 const isEditingTitle = ref(false)
 const editingTitle = ref('')
 const titleInput = ref<HTMLInputElement | null>(null)
@@ -129,11 +127,11 @@ const startEditTitle = async () => {
   }
 }
 
-// 儲存標題變更
+// 儲存標題變更 - 透過 composable 統一處理
 const saveTitle = async () => {
   if (editingTitle.value.trim() && editingTitle.value.trim() !== props.list.title) {
     try {
-      await boardStore.updateListTitle(props.list.id, editingTitle.value.trim())
+      await updateListTitle(props.list.id, editingTitle.value.trim())
     } catch (error) {
       console.error('更新列表標題失敗:', error)
       // 失敗時恢復原始標題

@@ -256,6 +256,88 @@ export const useListActions = () => {
     }
   }
 
+  // 更新列表標題功能 - 使用統一的錯誤處理和通知系統
+  const updateListTitle = async (listId: string, newTitle: string) => {
+    console.log('📝 [COMPOSABLE] updateListTitle 被呼叫，參數:', { listId, newTitle })
+    
+    // 基本驗證：確保標題不為空
+    if (!newTitle.trim()) {
+      console.warn('❌ [COMPOSABLE] 列表標題不能為空')
+      const errorNotification = NotificationBuilder
+        .error('列表標題不能為空')
+        .build()
+      showNotification(errorNotification)
+      return
+    }
+    
+    // 驗證標題長度和格式
+    const validation = Validator.validateListTitle(newTitle)
+    if (!validation.isValid) {
+      const notification = NotificationBuilder
+        .error(`列表標題不符合規範：${validation.errors.join(', ')}`)
+        .build()
+      
+      showNotification(notification)
+      return
+    }
+
+    try {
+      console.log('📤 [COMPOSABLE] 呼叫 boardStore.updateListTitle()...')
+      await boardStore.updateListTitle(listId, newTitle.trim())
+      console.log('✅ [COMPOSABLE] boardStore.updateListTitle() 執行成功')
+      
+      // 發布事件通知其他組件
+      console.log('📢 [COMPOSABLE] 發布 list:title-updated 事件...')
+      eventBus.emit('list:title-updated', { 
+        listId, 
+        newTitle: newTitle.trim() 
+      })
+      
+      console.log('🎉 [COMPOSABLE] 建立成功通知...')
+      const notification = NotificationBuilder
+        .success('列表標題已成功更新')
+        .build()
+      
+      console.log('📱 [COMPOSABLE] 顯示成功通知:', notification)
+      showNotification(notification)
+      
+      console.log('✅ [COMPOSABLE] 列表標題更新流程完成')
+      
+    } catch (error) {
+      console.error('❌ [COMPOSABLE] 更新列表標題過程中發生錯誤:')
+      console.error('  🔍 錯誤類型:', typeof error)
+      console.error('  🔍 錯誤內容:', error)
+      
+      if (error && typeof error === 'object') {
+        console.error('  🔍 錯誤詳情:', {
+          message: (error as any).message,
+          statusCode: (error as any).statusCode,
+          statusMessage: (error as any).statusMessage,
+          data: (error as any).data
+        })
+      }
+      
+      console.log('🚨 [COMPOSABLE] 建立錯誤通知...')
+      const errorNotification = NotificationBuilder
+        .error('更新列表標題失敗，請稍後再試')
+        .build()
+      
+      console.log('📱 [COMPOSABLE] 顯示錯誤通知:', errorNotification)
+      showNotification(errorNotification)
+      
+      console.log('📢 [COMPOSABLE] 發布 error:occurred 事件...')
+      eventBus.emit('error:occurred', {
+        error: error as Error,
+        context: 'updateListTitle'
+      })
+      
+      console.log('💥 [COMPOSABLE] 錯誤處理完成')
+      
+      // 重新拋出錯誤讓調用者知道操作失敗
+      throw error
+    }
+  }
+
   // 私有方法：顯示通知（這裡簡化實作，實際應該整合到 UI 系統）
   const showNotification = (notification: any) => {
     console.log(`[${notification.type.toUpperCase()}] ${notification.title}: ${notification.message}`)
@@ -265,6 +347,7 @@ export const useListActions = () => {
   return {
     addCard,
     deleteList,
-    addList
+    addList,
+    updateListTitle
   }
 }
