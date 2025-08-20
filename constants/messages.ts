@@ -34,7 +34,7 @@ export const MESSAGES = {
 
   // 📋 看板相關文案
   board: {
-    title: '看板',
+    title: 'Trilou 📋',
     loading: '正在載入看板資料...',
     loadingFromCloud: '正在從雲端獲取您的資料中...',
     empty: '尚未建立任何列表',

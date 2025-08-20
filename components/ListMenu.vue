@@ -57,10 +57,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
+import { useBoardStore } from '@/stores/boardStore'
 
 // 組件 props（用於標識選單所屬的列表）
-defineProps<{
+const props = defineProps<{
   listId: string
 }>()
 
@@ -70,31 +71,38 @@ const emit = defineEmits<{
   'delete-list': []
 }>()
 
-// 選單開關狀態
-const isMenuOpen = ref(false)
+// 使用全域看板狀態管理
+const boardStore = useBoardStore()
+
+// 計算當前選單是否開啟（基於全域狀態）
+// 只有當全域開啟的選單 ID 等於當前列表 ID 時，此選單才是開啟狀態
+const isMenuOpen = computed(() => boardStore.openMenuId === props.listId)
 
 // 切換選單顯示狀態
+// 使用全域狀態管理，確保同時只有一個選單開啟
 const toggleMenu = () => {
-  isMenuOpen.value = !isMenuOpen.value
+  boardStore.toggleMenu(props.listId)
 }
 
 // 處理新增卡片
 const handleAddCard = () => {
   emit('add-card')
-  isMenuOpen.value = false
+  // 執行動作後關閉選單
+  boardStore.closeAllMenus()
 }
 
 // 處理刪除列表
 const handleDeleteList = () => {
   emit('delete-list')
-  isMenuOpen.value = false
+  // 執行動作後關閉選單
+  boardStore.closeAllMenus()
 }
 
-// 點擊外部區域關閉選單
+// 點擊外部區域關閉所有選單
 const handleClickOutside = (event: Event) => {
   const target = event.target as HTMLElement
   if (!target.closest('.list-menu-container')) {
-    isMenuOpen.value = false
+    boardStore.closeAllMenus()
   }
 }
 

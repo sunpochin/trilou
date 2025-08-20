@@ -1,14 +1,32 @@
 <template>
   <!-- 卡片組件 -->
-  <div class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-shadow duration-200 hover:shadow-md relative group">
+  <div class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-shadow duration-200 hover:shadow-md relative group min-h-16 cursor-pointer"
+    @click="openCardModal"
+  >
     <!-- 顯示模式：顯示卡片標題 -->
     <div 
       v-if="!isEditing" 
-      @click="openCardModal"
-      @dblclick="startEditing"
-      class="min-h-6 cursor-pointer pr-8"
+      class="min-h-6 pr-8 pb-6"
     >
       {{ card.title }}  (pos: {{ card.position }})
+    </div>
+      <!-- @dblclick="startEditing" -->
+    
+    <!-- 底部圖示區域 -->
+    <div v-if="!isEditing" class="absolute bottom-2 left-3 right-3 flex justify-between items-center">
+      <!-- 左下角：描述圖示（當有描述時顯示） -->
+      <div v-if="card.description && card.description.trim()" class="flex items-center">
+        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+        </svg>
+      </div>
+      <div v-else></div>
+      
+      <!-- 右下角：標籤區域 -->
+      <div class="flex gap-1">
+        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-sm">MCP</span>
+      </div>
     </div>
     
     <!-- 刪除按鈕 - 只在 hover 時顯示 -->
@@ -44,7 +62,6 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
-import { useBoardStore } from '@/stores/boardStore'
 import { useCardActions } from '@/composables/useCardActions'
 import type { CardUI } from '@/types'
 
@@ -61,8 +78,6 @@ const emit = defineEmits<{
   openModal: [card: Card]
 }>()
 
-// 取得 store 實例
-const boardStore = useBoardStore()
 
 // 取得卡片操作功能
 const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction } = useCardActions()

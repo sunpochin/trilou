@@ -11,7 +11,7 @@ type Board = BoardUI
 // 匯出看板狀態管理 Store
 export const useBoardStore = defineStore('board', {
   // 定義 Store 的狀態
-  state: (): { board: Board; isLoading: boolean } => ({
+  state: (): { board: Board; isLoading: boolean; openMenuId: string | null } => ({
     board: {
       id: 'board-1',
       title: 'My Board',
@@ -19,7 +19,9 @@ export const useBoardStore = defineStore('board', {
       lists: []
     },
     // 載入狀態，用於顯示 loading spinner
-    isLoading: false
+    isLoading: false,
+    // 目前開啟的選單 ID，同時只能有一個選單開啟
+    openMenuId: null
   }),
   // Getters: 計算派生狀態
   getters: {
@@ -417,6 +419,30 @@ export const useBoardStore = defineStore('board', {
         console.error('❌ [STORE] 更新列表標題失敗:', error)
         throw error
       }
+    },
+
+    // 設定開啟的選單 ID，關閉其他所有選單
+    // 實現「同時只能有一個選單開啟」的全域狀態控制
+    setOpenMenu(listId: string | null) {
+      this.openMenuId = listId
+    },
+
+    // 切換指定選單的開啟狀態
+    // 如果該選單已開啟則關閉，如果其他選單開啟則切換到該選單
+    toggleMenu(listId: string) {
+      if (this.openMenuId === listId) {
+        // 如果點擊的是已開啟的選單，則關閉它
+        this.openMenuId = null
+      } else {
+        // 如果點擊的是其他選單，則開啟它（自動關閉之前開啟的選單）
+        this.openMenuId = listId
+      }
+    },
+
+    // 關閉所有選單
+    // 通常在點擊外部區域時呼叫
+    closeAllMenus() {
+      this.openMenuId = null
     }
   }
 })
