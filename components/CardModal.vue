@@ -99,9 +99,14 @@ const closeModal = () => {
 }
 
 // 更新標題（即時更新，不關閉模態框）
-const updateTitle = () => {
+const updateTitle = async () => {
   if (props.card && localTitle.value.trim()) {
-    updateCardTitle(props.card.id, localTitle.value.trim())
+    try {
+      await updateCardTitle(props.card.id, localTitle.value.trim())
+    } catch (error) {
+      console.error('更新標題失敗:', error)
+      // 可以在這裡加入錯誤提示，但不阻止用戶繼續編輯
+    }
   }
 }
 
@@ -119,13 +124,22 @@ const cancelDescriptionEdit = () => {
   }
 }
 
-// 儲存變更（僅儲存描述）
-const saveChanges = () => {
-  if (props.card) {
-    // 更新描述
-    updateCardDescription(props.card.id, localDescription.value.trim())
+// 儲存變更（僅儲存描述）- 等待儲存完成再關閉模態框
+const saveChanges = async () => {
+  if (!props.card) return
+  
+  try {
+    console.log('🔄 [MODAL] 開始儲存描述變更...')
+    await updateCardDescription(props.card.id, localDescription.value.trim())
+    console.log('✅ [MODAL] 描述儲存成功，關閉編輯模式')
+    
+    // 只有成功儲存後才關閉編輯模式和模態框
     isDescriptionEditing.value = false
     closeModal()
+  } catch (error) {
+    console.error('❌ [MODAL] 儲存描述失敗:', error)
+    // 發生錯誤時不關閉模態框，讓用戶可以重新嘗試或取消
+    // 可以在這裡加入用戶友好的錯誤提示
   }
 }
 </script>

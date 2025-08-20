@@ -120,23 +120,47 @@ export const useCardActions = () => {
   /**
    * 📝 更新卡片標題
    * 
+   * 使用 async/await 確保操作完成，準備未來的 API 整合
+   * 提供更好的錯誤處理和用戶體驗
+   * 
    * @param cardId 卡片 ID
    * @param newTitle 新標題
    */
-  const updateCardTitle = (cardId: string, newTitle: string) => {
-    console.log('📝 [CARD-ACTION] 更新卡片標題:', { cardId, newTitle })
-    boardStore.updateCardTitle(cardId, newTitle)
+  const updateCardTitle = async (cardId: string, newTitle: string) => {
+    try {
+      console.log('📝 [CARD-ACTION] 更新卡片標題:', { cardId, newTitle })
+      
+      // 目前是同步更新本地狀態，未來可以加入 API 請求
+      boardStore.updateCardTitle(cardId, newTitle)
+      
+      console.log('✅ [CARD-ACTION] 卡片標題更新成功')
+    } catch (error) {
+      console.error('❌ [CARD-ACTION] 更新卡片標題失敗:', error)
+      throw error // 重新拋出錯誤讓調用者處理
+    }
   }
 
   /**
    * 📄 更新卡片描述
    * 
+   * 使用 async/await 確保操作完成，準備未來的 API 整合
+   * 提供更好的錯誤處理和用戶體驗
+   * 
    * @param cardId 卡片 ID
    * @param newDescription 新描述
    */
-  const updateCardDescription = (cardId: string, newDescription: string) => {
-    console.log('📄 [CARD-ACTION] 更新卡片描述:', { cardId, newDescription })
-    boardStore.updateCardDescription(cardId, newDescription)
+  const updateCardDescription = async (cardId: string, newDescription: string) => {
+    try {
+      console.log('📄 [CARD-ACTION] 更新卡片描述:', { cardId, newDescription })
+      
+      // 目前是同步更新本地狀態，未來可以加入 API 請求
+      boardStore.updateCardDescription(cardId, newDescription)
+      
+      console.log('✅ [CARD-ACTION] 卡片描述更新成功')
+    } catch (error) {
+      console.error('❌ [CARD-ACTION] 更新卡片描述失敗:', error)
+      throw error // 重新拋出錯誤讓調用者處理
+    }
   }
 
   return {
