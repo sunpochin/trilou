@@ -77,7 +77,7 @@ const { openMenuId, toggleMenu, closeAllMenus } = useListMenu()
 
 // 計算當前選單是否開啟（基於 composable 提供的響應式狀態）
 // 只有當全域開啟的選單 ID 等於當前列表 ID 時，此選單才是開啟狀態
-const isMenuOpen = computed(() => openMenuId.value === props.listId)
+const isMenuOpen = computed<boolean>(() => openMenuId.value === props.listId)
 
 // 切換選單顯示狀態
 // 透過 composable 統一管理，確保同時只有一個選單開啟
