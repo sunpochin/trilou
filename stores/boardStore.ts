@@ -255,24 +255,65 @@ export const useBoardStore = defineStore('board', {
       }
     },
     
-    // 新增卡片到指定列表
-    // 使用 Repository 模式建立新卡片，成功後加入對應列表的本地狀態
+    // 🚀 新增卡片到指定列表 - 使用樂觀 UI 更新
+    // 
+    // 🎯 樂觀 UI 更新 = 先改 UI，再打 API
+    // 就像你先把積木放上去，再問媽媽可不可以放
+    // 這樣 UI 感覺超快，用戶體驗更好！
+    //
+    // 🔄 流程：
+    // 1. 立即建立暫時卡片並顯示在 UI 上
+    // 2. 同時在背景呼叫 API
+    // 3. API 成功：更新暫時卡片為真實 ID
+    // 4. API 失敗：移除暫時卡片，顯示錯誤訊息
     async addCard(listId: string, title: string) {
+      // 🎯 步驟1：找到目標列表
+      const list = this.board.lists.find(list => list.id === listId)
+      if (!list) {
+        console.error('❌ [STORE] 找不到指定的列表:', listId)
+        throw new Error('找不到指定的列表')
+      }
+
+      // 🎯 步驟2：建立暫時卡片（立即顯示在 UI）
+      // 使用時間戳作為暫時 ID，確保唯一性
+      const tempId = `temp-${Date.now()}-${Math.random()}`
+      const optimisticCard: CardUI = {
+        id: tempId,
+        title: title.trim(),
+        description: '',
+        listId: listId,
+        position: list.cards.length, // 放在最後一個位置
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+
+      // 🚀 樂觀更新：立即加入本地狀態（用戶立刻看到）
+      list.cards.push(optimisticCard)
+      console.log('⚡ [STORE] 樂觀更新：立即顯示暫時卡片', optimisticCard)
+
       try {
-        // 🎯 使用 Repository 模式：透過 CardRepository 建立卡片
-        const newCard = await cardRepository.createCard(title, listId)
+        // 🎯 步驟3：背景呼叫 API（用戶感受不到等待）
+        console.log('📤 [STORE] 背景呼叫 API 建立真實卡片...')
+        const realCard = await cardRepository.createCard(title, listId)
         
-        // 新增到本地狀態
-        const list = this.board.lists.find(list => list.id === listId)
-        if (list) {
-          list.cards.push(newCard)
-          console.log('✅ [STORE] 成功新增卡片:', newCard)
-        } else {
-          console.error('❌ [STORE] 找不到指定的列表:', listId)
+        // 🎯 步驟4：成功時，用真實卡片替換暫時卡片
+        const cardIndex = list.cards.findIndex(card => card.id === tempId)
+        if (cardIndex !== -1) {
+          list.cards[cardIndex] = realCard
+          console.log('✅ [STORE] 成功：用真實卡片替換暫時卡片', realCard)
         }
+
       } catch (error) {
-        console.error('❌ [STORE] 新增卡片錯誤:', error)
-        // 重新拋出錯誤，讓呼叫者可以處理
+        // 🎯 步驟5：失敗時，回滾樂觀更新（移除暫時卡片）
+        console.error('❌ [STORE] API 失敗，執行回滾...')
+        const cardIndex = list.cards.findIndex(card => card.id === tempId)
+        if (cardIndex !== -1) {
+          list.cards.splice(cardIndex, 1)
+          console.log('🔄 [STORE] 回滾完成：已移除暫時卡片')
+        }
+        
+        // 重新拋出錯誤，讓 UI 層顯示錯誤訊息
+        console.error('💥 [STORE] 新增卡片失敗:', error)
         throw error
       }
     },
