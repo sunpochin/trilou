@@ -402,21 +402,38 @@ export const useBoardStore = defineStore('board', {
       }
     },
 
-    // 更新指定列表的標題
-    // 找到對應的列表並更新其標題，同時寫入資料庫
+    // 更新指定列表的標題（帶回滾，避免後端失敗時前端狀態髒掉）
+    // 1) 先做輸入清理與存在性檢查  2) 樂觀更新  3) 失敗回滾
     async updateListTitle(listId: string, newTitle: string) {
+      // ✂️ 先修剪標題，避免空白字串
+      const title = newTitle.trim()
+      if (!title) {
+        console.warn('⚠️ [STORE] newTitle 為空，已略過更新')
+        return
+      }
+      
+      // 🔍 找到目標列表
+      const list = this.board.lists.find(l => l.id === listId)
+      if (!list) {
+        console.warn('⚠️ [STORE] 找不到列表，無法更新標題:', listId)
+        return
+      }
+
+      const prevTitle = list.title
+      console.log(`🔄 [STORE] 開始更新列表標題: "${prevTitle}" → "${title}"`)
+      
+      // ✅ 樂觀更新前端狀態（立即顯示給用戶，提升體驗）
+      list.title = title
+      
       try {
-        const list = this.board.lists.find(list => list.id === listId)
-        if (list) {
-          // 先更新前端狀態
-          list.title = newTitle
-          
-          // 🎯 使用 Repository 模式：透過 ListRepository 更新資料庫
-          await listRepository.updateListTitle(listId, newTitle)
-          console.log(`✅ [STORE] 成功更新列表標題: "${newTitle}"`)
-        }
+        // 🎯 使用 Repository 模式：透過 ListRepository 更新資料庫
+        await listRepository.updateListTitle(listId, title)
+        console.log(`✅ [STORE] 成功更新列表標題: "${title}"`)
       } catch (error) {
-        console.error('❌ [STORE] 更新列表標題失敗:', error)
+        // 🔄 失敗回滾：恢復原始標題，確保 UI 與後端一致
+        list.title = prevTitle
+        console.error('❌ [STORE] 更新列表標題失敗，已回滾至原標題:', prevTitle)
+        console.error('  🔍 錯誤詳情:', error)
         throw error
       }
     },
