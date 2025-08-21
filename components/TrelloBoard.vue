@@ -21,7 +21,7 @@
 
 <template>
   <!-- 看板主容器 -->
-  <div class="flex gap-4 p-4 h-screen overflow-x-auto bg-gray-100 font-sans">
+  <div class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans">
     
     <!-- 載入狀態：顯示 loading spinner -->
     <div v-if="viewData.isLoading" class="flex items-center justify-center w-full h-full">
