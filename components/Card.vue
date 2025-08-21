@@ -57,17 +57,10 @@
       <!-- 右下角：標籤區域 -->
       <div class="flex gap-1">
         <span 
-          v-if="card.status"
           class="text-xs px-2 py-1 rounded-sm font-medium"
-          :class="getStatusTagClass(card.status)"
+          :class="getStatusTagClass(card.status || 'medium')"
         >
-          {{ formatStatus(card.status) }}
-        </span>
-        <span 
-          v-else
-          class="bg-yellow-500 text-white text-xs px-2 py-1 rounded-sm"
-        >
-          📋 中優先
+          {{ formatStatus(card.status || 'medium') }}
         </span>
       </div>
     </div>
