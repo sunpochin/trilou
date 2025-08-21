@@ -76,7 +76,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useCardActions } from '@/composables/useCardActions'
-import { useBoardStore } from '@/stores/boardStore'
+import { useListActions } from '@/composables/useListActions'
 
 // 定義 props
 interface Props {
@@ -96,9 +96,9 @@ const userInput = ref('')
 // 樂觀 UI 模式：移除不必要的 loading、cards、errorMessage 狀態
 // 因為模態框會立即關閉，不再需要顯示這些狀態
 
-// 取得看板 store 和業務邏輯 composables
-const boardStore = useBoardStore()
+// 取得業務邏輯 composables（遵循依賴反轉原則）
 const { addCard } = useCardActions()
+const { addListIfEmpty } = useListActions()
 
 // 🚀 樂觀 UI：立即開始生成並加入任務到看板
 async function generateCards() {
@@ -142,22 +142,17 @@ async function generateCards() {
   }
 }
 
-// 將生成的卡片自動加入看板
+// 將生成的卡片自動加入看板（使用依賴反轉原則）
 async function addGeneratedCardsToBoard(cards: Array<{title: string, description?: string, status?: string}>) {
   try {
     console.log('📋 [AI-MODAL] 開始將任務加入看板...')
     
-    // 找到第一個列表，如果沒有列表就創建一個
-    let targetList = boardStore.board.lists[0]
-    
-    if (!targetList) {
-      await boardStore.addList('AI 生成任務')
-      targetList = boardStore.board.lists[0]
-    }
+    // 🎯 使用 composable 的抽象方法，而不直接操作 store
+    const { id: targetListId } = await addListIfEmpty('AI 生成任務')
     
     // 逐一加入卡片
     for (const card of cards) {
-      await addCard(targetList.id, card.title, card.status || 'todo', card.description)
+      await addCard(targetListId, card.title, card.status || 'todo', card.description)
     }
     
     console.log(`🎉 [AI-MODAL] 成功加入 ${cards.length} 個任務到看板`)

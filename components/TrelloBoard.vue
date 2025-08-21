@@ -24,7 +24,7 @@
   <div class="flex gap-4 p-4 h-screen overflow-x-auto bg-gray-100 font-sans">
     
     <!-- 載入狀態：顯示 loading spinner -->
-    <div v-if="boardStore.isLoading" class="flex items-center justify-center w-full h-full">
+    <div v-if="viewData.isLoading" class="flex items-center justify-center w-full h-full">
       <div class="text-center">
         <SkeletonLoader 
           size="lg" 
@@ -40,12 +40,12 @@
       <!-- 可拖拉的列表容器 -->
       <draggable 
         class="flex gap-4" 
-        :list="boardStore.board.lists" 
+        :list="viewData.lists" 
         @change="onListMove"
         tag="div"
       >
         <ListItem
-          v-for="list in boardStore.board.lists" 
+          v-for="list in viewData.lists" 
           :key="list.id"
           :list="list"
           @card-move="onCardMove"
@@ -78,8 +78,8 @@ import { ref } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
-import { useBoardStore } from '@/stores/boardStore'
 import { useListActions } from '@/composables/useListActions'
+import { useBoardView } from '@/composables/useBoardView'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
@@ -87,11 +87,10 @@ import { MESSAGES } from '@/constants/messages'
 // 使用統一的卡片型別定義
 type Card = CardUI
 
-// 取得看板 store 實例
-const boardStore = useBoardStore()
-
-// 使用列表操作邏輯
+// 🎯 使用 Rabbit 建議的依賴反轉：不直接依賴 boardStore
+// 改為依賴抽象的 composables 接口
 const { addList } = useListActions()
+const { viewData, handleCardMove, handleListMove, findListById, getAllListIds } = useBoardView()
 
 // 模態框狀態管理
 const showCardModal = ref(false)
@@ -115,9 +114,9 @@ const onCardMove = async (event: any) => {
     console.log('🔄 [COMPONENT] 卡片在列表內移動:', event.moved)
     const { element: card } = event.moved
     
-    // 🎯 找到卡片所在的列表
+    // 🎯 找到卡片所在的列表（使用抽象方法）
     let currentListId = null
-    for (const list of boardStore.board.lists) {
+    for (const list of viewData.lists) {
       const foundCard = list.cards.find(c => c.id === card.id)
       if (foundCard) {
         currentListId = list.id
@@ -129,7 +128,7 @@ const onCardMove = async (event: any) => {
       try {
         console.log(`🚀 [COMPONENT] 同一列表內移動，重新整理列表 ${currentListId} 的位置`)
         // ✅ Vue Draggable 已經更新了 UI，我們只需要重新排序 position
-        await boardStore.moveCardAndReorder([currentListId])
+        await handleCardMove([currentListId])
         console.log('✅ [COMPONENT] 成功更新列表內卡片位置')
       } catch (error) {
         console.error('❌ [COMPONENT] 更新卡片位置失敗:', error)
@@ -146,7 +145,7 @@ const onCardMove = async (event: any) => {
     
     // 🎯 找到卡片現在在哪個列表中（Vue Draggable 已經移動了）
     let targetListId = null
-    for (const list of boardStore.board.lists) {
+    for (const list of viewData.lists) {
       const foundCard = list.cards.find(c => c.id === card.id)
       if (foundCard) {
         targetListId = list.id
@@ -170,7 +169,7 @@ const onCardMove = async (event: any) => {
     if (!sourceListId && targetListId) {
       console.log('⚠️ [COMPONENT] 方法1失敗，嘗試方法2：排除法推算 sourceListId')
       // 假設只有兩個列表發生變化，找出不是 targetListId 的那個
-      for (const list of boardStore.board.lists) {
+      for (const list of viewData.lists) {
         if (list.id !== targetListId) {
           // 檢查這個列表是否有位置變化（表示有卡片被移出）
           const hasGaps = list.cards.some((c, index) => c.position !== undefined && c.position !== index)
@@ -187,8 +186,8 @@ const onCardMove = async (event: any) => {
     if (!sourceListId && targetListId) {
       console.log('⚠️ [COMPONENT] 方法1和2都失敗，使用方法3：重新整理所有列表')
       try {
-        const allListIds = boardStore.board.lists.map(list => list.id)
-        await boardStore.moveCardAndReorder(allListIds)
+        const allListIds = getAllListIds()
+        await handleCardMove(allListIds)
         console.log('✅ [COMPONENT] 方法3：成功重新整理所有列表位置')
         return // 早期返回，避免重複執行
       } catch (error) {
@@ -205,7 +204,7 @@ const onCardMove = async (event: any) => {
         console.log(`🚀 [COMPONENT] 跨列表移動：${sourceListId || '未知'} → ${targetListId}`)
         console.log(`📋 [COMPONENT] 需要更新的列表:`, listsToUpdate)
         
-        await boardStore.moveCardAndReorder(listsToUpdate)
+        await handleCardMove(listsToUpdate)
         console.log('✅ [COMPONENT] 成功完成跨列表移動並重新整理位置')
       } catch (error) {
         console.error('❌ [COMPONENT] 跨列表移動失敗:', error)
@@ -217,7 +216,7 @@ const onCardMove = async (event: any) => {
     } else {
       console.warn('⚠️ [COMPONENT] 無法識別 targetListId，跳過跨列表移動處理')
       console.log('📊 [COMPONENT] 當前看板狀態:', {
-        listsCount: boardStore.board.lists.length,
+        listsCount: viewData.listsCount,
         cardId: card.id,
         cardTitle: card.title
       })
@@ -229,7 +228,7 @@ const onCardMove = async (event: any) => {
 const onListMove = async (event: any) => {
   console.log('📋 [COMPONENT] List moved event:', event)
   
-  // 🎯 Vue Draggable 的 :list 屬性會自動修改 boardStore.board.lists 陣列順序
+  // 🎯 Vue Draggable 的 :list 屬性會自動修改 viewData.lists 陣列順序
   // 這就是為什麼 UI 立即更新的原因！
   
   // 但是我們需要將新的順序保存到資料庫
@@ -240,7 +239,7 @@ const onListMove = async (event: any) => {
       // 🎯 委派給 Store 處理：符合 SRP (單一職責原則)
       // 組件只負責佈局協調，資料儲存由 Store 負責
       console.log('💾 [COMPONENT] 委派保存列表順序到 Store...')
-      await boardStore.saveListPositions()
+      await handleListMove()
       console.log('✅ [COMPONENT] 列表位置已更新')
       
     } catch (error) {
@@ -252,8 +251,8 @@ const onListMove = async (event: any) => {
 }
 
 // 在組件載入時記錄 lists 的數量
-console.log('🖼️ [COMPONENT] TrelloBoard 載入，目前 lists 數量:', boardStore.board.lists.length)
-console.log('🖼️ [COMPONENT] TrelloBoard lists 內容:', boardStore.board.lists)
+console.log('🖼️ [COMPONENT] TrelloBoard 載入，目前 lists 數量:', viewData.listsCount)
+console.log('🖼️ [COMPONENT] TrelloBoard 使用依賴反轉原則，透過 composable 訪問資料')
 
 // 處理新增列表
 const handleAddList = () => {
