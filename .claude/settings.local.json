@@ -24,7 +24,8 @@
       "Bash(npm run test:unit:*)",
       "Bash(npx nuxi typecheck:*)",
       "Bash(yarn run:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(curl:*)"
     ],
     "defaultMode": "acceptEdits"
   }
