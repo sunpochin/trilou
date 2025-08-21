@@ -18,6 +18,7 @@
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           type="text"
           placeholder="輸入卡片標題..."
+          @focus="startTitleEdit"
           @keydown.enter="updateTitle"
         />
       </div>
@@ -37,10 +38,10 @@
         ></textarea>
       </div>
 
-      <!-- 按鈕區域 - 只有在編輯描述時才顯示 -->
-      <div v-if="isDescriptionEditing" class="flex justify-end gap-2">
+      <!-- 按鈕區域 - 有任何欄位編輯時都顯示 -->
+      <div v-if="isAnyFieldEditing" class="flex justify-end gap-2">
         <button
-          @click="cancelDescriptionEdit"
+          @click="cancelEdit"
           class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
         >
           取消
@@ -57,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useCardActions } from '@/composables/useCardActions'
 
 // 定義卡片資料型別
@@ -84,6 +85,10 @@ const { updateCardTitle, updateCardDescription } = useCardActions()
 const localTitle = ref('')
 const localDescription = ref('')
 const isDescriptionEditing = ref(false)
+const isTitleEditing = ref(false)
+
+// 計算是否有任何欄位正在編輯（決定是否顯示按鈕）
+const isAnyFieldEditing = computed(() => isTitleEditing.value || isDescriptionEditing.value)
 
 // 監聽卡片變化，更新本地狀態
 watch(() => props.card, (newCard) => {
@@ -96,6 +101,11 @@ watch(() => props.card, (newCard) => {
 // 關閉模態框
 const closeModal = () => {
   emit('close')
+}
+
+// 開始編輯標題
+const startTitleEdit = () => {
+  isTitleEditing.value = true
 }
 
 // 更新標題（即時更新，不關閉模態框）
@@ -115,29 +125,44 @@ const startDescriptionEdit = () => {
   isDescriptionEditing.value = true
 }
 
-// 取消編輯描述
-const cancelDescriptionEdit = () => {
+// 取消編輯（標題和描述）
+const cancelEdit = () => {
+  isTitleEditing.value = false
   isDescriptionEditing.value = false
-  // 恢復原始描述
+  // 恢復原始內容
   if (props.card) {
+    localTitle.value = props.card.title
     localDescription.value = props.card.description || ''
   }
 }
 
-// 儲存變更（僅儲存描述）- 等待儲存完成再關閉模態框
+// 儲存變更（標題和描述）- 等待儲存完成再關閉模態框
 const saveChanges = async () => {
   if (!props.card) return
   
   try {
-    console.log('🔄 [MODAL] 開始儲存描述變更...')
-    await updateCardDescription(props.card.id, localDescription.value.trim())
-    console.log('✅ [MODAL] 描述儲存成功，關閉編輯模式')
+    console.log('🔄 [MODAL] 開始儲存變更...')
+    
+    // 如果標題有變更，先儲存標題
+    if (isTitleEditing.value && localTitle.value.trim() !== props.card.title) {
+      await updateCardTitle(props.card.id, localTitle.value.trim())
+      console.log('✅ [MODAL] 標題儲存成功')
+    }
+    
+    // 如果描述有變更，儲存描述
+    if (isDescriptionEditing.value && localDescription.value.trim() !== (props.card.description || '')) {
+      await updateCardDescription(props.card.id, localDescription.value.trim())
+      console.log('✅ [MODAL] 描述儲存成功')
+    }
+    
+    console.log('✅ [MODAL] 所有變更儲存成功，關閉編輯模式')
     
     // 只有成功儲存後才關閉編輯模式和模態框
+    isTitleEditing.value = false
     isDescriptionEditing.value = false
     closeModal()
   } catch (error) {
-    console.error('❌ [MODAL] 儲存描述失敗:', error)
+    console.error('❌ [MODAL] 儲存變更失敗:', error)
     // 發生錯誤時不關閉模態框，讓用戶可以重新嘗試或取消
     // 可以在這裡加入用戶友好的錯誤提示
   }
