@@ -11,7 +11,7 @@ type Board = BoardUI
 // 匯出看板狀態管理 Store
 export const useBoardStore = defineStore('board', {
   // 定義 Store 的狀態
-  state: (): { board: Board; isLoading: boolean; openMenuId: string | null } => ({
+  state: (): { board: Board; isLoading: boolean; openMenuId: string | null; pendingAiCards: number } => ({
     board: {
       id: 'board-1',
       title: 'My Board',
@@ -21,7 +21,9 @@ export const useBoardStore = defineStore('board', {
     // 載入狀態，用於顯示 loading spinner
     isLoading: false,
     // 目前開啟的選單 ID，同時只能有一個選單開啟
-    openMenuId: null
+    openMenuId: null,
+    // 目前正在生成中的 AI 卡片數量（用於顯示 countdown）
+    pendingAiCards: 0
   }),
   // Getters: 計算派生狀態
   getters: {
@@ -552,6 +554,24 @@ export const useBoardStore = defineStore('board', {
     // 通常在點擊外部區域時呼叫
     closeAllMenus() {
       this.openMenuId = null
+    },
+
+    // 增加正在生成中的 AI 卡片數量
+    incrementPendingAiCards(count: number = 1) {
+      this.pendingAiCards += count
+      console.log(`🤖 [STORE] 新增 ${count} 張 AI 卡片到生成佇列，目前總數: ${this.pendingAiCards}`)
+    },
+
+    // 減少正在生成中的 AI 卡片數量（當卡片生成完成時呼叫）
+    decrementPendingAiCards(count: number = 1) {
+      this.pendingAiCards = Math.max(0, this.pendingAiCards - count)
+      console.log(`✅ [STORE] 完成 ${count} 張 AI 卡片生成，剩餘數量: ${this.pendingAiCards}`)
+    },
+
+    // 重置 AI 卡片生成計數器
+    resetPendingAiCards() {
+      this.pendingAiCards = 0
+      console.log('🔄 [STORE] 重置 AI 卡片生成計數器')
     }
   }
 })
