@@ -134,6 +134,7 @@ const cancelEdit = () => {
     localTitle.value = props.card.title
     localDescription.value = props.card.description || ''
   }
+  closeModal()
 }
 
 // 儲存變更（標題和描述）- 等待儲存完成再關閉模態框
