@@ -307,7 +307,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 # Trilou - 進階版 Trello 克隆
 
-一個使用尖端技術構建的現代化、功能齊全的 Trello 克隆，具備 AI 驅動的任務生成、樂觀 UI 更新和全面的拖放功能。
+一個使用尖端技術構建的現代化、功能齊全的 Trello clone, 具備 AI 驅動的任務生成、樂觀 UI 更新和全面的拖放功能。
 
 ## ✨ 核心特色
 
