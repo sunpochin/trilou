@@ -164,7 +164,39 @@ onMounted(() => {
           </button>
         </div>
       </header>
-      <TrelloBoard />
+      
+      <!-- 主要內容區域 -->
+      <div class="flex-1 overflow-hidden">
+        <TrelloBoard />
+      </div>
+      
+      <!-- 底部 GitHub 來源和作者資訊 -->
+      <footer class="bg-gray-100 border-t border-gray-200 py-2 px-4">
+        <div class="flex justify-center items-center gap-4 text-xs text-gray-500">
+          <span>
+            <a 
+              href="https://github.com/sunpochin/trilou" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="text-blue-500 hover:text-blue-600 underline"
+            >
+              Source code on GitHub
+            </a>
+          </span>
+          <span class="text-gray-300">|</span>
+          <span>
+            Made with ❤️ by 
+            <a 
+              href="https://github.com/sunpochin" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="text-blue-500 hover:text-blue-600 underline"
+            >
+              sunpochin
+            </a>
+          </span>
+        </div>
+      </footer>
     </div>
 
     <!-- 如果使用者未登入，顯示登入頁面 -->
@@ -219,6 +251,31 @@ onMounted(() => {
           
           <p class="text-xs text-gray-500 text-center">
             我們會發送一個安全的登入連結到您的信箱
+          </p>
+        </div>
+        
+        <!-- GitHub 來源和作者資訊 -->
+        <div class="mt-6 pt-4 border-t border-gray-200 text-center space-y-2">
+          <p class="text-xs text-gray-400">
+            <a 
+              href="https://github.com/sunpochin/trilou" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="text-blue-500 hover:text-blue-600 underline"
+            >
+              Source code on GitHub
+            </a>
+          </p>
+          <p class="text-xs text-gray-400">
+            Made with ❤️ by 
+            <a 
+              href="https://github.com/sunpochin" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="text-blue-500 hover:text-blue-600 underline"
+            >
+              sunpochin
+            </a>
           </p>
         </div>
       </div>
