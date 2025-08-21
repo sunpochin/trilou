@@ -161,32 +161,63 @@ export const useBoardStore = defineStore('board', {
         console.log(`🏁 [STORE] fetchBoard 完成，總耗時: ${totalTime}ms`)
       }
     },
-    // 新增列表到看板
-    // 發送 API 請求建立新列表，成功後更新本地狀態
+    // 🚀 新增列表到看板 - 使用樂觀 UI 更新
+    // 
+    // 🎯 樂觀 UI 更新 = 先改 UI，再打 API
+    // 就像你先把新房間畫在地圖上，再問政府可不可以蓋
+    // 這樣 UI 感覺超快，用戶體驗更好！
+    //
+    // 🔄 流程：
+    // 1. 立即建立暫時列表並顯示在 UI 上
+    // 2. 同時在背景呼叫 API
+    // 3. API 成功：更新暫時列表為真實 ID
+    // 4. API 失敗：移除暫時列表，顯示錯誤訊息
     async addList(title: string) {
       console.log('🏪 [STORE] addList 被呼叫，參數:', { title })
       
+      // 🎯 步驟1：建立暫時列表（立即顯示在 UI）
+      // 使用時間戳作為暫時 ID，確保唯一性
+      const tempId = `temp-list-${Date.now()}-${Math.random()}`
+      const optimisticList: List = {
+        id: tempId,
+        title: title.trim(),
+        position: this.board.lists.length, // 放在最後一個位置
+        cards: [] // 新列表初始沒有卡片
+      }
+
+      // 🚀 樂觀更新：立即加入本地狀態（用戶立刻看到）
+      this.board.lists.push(optimisticList)
+      console.log('⚡ [STORE] 樂觀更新：立即顯示暫時列表', optimisticList)
+      
       try {
-        console.log('📤 [STORE] 發送 API 請求到 /api/lists')
+        // 🎯 步驟2：背景呼叫 API（用戶感受不到等待）
+        console.log('📤 [STORE] 背景呼叫 API 建立真實列表...')
         const response = await $fetch('/api/lists', {
           method: 'POST',
-          body: { 
-            title
-          }
+          body: { title }
         })
         
         console.log('📥 [STORE] API 回應:', response)
         
-        // $fetch 會直接拋出錯誤，所以這裡不需要檢查 error 欄位
-        // 新增到本地狀態，保持 UI 與後端同步
-        const newList: List = {
-          ...response,
-          cards: [] // 新列表初始沒有卡片
+        // 🎯 步驟3：成功時，用真實列表替換暫時列表
+        const listIndex = this.board.lists.findIndex(list => list.id === tempId)
+        if (listIndex !== -1) {
+          const realList: List = {
+            ...response,
+            cards: [] // 新列表初始沒有卡片
+          }
+          this.board.lists[listIndex] = realList
+          console.log('✅ [STORE] 成功：用真實列表替換暫時列表', realList)
         }
-        console.log('✅ [STORE] 新增到本地狀態:', newList)
-        this.board.lists.push(newList)
+        
       } catch (error) {
-        console.error('❌ [STORE] 新增列表錯誤:', error)
+        // 🎯 步驟4：失敗時，回滾樂觀更新（移除暫時列表）
+        console.error('❌ [STORE] API 失敗，執行回滾...')
+        const listIndex = this.board.lists.findIndex(list => list.id === tempId)
+        if (listIndex !== -1) {
+          this.board.lists.splice(listIndex, 1)
+          console.log('🔄 [STORE] 回滾完成：已移除暫時列表')
+        }
         
         // 顯示更詳細的錯誤資訊，協助除錯
         if (error && typeof error === 'object') {
@@ -197,47 +228,65 @@ export const useBoardStore = defineStore('board', {
             data: (error as any).data
           })
         }
+        
+        // 重新拋出錯誤，讓 UI 層顯示錯誤訊息
+        throw error
       }
     },
     
-    // 刪除指定的列表
-    // 發送 API 請求刪除列表，成功後從本地狀態移除
+    // 🚀 刪除指定的列表 - 使用樂觀 UI 更新
+    // 
+    // 🎯 樂觀 UI 更新 = 先改 UI，再打 API
+    // 就像你先把房間從地圖上擦掉，再問政府可不可以拆
+    // 這樣 UI 感覺超快，用戶體驗更好！
+    //
+    // 🔄 流程：
+    // 1. 立即從 UI 移除列表（但保存備份）
+    // 2. 同時在背景呼叫 API
+    // 3. API 成功：完成刪除
+    // 4. API 失敗：恢復列表，顯示錯誤訊息
     async removeList(listId: string) {
       console.log('🗑️ [STORE] removeList 被呼叫，參數:', { listId })
       
-      // 記錄刪除前的狀態
-      const targetList = this.board.lists.find(list => list.id === listId)
-      if (targetList) {
-        console.log('📋 [STORE] 找到要刪除的列表:', {
-          id: targetList.id,
-          title: targetList.title,
-          cardsCount: targetList.cards.length
-        })
-      } else {
+      // 🎯 步驟1：找到要刪除的列表並記錄完整狀態
+      const listIndex = this.board.lists.findIndex(list => list.id === listId)
+      if (listIndex === -1) {
         console.warn('⚠️ [STORE] 警告: 找不到要刪除的列表 ID:', listId)
         return
       }
       
+      // 保存完整的列表狀態（包含位置），用於可能的回滾
+      const targetList = { ...this.board.lists[listIndex] }
+      const originalIndex = listIndex
+      console.log('📋 [STORE] 找到要刪除的列表:', {
+        id: targetList.id,
+        title: targetList.title,
+        cardsCount: targetList.cards.length,
+        position: originalIndex
+      })
+
+      // 🚀 樂觀更新：立即從本地狀態移除（用戶立刻看到）
+      this.board.lists.splice(listIndex, 1)
+      console.log('⚡ [STORE] 樂觀更新：立即移除列表，剩餘列表數量:', this.board.lists.length)
+      
       try {
-        console.log('📤 [STORE] 發送 DELETE API 請求到:', `/api/lists/${listId}`)
+        // 🎯 步驟2：背景呼叫 API（用戶感受不到等待）
+        console.log('📤 [STORE] 背景呼叫 DELETE API 請求到:', `/api/lists/${listId}`)
         
         await $fetch(`/api/lists/${listId}`, {
           method: 'DELETE'
         })
         
-        console.log('✅ [STORE] API 刪除請求成功')
+        console.log('✅ [STORE] API 刪除請求成功，列表已永久刪除')
         
-        // 從本地狀態中移除對應的列表
-        const index = this.board.lists.findIndex(list => list.id === listId)
-        if (index !== -1) {
-          console.log('🔄 [STORE] 從本地狀態移除列表，索引:', index)
-          this.board.lists.splice(index, 1)
-          console.log('✅ [STORE] 列表已從本地狀態移除，剩餘列表數量:', this.board.lists.length)
-        } else {
-          console.error('❌ [STORE] 錯誤: 無法在本地狀態中找到要刪除的列表')
-        }
       } catch (error) {
-        console.error('❌ [STORE] 刪除列表錯誤:')
+        // 🎯 步驟3：失敗時，回滾樂觀更新（恢復列表）
+        console.error('❌ [STORE] API 失敗，執行回滾...')
+        
+        // 將列表恢復到原始位置
+        this.board.lists.splice(originalIndex, 0, targetList)
+        console.log('🔄 [STORE] 回滾完成：已恢復列表到原始位置')
+        
         console.error('  🔍 錯誤類型:', typeof error)
         console.error('  🔍 錯誤內容:', error)
         
@@ -250,7 +299,7 @@ export const useBoardStore = defineStore('board', {
           })
         }
         
-        // 重新拋出錯誤，讓上層處理
+        // 重新拋出錯誤，讓 UI 層顯示錯誤訊息
         throw error
       }
     },

@@ -26,10 +26,45 @@ const user = ref<any>(null);
 // AI 生成任務模態框的顯示狀態
 const showAiModal = ref(false);
 
+// Magic email login 狀態
+const emailInput = ref('');
+const isEmailLoading = ref(false);
+
 // 處理登出邏輯
 const handleLogout = async () => {
   const { error } = await $supabase.auth.signOut();
   if (error) console.error('登出失敗', error);
+};
+
+// 處理 Magic Email Login
+const signInWithEmail = async () => {
+  if (!emailInput.value.trim()) {
+    alert('請輸入電子信箱地址');
+    return;
+  }
+
+  isEmailLoading.value = true;
+  try {
+    const { error } = await $supabase.auth.signInWithOtp({
+      email: emailInput.value.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/`
+      }
+    });
+
+    if (error) {
+      console.error('Magic Email 登入失敗：', error);
+      alert(`登入失敗：${error.message}`);
+    } else {
+      alert('已發送登入連結到您的電子信箱，請檢查您的信箱並點擊連結完成登入。');
+      emailInput.value = ''; // 清空輸入框
+    }
+  } catch (e) {
+    console.error('Magic Email 登入流程發生錯誤：', e);
+    alert('登入流程發生錯誤，請稍後再試。');
+  } finally {
+    isEmailLoading.value = false;
+  }
 };
 
 // 在元件掛載後執行
@@ -106,6 +141,50 @@ onMounted(() => {
           <p class="text-sm text-gray-500">{{ MESSAGES.login.privacyNote }}</p>
         </div>
         <GoogleLoginButton />
+        
+        <!-- 分隔線 -->
+        <div class="my-6 flex items-center">
+          <div class="flex-1 border-t border-gray-300"></div>
+          <span class="mx-4 text-sm text-gray-500">或</span>
+          <div class="flex-1 border-t border-gray-300"></div>
+        </div>
+        
+        <!-- Magic Email Login 區塊 -->
+        <div class="space-y-4">
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-2 text-left">
+              使用電子信箱登入
+            </label>
+            <input
+              id="email"
+              v-model="emailInput"
+              type="email"
+              placeholder="輸入您的電子信箱"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              :disabled="isEmailLoading"
+              @keyup.enter="signInWithEmail"
+            />
+          </div>
+          
+          <button
+            @click="signInWithEmail"
+            :disabled="isEmailLoading || !emailInput.trim()"
+            class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          >
+            <svg v-if="isEmailLoading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+            <span>{{ isEmailLoading ? '發送中...' : '發送登入連結' }}</span>
+          </button>
+          
+          <p class="text-xs text-gray-500 text-center">
+            我們會發送一個安全的登入連結到您的信箱
+          </p>
+        </div>
       </div>
     </div>
 
