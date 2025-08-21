@@ -200,23 +200,27 @@ export const useListActions = () => {
     }
   }
 
-  // 新增列表功能 - 使用驗證策略
-  const addList = async () => {
-    // 顯示漂亮的輸入對話框
-    const listTitle = await showInput({
-      title: '新增列表',
-      message: '請輸入新列表的標題',
-      placeholder: '列表標題...',
-      confirmText: '新增',
-      cancelText: '取消'
-    })
+  // 新增列表功能 - 使用驗證策略，支援直接傳入標題
+  const addList = async (title?: string) => {
+    let listTitle = title
     
+    // 如果沒有傳入標題，顯示輸入對話框
     if (!listTitle) {
-      console.log('❌ [COMPOSABLE] 用戶取消或未輸入列表標題')
-      return
+      listTitle = await showInput({
+        title: '新增列表',
+        message: '請輸入新列表的標題',
+        placeholder: '列表標題...',
+        confirmText: '新增',
+        cancelText: '取消'
+      })
+      
+      if (!listTitle) {
+        console.log('❌ [COMPOSABLE] 用戶取消或未輸入列表標題')
+        return
+      }
     }
     
-    console.log('✅ [COMPOSABLE] 用戶輸入列表標題:', listTitle)
+    console.log('✅ [COMPOSABLE] 列表標題:', listTitle)
     
     // 驗證列表標題
     const validation = Validator.validateListTitle(listTitle)

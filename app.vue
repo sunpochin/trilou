@@ -205,10 +205,9 @@ onMounted(() => {
         <h1 class="text-2xl font-bold mb-4">{{ MESSAGES.login.welcomeTitle }}</h1>
         <p class="text-lg text-gray-700 mb-6">{{ MESSAGES.login.welcomeSubtitle }}</p>
         <div class="mb-8 space-y-2">
-          <p class="text-gray-600 font-medium">{{ MESSAGES.login.googlePrompt }}</p>
           <p class="text-sm text-gray-500">{{ MESSAGES.login.privacyNote }}</p>
+          <GoogleLoginButton />
         </div>
-        <GoogleLoginButton />
         
         <!-- 分隔線 -->
         <div class="my-6 flex items-center">

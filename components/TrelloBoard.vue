@@ -320,28 +320,36 @@ const startAddList = async () => {
   }
 }
 
-// 保存新列表
+// 新增狀態管理：防止重複提交
+const isSavingList = ref(false)
+
+// 保存新列表 - 重構版：符合依賴反轉原則
 const saveNewList = async () => {
-  if (!newListTitle.value.trim()) return
+  // 防止重複提交
+  if (isSavingList.value) return
   
   const titleToSave = newListTitle.value.trim()
+  if (!titleToSave) return
+  
+  isSavingList.value = true
   
   try {
-    // 立即重置 UI 狀態，避免殘影
+    // 🎯 透過 composable 執行：避免組件直接存取 store (依賴反轉原則)
+    await addList(titleToSave)
+    
+    // 僅成功後才更新 UI
     isAddingList.value = false
     newListTitle.value = ''
-    
-    // 使用 composable 的 addList 方法，但需要直接傳遞標題
-    const { useBoardStore } = await import('@/stores/boardStore')
-    const boardStore = useBoardStore()
-    await boardStore.addList(titleToSave)
-    
     console.log(`✅ [TRELLO-BOARD] 成功創建列表: ${titleToSave}`)
+    
   } catch (error) {
     console.error('❌ [TRELLO-BOARD] 創建列表失敗:', error)
-    // 如果失敗，恢復編輯狀態
+    // 失敗則維持輸入以便重試
     isAddingList.value = true
     newListTitle.value = titleToSave
+    
+  } finally {
+    isSavingList.value = false
   }
 }
 
