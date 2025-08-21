@@ -12,9 +12,8 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vite
 import { setActivePinia, createPinia } from 'pinia'
 import { useBoardStore } from '@/stores/boardStore'
 
-// Mock $fetch
-const mockFetch = vi.fn()
-global.$fetch = mockFetch
+// 使用型別安全的 Mock 工具
+import { setupGlobalFetchMock, cleanupGlobalFetchMock, mockFetch } from '@/tests/utils/mockGlobalFetch'
 
 // Mock repositories
 vi.mock('@/repositories/CardRepository', () => ({
@@ -44,7 +43,7 @@ describe('boardStore 整合測試 - 完整工作流程', () => {
     boardStore = useBoardStore()
     
     vi.clearAllMocks()
-    mockFetch.mockResolvedValue({})
+    setupGlobalFetchMock()
     
     // Repository mocks
     ;(cardRepository.getAllCards as Mock).mockResolvedValue([])
@@ -56,6 +55,7 @@ describe('boardStore 整合測試 - 完整工作流程', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    cleanupGlobalFetchMock()
   })
 
   describe('完整看板建立流程', () => {

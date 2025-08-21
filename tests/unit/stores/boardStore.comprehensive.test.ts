@@ -13,10 +13,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vite
 import { setActivePinia, createPinia } from 'pinia'
 import { useBoardStore } from '@/stores/boardStore'
 import type { CardUI, ListUI } from '@/types'
-
-// Mock 所有外部依賴
-const mockFetch = vi.fn()
-global.$fetch = mockFetch
+import { setupGlobalFetchMock, cleanupGlobalFetchMock, mockFetch } from '@/tests/utils/mockGlobalFetch'
 
 // Mock repository imports
 vi.mock('@/repositories/CardRepository', () => ({
@@ -81,7 +78,9 @@ describe('boardStore 完整測試', () => {
     
     // 重置所有 mocks
     vi.clearAllMocks()
-    mockFetch.mockResolvedValue({})
+    
+    // 🛡️ 設定型別安全的全域 $fetch mock
+    setupGlobalFetchMock()
     ;(cardRepository.getAllCards as Mock).mockResolvedValue(createTestCards())
     ;(listRepository.getAllLists as Mock).mockResolvedValue(createTestLists())
     ;(cardRepository.createCard as Mock).mockResolvedValue({ id: 'card-new', title: 'New Card', listId: 'list-1' })
@@ -92,6 +91,8 @@ describe('boardStore 完整測試', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    // 🧹 清理全域狀態，避免測試間汙染
+    cleanupGlobalFetchMock()
   })
 
   describe('State 初始狀態', () => {

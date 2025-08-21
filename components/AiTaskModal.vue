@@ -77,6 +77,7 @@
 import { ref } from 'vue'
 import { useCardActions } from '@/composables/useCardActions'
 import { useListActions } from '@/composables/useListActions'
+import { eventBus } from '@/events/EventBus'
 
 // 定義 props
 interface Props {
@@ -135,10 +136,21 @@ async function generateCards() {
     // 🎯 步驟3：自動加入到看板
     await addGeneratedCardsToBoard(cards)
     
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('❌ [AI-MODAL] 任務生成失敗:', err)
-    // 可以考慮顯示全域通知，但不重新開啟模態框
-    alert(`任務生成失敗: ${err.message}`)
+    
+    // 🛡️ 類型守衛：安全地提取錯誤訊息
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    
+    // 🚀 使用 EventBus 發送通知事件（符合 Observer Pattern）
+    // 避免阻塞式的 alert，提供更好的用戶體驗
+    eventBus.emit('notification:error', {
+      title: '任務生成失敗',
+      message: errorMessage,
+      duration: 5000
+    })
+    
+    console.log('📢 [AI-MODAL] 已發送錯誤通知事件到 EventBus')
   }
 }
 
@@ -157,9 +169,20 @@ async function addGeneratedCardsToBoard(cards: Array<{title: string, description
     
     console.log(`🎉 [AI-MODAL] 成功加入 ${cards.length} 個任務到看板`)
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ [AI-MODAL] 加入任務到看板失敗:', error)
-    alert('任務已生成，但加入看板時發生錯誤，請稍後再試')
+    
+    // 🛡️ 類型守衛：安全地提取錯誤訊息
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    
+    // 🚀 使用 EventBus 發送通知事件（符合 Observer Pattern）
+    eventBus.emit('notification:error', {
+      title: '任務加入看板失敗',
+      message: `任務已生成，但加入看板時發生錯誤：${errorMessage}`,
+      duration: 6000
+    })
+    
+    console.log('📢 [AI-MODAL] 已發送加入看板失敗通知事件')
   }
 }
 
