@@ -1,4 +1,4 @@
-# Trilou - Advanced Trello Clone
+# Trilou - Trello Clone with MCP server integration
 
 A modern, full-featured Trello clone built with cutting-edge technologies, featuring AI-powered task generation, optimistic UI updates, and comprehensive drag-and-drop functionality.
 
@@ -305,7 +305,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ---
 
-# Trilou - 進階版 Trello clone
+# Trilou - 整合 MCP server 的 Trello clone
 
 一個使用尖端技術構建的現代化、功能齊全的 Trello clone, 具備 AI 驅動的任務生成、樂觀 UI 更新和全面的拖放功能。
 
