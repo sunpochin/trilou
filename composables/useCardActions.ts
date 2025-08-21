@@ -163,9 +163,35 @@ export const useCardActions = () => {
     }
   }
 
+  /**
+   * ➕ 新增卡片功能
+   * 
+   * 遵循依賴反轉原則，透過 composable 封裝 store 操作
+   * 支援完整的卡片資料包含描述欄位
+   * 
+   * @param listId 目標列表 ID
+   * @param title 卡片標題
+   * @param status 卡片狀態 (可選)
+   * @param description 卡片描述 (可選)
+   * @returns Promise<void>
+   */
+  const addCard = async (listId: string, title: string, status?: string, description?: string) => {
+    try {
+      console.log('➕ [CARD-ACTION] 新增卡片:', { listId, title, status, description })
+      
+      await boardStore.addCard(listId, title, status, description)
+      
+      console.log('✅ [CARD-ACTION] 卡片新增成功')
+    } catch (error) {
+      console.error('❌ [CARD-ACTION] 新增卡片失敗:', error)
+      throw error // 重新拋出錯誤讓調用者處理
+    }
+  }
+
   return {
     deleteCard,
     updateCardTitle,
-    updateCardDescription
+    updateCardDescription,
+    addCard
   }
 }

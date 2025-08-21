@@ -8,7 +8,7 @@
       v-if="!isEditing" 
       class="min-h-6 pr-8 pb-6"
     >
-      {{ card.title }}  (pos: {{ card.position }})
+      {{ card.title }}
     </div>
       <!-- @dblclick="startEditing" -->
     

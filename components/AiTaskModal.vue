@@ -110,6 +110,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useListActions } from '@/composables/useListActions'
+import { useCardActions } from '@/composables/useCardActions'
 import { useBoardStore } from '@/stores/boardStore'
 import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 
@@ -131,8 +133,9 @@ const cards = ref<Array<{title: string, description?: string, status?: string}>>
 const loading = ref(false)
 const errorMessage = ref('')
 
-// 取得看板 store
+// 取得看板 store 和業務邏輯 composables
 const boardStore = useBoardStore()
+const { addCard } = useCardActions()
 
 // 生成卡片的函數
 async function generateCards() {
@@ -176,15 +179,15 @@ async function addCardsToBoard() {
     let targetList = boardStore.board.lists[0]
     
     if (!targetList) {
-      // 創建一個新列表
+      // 對於程式化創建列表，直接使用 store（特殊情況，因為已有標題）
       await boardStore.addList('AI 生成任務')
       targetList = boardStore.board.lists[0]
     }
     
     // 將每個生成的卡片加入到列表中
     for (const card of cards.value) {
-      // 直接使用 MCP server 回傳的原始狀態，保留豐富的狀態信息
-      await boardStore.addCard(targetList.id, card.title, card.status || 'todo')
+      // 使用 composable 方法，支援完整的描述欄位（遵循依賴反轉原則）
+      await addCard(targetList.id, card.title, card.status || 'todo', card.description)
     }
     
     // 關閉模態框並重置狀態

@@ -266,7 +266,7 @@ export const useBoardStore = defineStore('board', {
     // 2. 同時在背景呼叫 API
     // 3. API 成功：更新暫時卡片為真實 ID
     // 4. API 失敗：移除暫時卡片，顯示錯誤訊息
-    async addCard(listId: string, title: string, status?: string) {
+    async addCard(listId: string, title: string, status?: string, description?: string) {
       // 🎯 步驟1：找到目標列表
       const list = this.board.lists.find(list => list.id === listId)
       if (!list) {
@@ -276,11 +276,12 @@ export const useBoardStore = defineStore('board', {
 
       // 🎯 步驟2：建立暫時卡片（立即顯示在 UI）
       // 使用時間戳作為暫時 ID，確保唯一性
+      console.log('🏷️ [STORE] 建立暫時卡片，標題:', title, '列表 ID:', listId, '狀態:', status, '描述', description)
       const tempId = `temp-${Date.now()}-${Math.random()}`
       const optimisticCard: CardUI = {
         id: tempId,
         title: title.trim(),
-        description: '',
+        description: description?.trim() || '',
         listId: listId,
         position: list.cards.length, // 放在最後一個位置
         status: status, // AI 生成任務的狀態標籤
@@ -295,7 +296,7 @@ export const useBoardStore = defineStore('board', {
       try {
         // 🎯 步驟3：背景呼叫 API（用戶感受不到等待）
         console.log('📤 [STORE] 背景呼叫 API 建立真實卡片...')
-        const realCard = await cardRepository.createCard(title, listId, status)
+        const realCard = await cardRepository.createCard(title, listId, description, status)
         
         // 🎯 步驟4：成功時，用真實卡片替換暫時卡片
         const cardIndex = list.cards.findIndex(card => card.id === tempId)
