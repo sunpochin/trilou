@@ -114,8 +114,8 @@ async function generateCards() {
   closeModal()
   
   // 🎯 步驟2：預估會生成的卡片數量並增加計數器（樂觀預估）
-  // 根據任務描述的複雜度預估生成 3-8 張卡片
-  const estimatedCardCount = Math.min(8, Math.max(10, Math.floor(taskDescription.length / 20)))
+  // 依描述長度估算 3–8 張
+  const estimatedCardCount = Math.min(8, Math.max(3, Math.floor(taskDescription.length / 20)))
   boardStore.incrementPendingAiCards(estimatedCardCount)
   console.log(`🤖 [AI-MODAL] 預估會生成 ${estimatedCardCount} 張卡片，已加入計數器`)
 
