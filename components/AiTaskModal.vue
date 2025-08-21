@@ -77,7 +77,7 @@
 import { ref } from 'vue'
 import { useCardActions } from '@/composables/useCardActions'
 import { useListActions } from '@/composables/useListActions'
-import { useBoardStore } from '@/stores/boardStore'
+import { useAiGeneration } from '@/composables/useAiGeneration'
 import { eventBus } from '@/events/EventBus'
 
 // 定義 props
@@ -101,7 +101,7 @@ const userInput = ref('')
 // 取得業務邏輯 composables（遵循依賴反轉原則）
 const { addCard } = useCardActions()
 const { addListIfEmpty } = useListActions()
-const boardStore = useBoardStore()
+const { addPendingCards, completePendingCards, estimateCardCount } = useAiGeneration()
 
 // 🚀 樂觀 UI：立即開始生成並加入任務到看板
 async function generateCards() {
@@ -114,9 +114,8 @@ async function generateCards() {
   closeModal()
   
   // 🎯 步驟2：預估會生成的卡片數量並增加計數器（樂觀預估）
-  // 依描述長度估算 3–8 張
-  const estimatedCardCount = Math.min(8, Math.max(3, Math.floor(taskDescription.length / 20)))
-  boardStore.incrementPendingAiCards(estimatedCardCount)
+  const estimatedCardCount = estimateCardCount(taskDescription)
+  addPendingCards(estimatedCardCount)
   console.log(`🤖 [AI-MODAL] 預估會生成 ${estimatedCardCount} 張卡片，已加入計數器`)
 
   // 🎯 步驟3：開始背景任務生成
@@ -157,11 +156,11 @@ async function generateCards() {
     if (countDifference !== 0) {
       if (countDifference > 0) {
         // 實際生成的比預估的少，需要減少計數
-        boardStore.decrementPendingAiCards(countDifference)
+        completePendingCards(countDifference)
         console.log(`📊 [AI-MODAL] 實際生成 ${actualCardCount} 張卡片，比預估少 ${countDifference} 張，已調整計數器`)
       } else {
         // 實際生成的比預估的多，需要增加計數
-        boardStore.incrementPendingAiCards(-countDifference)
+        addPendingCards(-countDifference)
         console.log(`📊 [AI-MODAL] 實際生成 ${actualCardCount} 張卡片，比預估多 ${-countDifference} 張，已調整計數器`)
       }
     }
@@ -173,7 +172,7 @@ async function generateCards() {
     console.error('❌ [AI-MODAL] 任務生成失敗:', err)
     
     // 🔄 任務生成失敗時，重置計數器
-    boardStore.decrementPendingAiCards(estimatedCardCount)
+    completePendingCards(estimatedCardCount)
     console.log(`🔄 [AI-MODAL] 任務生成失敗，已重置計數器 (減少 ${estimatedCardCount} 張)`)
     
     // 🛡️ 類型守衛：安全地提取錯誤訊息
@@ -205,12 +204,12 @@ async function addGeneratedCardsToBoard(cards: Array<{title: string, description
       try {
         await addCard(targetListId, card.title, card.status || 'todo', card.description)
         // 每個卡片成功加入後，減少計數器
-        boardStore.decrementPendingAiCards(1)
+        completePendingCards(1)
         console.log(`✅ [AI-MODAL] 成功加入卡片 ${i + 1}/${cards.length}: ${card.title}`)
       } catch (cardError) {
         console.error(`❌ [AI-MODAL] 加入卡片失敗: ${card.title}`, cardError)
         // 即使卡片加入失敗，也要減少計數器以保持一致性
-        boardStore.decrementPendingAiCards(1)
+        completePendingCards(1)
       }
     }
     

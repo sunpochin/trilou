@@ -6,11 +6,11 @@
     <!-- 顯示模式：顯示卡片標題 -->
     <div 
       v-if="!isEditing" 
-      class="min-h-6 pr-8 pb-6 flex items-start gap-2"
+      class="min-h-6 pr-8 pb-6 relative"
     >
       <!-- 勾選框 - 永久顯示已勾選狀態，hover 時顯示未勾選 -->
       <div 
-        class="flex-shrink-0 w-4 h-4 mt-0.5 transition-opacity duration-200"
+        class="absolute left-0 top-0.5 flex-shrink-0 w-4 h-4 transition-all duration-200 z-10"
         :class="isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
         @click.stop="toggleCheckbox"
       >
@@ -29,10 +29,14 @@
         </div>
       </div>
       
-      <!-- 卡片標題 -->
+      <!-- 卡片標題 - 酷炫的位移效果：未 hover 時佔滿寬度，hover 時往右讓出空間 -->
       <div 
-        class="flex-1 transition-all duration-200"
-        :class="{ 'text-gray-500': isChecked }"
+        class="transition-all duration-200"
+        :class="{ 
+          'text-gray-500': isChecked,
+          'ml-0 group-hover:ml-6': !isChecked,
+          'ml-6': isChecked
+        }"
       >
         {{ card.title }}
       </div>

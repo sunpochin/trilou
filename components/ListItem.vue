@@ -174,6 +174,7 @@ import Card from '@/components/Card.vue'
 import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useListActions } from '@/composables/useListActions'
+import { useCardActions } from '@/composables/useCardActions'
 import { ref, nextTick } from 'vue'
 
 // 使用統一的型別定義
@@ -192,7 +193,9 @@ defineEmits<{
 }>()
 
 // 使用列表操作邏輯 - 透過 composable 統一處理所有列表相關操作
-const { addCard, deleteList, updateListTitle } = useListActions()
+const { deleteList, updateListTitle } = useListActions()
+// 使用卡片操作邏輯 - 符合依賴反轉原則
+const { addCard } = useCardActions()
 
 // 編輯狀態
 const isEditingTitle = ref(false)
@@ -221,23 +224,34 @@ const startAddCard = async () => {
   }
 }
 
-// 保存新卡片
+// 新增狀態管理：防止重複提交
+const isSavingCard = ref(false)
+
+// 保存新卡片 - 重構版：符合依賴反轉原則
 const saveNewCard = async () => {
-  if (!newCardTitle.value.trim()) return
+  // 防止重複提交
+  if (isSavingCard.value) return
+  
+  const titleToSave = newCardTitle.value.trim()
+  if (!titleToSave) return
+  
+  isSavingCard.value = true
   
   try {
-    // 使用 boardStore 的 addCard 方法直接創建卡片
-    const { useBoardStore } = await import('@/stores/boardStore')
-    const boardStore = useBoardStore()
-    await boardStore.addCard(props.list.id, newCardTitle.value.trim(), 'medium')
+    // 🎯 透過 composable 執行：避免組件直接存取 store (依賴反轉原則)
+    await addCard(props.list.id, titleToSave, 'medium')
     
-    // 重置狀態
+    // 僅成功後才更新 UI
     isAddingCard.value = false
     newCardTitle.value = ''
+    console.log(`✅ [LIST-ITEM] 成功創建卡片: ${titleToSave}`)
     
-    console.log(`✅ [LIST-ITEM] 成功創建卡片: ${newCardTitle.value}`)
   } catch (error) {
     console.error('❌ [LIST-ITEM] 創建卡片失敗:', error)
+    // 失敗則維持輸入以便重試
+    
+  } finally {
+    isSavingCard.value = false
   }
 }
 
