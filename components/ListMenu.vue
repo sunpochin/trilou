@@ -81,19 +81,25 @@ const isMenuOpen = computed<boolean>(() => openMenuId.value === props.listId)
 
 // 切換選單顯示狀態
 // 透過 composable 統一管理，確保同時只有一個選單開啟
-const handleToggleMenu = () => {
+const handleToggleMenu = (event: Event) => {
+  // 防止點擊事件冒泡到 document，避免立即觸發 handleClickOutside
+  event.stopPropagation()
   toggleMenu(props.listId)
 }
 
 // 處理新增卡片
-const handleAddCard = () => {
+const handleAddCard = (event: Event) => {
+  // 防止事件冒泡
+  event.stopPropagation()
   emit('add-card')
   // 執行動作後關閉選單
   closeAllMenus()
 }
 
 // 處理刪除列表
-const handleDeleteList = () => {
+const handleDeleteList = (event: Event) => {
+  // 防止事件冒泡
+  event.stopPropagation()
   emit('delete-list')
   // 執行動作後關閉選單
   closeAllMenus()
