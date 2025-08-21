@@ -163,9 +163,34 @@ export const useCardActions = () => {
     }
   }
 
+  /**
+   * ➕ 新增卡片功能
+   * 
+   * 直接新增卡片而不需要用戶輸入，適用於程式化新增卡片
+   * 使用 async/await 確保操作完成，準備未來的 API 整合
+   * 
+   * @param listId 列表 ID
+   * @param title 卡片標題
+   * @param status 卡片狀態（可選）
+   */
+  const addCard = async (listId: string, title: string, status?: string) => {
+    try {
+      console.log('➕ [CARD-ACTION] 新增卡片:', { listId, title, status })
+      
+      // 委派給 boardStore 處理實際的新增邏輯
+      await boardStore.addCard(listId, title, status)
+      
+      console.log('✅ [CARD-ACTION] 卡片新增成功')
+    } catch (error) {
+      console.error('❌ [CARD-ACTION] 新增卡片失敗:', error)
+      throw error // 重新拋出錯誤讓調用者處理
+    }
+  }
+
   return {
     deleteCard,
     updateCardTitle,
-    updateCardDescription
+    updateCardDescription,
+    addCard
   }
 }

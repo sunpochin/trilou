@@ -256,6 +256,44 @@ export const useListActions = () => {
     }
   }
 
+  // 直接新增列表功能 - 程式化新增，不需要用戶輸入
+  const addListDirect = async (title: string) => {
+    console.log('➕ [COMPOSABLE] addListDirect 被呼叫，標題:', title)
+    
+    // 基本驗證
+    const normalizedTitle = title.trim()
+    if (!normalizedTitle) {
+      throw new Error('列表標題不能為空')
+    }
+    
+    // 驗證標題格式
+    const validation = Validator.validateListTitle(normalizedTitle)
+    if (!validation.isValid) {
+      throw new Error(`列表標題不符合規範：${validation.errors.join(', ')}`)
+    }
+
+    try {
+      console.log('📤 [COMPOSABLE] 呼叫 boardStore.addList()...')
+      await boardStore.addList(normalizedTitle)
+      
+      eventBus.emit('list:created', {
+        title: normalizedTitle
+      })
+      
+      console.log('✅ [COMPOSABLE] 列表新增成功')
+      
+    } catch (error) {
+      console.error('❌ [COMPOSABLE] 新增列表失敗:', error)
+      
+      eventBus.emit('error:occurred', {
+        error: error as Error,
+        context: 'addListDirect'
+      })
+      
+      throw error // 重新拋出錯誤讓調用者處理
+    }
+  }
+
   // 更新列表標題功能 - 使用統一的錯誤處理和通知系統
   const updateListTitle = async (listId: string, newTitle: string) => {
     console.log('📝 [COMPOSABLE] updateListTitle 被呼叫，參數:', { listId, newTitle })
@@ -365,6 +403,7 @@ export const useListActions = () => {
     addCard,
     deleteList,
     addList,
+    addListDirect,
     updateListTitle
   }
 }

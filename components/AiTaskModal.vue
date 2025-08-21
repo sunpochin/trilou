@@ -111,7 +111,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
-import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
+import { useListActions } from '@/composables/useListActions'
+import { useCardActions } from '@/composables/useCardActions'
+import { formatStatus, getStatusTagClass, normalizeStatusForStorage } from '@/utils/statusFormatter'
 
 // 定義 props
 interface Props {
@@ -131,8 +133,10 @@ const cards = ref<Array<{title: string, description?: string, status?: string}>>
 const loading = ref(false)
 const errorMessage = ref('')
 
-// 取得看板 store
-const boardStore = useBoardStore()
+// 透過外觀/動作層與 Store 互動（依賴反轉）
+const boardStore = useBoardStore() // 需要存取列表狀態
+const { addListDirect } = useListActions()
+const { addCard } = useCardActions()
 
 // 生成卡片的函數
 async function generateCards() {
@@ -168,23 +172,25 @@ async function generateCards() {
 }
 
 // 將卡片加入看板
-async function addCardsToBoard() {
+async function addCardsToBoard(): Promise<void> {
   if (cards.value.length === 0) return
   
   try {
     // 找到第一個列表，如果沒有列表就創建一個
+    // 由動作層提供取得/建立預設列表的能力（若無則建立）
     let targetList = boardStore.board.lists[0]
     
     if (!targetList) {
       // 創建一個新列表
-      await boardStore.addList('AI 生成任務')
+      await addListDirect('AI 生成任務')
       targetList = boardStore.board.lists[0]
     }
     
     // 將每個生成的卡片加入到列表中
     for (const card of cards.value) {
-      // 直接使用 MCP server 回傳的原始狀態，保留豐富的狀態信息
-      await boardStore.addCard(targetList.id, card.title, card.status || 'todo')
+      // 正規化狀態以確保資料庫一致性
+      const normalized = normalizeStatusForStorage(card.status ?? 'todo')
+      await addCard(targetList.id, card.title, normalized)
     }
     
     // 關閉模態框並重置狀態
