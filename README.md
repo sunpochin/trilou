@@ -2,6 +2,11 @@
 
 A modern, full-featured Trello clone built with cutting-edge technologies, featuring AI-powered task generation, optimistic UI updates, and comprehensive drag-and-drop functionality.
 
+Demo: https://trilou.vercel.app/
+
+---
+
+
 [![Demo](https://img.shields.io/badge/Demo-Live-success)](https://trilou.vercel.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Built with Nuxt](https://img.shields.io/badge/Built%20with-Nuxt%203-00C58E.svg)](https://nuxt.com/)
