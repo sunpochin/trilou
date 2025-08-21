@@ -148,9 +148,9 @@ onMounted(() => {
             <!-- Countdown 顯示 -->
             <div 
               v-if="isGenerating" 
-              class="flex items-center gap-2 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium animate-bounce"
+              class="countdown-display flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white shadow-lg"
             >
-              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <svg class="w-4 h-4 clock-icon" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
               </svg>
               <span>還有 {{ pendingCount }} 張卡片生成中...</span>
@@ -473,5 +473,82 @@ onMounted(() => {
 .ai-button-magic:hover::after,
 .ai-generating-magic::after {
   animation: magicPulse 1.5s ease-in-out infinite;
+}
+
+/* 🌈 Countdown 顯示的彩虹漸層效果 */
+.countdown-display {
+  background: linear-gradient(
+    45deg,
+    #ff0000,  /* 紅 */
+    #ff8000,  /* 橘 */
+    #ffff00,  /* 黃 */
+    #80ff00,  /* 綠 */
+    #00ff80,  /* 青 */
+    #0080ff,  /* 藍 */
+    #8000ff,  /* 靛 */
+    #ff0080   /* 紫 */
+  );
+  background-size: 800% 100%;
+  animation: rainbowFlow 6s ease-in-out infinite;
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.countdown-display::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    45deg,
+    #ff0000,  /* 紅 */
+    #ff8000,  /* 橘 */
+    #ffff00,  /* 黃 */
+    #80ff00,  /* 綠 */
+    #00ff80,  /* 青 */
+    #0080ff,  /* 藍 */
+    #8000ff,  /* 靛 */
+    #ff0080   /* 紫 */
+  );
+  background-size: 800% 100%;
+  border-radius: inherit;
+  z-index: -1;
+  animation: rainbowFlow 6s ease-in-out infinite;
+  opacity: 0.6;
+  filter: blur(4px);
+}
+
+/* 🕐 時鐘轉動動畫 */
+.clock-icon {
+  animation: clockRotate 4s linear infinite;
+  transform-origin: center;
+}
+
+/* 🌈 彩虹流動動畫 */
+@keyframes rainbowFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 100% 50%;
+  }
+  50% {
+    background-position: 200% 50%;
+  }
+  75% {
+    background-position: 300% 50%;
+  }
+  100% {
+    background-position: 400% 50%;
+  }
+}
+
+/* 🕐 時鐘轉動動畫 */
+@keyframes clockRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

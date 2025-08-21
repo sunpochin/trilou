@@ -115,7 +115,7 @@ async function generateCards() {
   
   // 🎯 步驟2：預估會生成的卡片數量並增加計數器（樂觀預估）
   // 根據任務描述的複雜度預估生成 3-8 張卡片
-  const estimatedCardCount = Math.min(8, Math.max(3, Math.floor(taskDescription.length / 20)))
+  const estimatedCardCount = Math.min(8, Math.max(10, Math.floor(taskDescription.length / 20)))
   boardStore.incrementPendingAiCards(estimatedCardCount)
   console.log(`🤖 [AI-MODAL] 預估會生成 ${estimatedCardCount} 張卡片，已加入計數器`)
 
@@ -141,8 +141,18 @@ async function generateCards() {
     
     console.log(`✅ [AI-MODAL] 成功生成 ${cards.length} 個任務`, cards)
     
-    // 🎯 步驟4：調整計數器以反映實際生成的卡片數量
-    const actualCardCount = cards.length
+    // 🎯 步驟4：按優先級排序卡片 (urgent > high > medium > low > 其他)
+    const priorityOrder = ['urgent', 'high', 'medium', 'low']
+    const sortedCards = [...cards].sort((a, b) => {
+      const aPriority = priorityOrder.indexOf(a.status) === -1 ? 999 : priorityOrder.indexOf(a.status)
+      const bPriority = priorityOrder.indexOf(b.status) === -1 ? 999 : priorityOrder.indexOf(b.status)
+      return aPriority - bPriority
+    })
+    
+    console.log(`🎯 [AI-MODAL] 卡片已按優先級排序:`, sortedCards.map(c => `${c.title} (${c.status})`))
+    
+    // 🎯 步驟5：調整計數器以反映實際生成的卡片數量
+    const actualCardCount = sortedCards.length
     const countDifference = estimatedCardCount - actualCardCount
     if (countDifference !== 0) {
       if (countDifference > 0) {
@@ -156,8 +166,8 @@ async function generateCards() {
       }
     }
     
-    // 🎯 步驟5：自動加入到看板
-    await addGeneratedCardsToBoard(cards, actualCardCount)
+    // 🎯 步驟6：自動加入到看板
+    await addGeneratedCardsToBoard(sortedCards, actualCardCount)
     
   } catch (err: unknown) {
     console.error('❌ [AI-MODAL] 任務生成失敗:', err)

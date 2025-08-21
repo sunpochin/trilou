@@ -53,14 +53,58 @@
         />
       </draggable>
 
-      <!-- 新增列表按鈕 -->
-      <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex items-start">
-        <button 
-          class="w-full p-3 bg-transparent border-2 border-dashed border-gray-400 rounded text-gray-700 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-300 hover:border-gray-500" 
-          @click="handleAddList"
-        >
-          + {{ MESSAGES.list.addNew }}
-        </button>
+      <!-- 新增列表區域 -->
+      <div class="w-80 p-2 flex-shrink-0">
+        <!-- 顯示按鈕模式 -->
+        <Transition name="fade" mode="out-in">
+          <div 
+            v-if="!isAddingList"
+            key="button"
+            class="bg-gray-200 rounded flex items-start"
+          >
+            <button 
+              class="w-full p-3 bg-transparent border-2 border-dashed border-gray-400 rounded text-gray-700 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-300 hover:border-gray-500" 
+              @click="startAddList"
+            >
+              + {{ MESSAGES.list.addNew }}
+            </button>
+          </div>
+          
+          <!-- 顯示 inline 編輯模式 -->
+          <div 
+            v-else
+            key="editor"
+            class="bg-gray-200 rounded p-2"
+          >
+            <div class="bg-white rounded p-3">
+              <input
+                ref="newListInput"
+                v-model="newListTitle"
+                placeholder="輸入列表標題..."
+                class="w-full border-none outline-none text-sm font-bold mb-2"
+                @keydown.enter="saveNewList"
+                @keydown.escape="cancelAddList"
+              />
+              <div class="flex gap-2">
+                <button
+                  @click="saveNewList"
+                  :disabled="!newListTitle.trim()"
+                  class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  新增列表
+                </button>
+                <button
+                  @click="cancelAddList"
+                  class="px-2 py-1 text-gray-600 text-sm rounded hover:bg-gray-100"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
     </template>
 
@@ -74,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
@@ -95,6 +139,11 @@ const { viewData, handleCardMove, handleListMove, findListById, getAllListIds } 
 // 模態框狀態管理
 const showCardModal = ref(false)
 const selectedCard = ref<Card | null>(null)
+
+// 新增列表狀態管理
+const isAddingList = ref(false)
+const newListTitle = ref('')
+const newListInput = ref<HTMLInputElement | null>(null)
 
 // 處理卡片拖拉移動事件
 const onCardMove = async (event: any) => {
@@ -254,9 +303,52 @@ const onListMove = async (event: any) => {
 console.log('🖼️ [COMPONENT] TrelloBoard 載入，目前 lists 數量:', viewData.listsCount)
 console.log('🖼️ [COMPONENT] TrelloBoard 使用依賴反轉原則，透過 composable 訪問資料')
 
-// 處理新增列表
+// 處理新增列表（舊的 modal 方式，保留以備後用）
 const handleAddList = () => {
   addList()
+}
+
+// 開始 inline 新增列表
+const startAddList = async () => {
+  isAddingList.value = true
+  newListTitle.value = ''
+  
+  // 等待 DOM 更新後聚焦到輸入框
+  await nextTick()
+  if (newListInput.value) {
+    newListInput.value.focus()
+  }
+}
+
+// 保存新列表
+const saveNewList = async () => {
+  if (!newListTitle.value.trim()) return
+  
+  const titleToSave = newListTitle.value.trim()
+  
+  try {
+    // 立即重置 UI 狀態，避免殘影
+    isAddingList.value = false
+    newListTitle.value = ''
+    
+    // 使用 composable 的 addList 方法，但需要直接傳遞標題
+    const { useBoardStore } = await import('@/stores/boardStore')
+    const boardStore = useBoardStore()
+    await boardStore.addList(titleToSave)
+    
+    console.log(`✅ [TRELLO-BOARD] 成功創建列表: ${titleToSave}`)
+  } catch (error) {
+    console.error('❌ [TRELLO-BOARD] 創建列表失敗:', error)
+    // 如果失敗，恢復編輯狀態
+    isAddingList.value = true
+    newListTitle.value = titleToSave
+  }
+}
+
+// 取消新增列表
+const cancelAddList = () => {
+  isAddingList.value = false
+  newListTitle.value = ''
 }
 
 // 開啟卡片模態框
@@ -271,3 +363,16 @@ const closeCardModal = () => {
   selectedCard.value = null
 }
 </script>
+
+<style scoped>
+/* 新增列表過渡動畫 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
