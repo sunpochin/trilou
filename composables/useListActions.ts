@@ -90,7 +90,8 @@ export const useListActions = () => {
     }
 
     try {
-      await boardStore.addCard(listId, cardTitle.trim())
+      // 手動創建的卡片設定為「中優先」(medium) 等級
+      await boardStore.addCard(listId, cardTitle.trim(), 'medium')
       
       // 發布事件通知其他組件
       eventBus.emit('card:created', {

@@ -6,9 +6,36 @@
     <!-- 顯示模式：顯示卡片標題 -->
     <div 
       v-if="!isEditing" 
-      class="min-h-6 pr-8 pb-6"
+      class="min-h-6 pr-8 pb-6 flex items-start gap-2"
     >
-      {{ card.title }}
+      <!-- 勾選框 - 永久顯示已勾選狀態，hover 時顯示未勾選 -->
+      <div 
+        class="flex-shrink-0 w-4 h-4 mt-0.5 transition-opacity duration-200"
+        :class="isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+        @click.stop="toggleCheckbox"
+      >
+        <div 
+          class="w-full h-full rounded-full border-2 flex items-center justify-center cursor-pointer transition-all duration-200"
+          :class="isChecked ? 'bg-green-500 border-green-500' : 'border-gray-400 hover:border-gray-600'"
+        >
+          <svg 
+            v-if="isChecked"
+            class="w-2.5 h-2.5 text-white" 
+            fill="currentColor" 
+            viewBox="0 0 20 20"
+          >
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          </svg>
+        </div>
+      </div>
+      
+      <!-- 卡片標題 -->
+      <div 
+        class="flex-1 transition-all duration-200"
+        :class="{ 'text-gray-500': isChecked }"
+      >
+        {{ card.title }}
+      </div>
     </div>
       <!-- @dblclick="startEditing" -->
     
@@ -34,9 +61,9 @@
         </span>
         <span 
           v-else
-          class="bg-gray-400 text-white text-xs px-2 py-1 rounded-sm"
+          class="bg-yellow-500 text-white text-xs px-2 py-1 rounded-sm"
         >
-          一般
+          📋 中優先
         </span>
       </div>
     </div>
@@ -99,6 +126,15 @@ const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction } =
 const isEditing = ref(false)
 const editingTitle = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
+
+// 勾選狀態管理
+const isChecked = ref(false)
+
+// 切換勾選狀態
+const toggleCheckbox = () => {
+  isChecked.value = !isChecked.value
+  console.log(`📋 [CARD] 切換勾選狀態: ${props.card.title} -> ${isChecked.value ? '已完成' : '未完成'}`)
+}
 
 // 開始編輯（目前已停用，但保留以備後用）
 // const startEditing = () => {

@@ -123,13 +123,49 @@
       </div>
     </draggable>
     
-    <!-- 新增卡片按鈕 -->
-    <button 
-      class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm mt-2 transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
-      @click="handleAddCard"
-    >
-      + 新增卡片
-    </button>
+    <!-- 新增卡片區域 -->
+    <div class="mt-2">
+      <!-- 顯示按鈕模式 -->
+      <button 
+        v-if="!isAddingCard"
+        class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
+        @click="startAddCard"
+      >
+        + 新增卡片
+      </button>
+      
+      <!-- 顯示 inline 編輯模式 -->
+      <div 
+        v-else
+        class="bg-white rounded px-3 py-3 shadow-sm border"
+      >
+        <textarea
+          ref="newCardInput"
+          v-model="newCardTitle"
+          placeholder="輸入這張卡片的標題..."
+          class="w-full resize-none border-none outline-none text-sm min-h-14"
+          @keydown.enter.prevent="saveNewCard"
+          @keydown.escape="cancelAddCard"
+        />
+        <div class="flex gap-2 mt-2">
+          <button
+            @click="saveNewCard"
+            :disabled="!newCardTitle.trim()"
+            class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            新增卡片
+          </button>
+          <button
+            @click="cancelAddCard"
+            class="px-3 py-1 text-gray-600 text-sm rounded hover:bg-gray-100"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -163,9 +199,52 @@ const isEditingTitle = ref(false)
 const editingTitle = ref('')
 const titleInput = ref<HTMLInputElement | null>(null)
 
-// 處理新增卡片
+// 新增卡片狀態
+const isAddingCard = ref(false)
+const newCardTitle = ref('')
+const newCardInput = ref<HTMLTextAreaElement | null>(null)
+
+// 處理新增卡片（舊的 modal 方式，保留以備後用）
 const handleAddCard = () => {
   addCard(props.list.id)
+}
+
+// 開始 inline 新增卡片
+const startAddCard = async () => {
+  isAddingCard.value = true
+  newCardTitle.value = ''
+  
+  // 等待 DOM 更新後聚焦到輸入框
+  await nextTick()
+  if (newCardInput.value) {
+    newCardInput.value.focus()
+  }
+}
+
+// 保存新卡片
+const saveNewCard = async () => {
+  if (!newCardTitle.value.trim()) return
+  
+  try {
+    // 使用 boardStore 的 addCard 方法直接創建卡片
+    const { useBoardStore } = await import('@/stores/boardStore')
+    const boardStore = useBoardStore()
+    await boardStore.addCard(props.list.id, newCardTitle.value.trim(), 'medium')
+    
+    // 重置狀態
+    isAddingCard.value = false
+    newCardTitle.value = ''
+    
+    console.log(`✅ [LIST-ITEM] 成功創建卡片: ${newCardTitle.value}`)
+  } catch (error) {
+    console.error('❌ [LIST-ITEM] 創建卡片失敗:', error)
+  }
+}
+
+// 取消新增卡片
+const cancelAddCard = () => {
+  isAddingCard.value = false
+  newCardTitle.value = ''
 }
 
 // 處理刪除列表
