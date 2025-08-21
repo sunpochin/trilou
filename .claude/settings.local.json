@@ -23,7 +23,8 @@
       "Bash(rm /Users/pac/codes/trilo/server/api/board/index.get.ts)",
       "Bash(npm run test:unit:*)",
       "Bash(npx nuxi typecheck:*)",
-      "Bash(yarn run:*)"
+      "Bash(yarn run:*)",
+      "Bash(rm:*)"
     ],
     "defaultMode": "acceptEdits"
   }

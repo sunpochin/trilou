@@ -111,6 +111,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
+import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 
 // 定義 props
 interface Props {
@@ -182,7 +183,8 @@ async function addCardsToBoard() {
     
     // 將每個生成的卡片加入到列表中
     for (const card of cards.value) {
-      await boardStore.addCard(targetList.id, card.title, card.status)
+      // 直接使用 MCP server 回傳的原始狀態，保留豐富的狀態信息
+      await boardStore.addCard(targetList.id, card.title, card.status || 'todo')
     }
     
     // 關閉模態框並重置狀態
@@ -206,29 +208,4 @@ function closeModal() {
   }, 300)
 }
 
-// 格式化 status 顯示文字
-function formatStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    'todo': '待辦',
-    'in-progress': '進行中',
-    'done': '完成',
-    'blocked': '阻塞',
-    'review': '審核中',
-    'testing': '測試中'
-  }
-  return statusMap[status] || status
-}
-
-// 取得 status tag 的 CSS 類別
-function getStatusTagClass(status: string): string {
-  const statusClasses: Record<string, string> = {
-    'todo': 'bg-gray-500 text-white',
-    'in-progress': 'bg-blue-500 text-white',
-    'done': 'bg-green-500 text-white',
-    'blocked': 'bg-red-500 text-white',
-    'review': 'bg-yellow-500 text-white',
-    'testing': 'bg-purple-500 text-white'
-  }
-  return statusClasses[status] || 'bg-gray-400 text-white'
-}
 </script>

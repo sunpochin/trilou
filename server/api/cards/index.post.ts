@@ -75,7 +75,8 @@ export default defineEventHandler(async (event) => {
         title: body.title,
         description: body.description,
         position: position,
-        list_id: body.list_id
+        list_id: body.list_id,
+        status: body.status  // 包含 AI 生成任務的狀態標籤
       })
       .select()
       .maybeSingle() // ✅ 查無資料時不回傳錯誤

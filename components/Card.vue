@@ -73,8 +73,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 import { useCardActions } from '@/composables/useCardActions'
+import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 import type { CardUI } from '@/types'
 
 // 使用統一的卡片型別定義
@@ -99,19 +100,19 @@ const isEditing = ref(false)
 const editingTitle = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
 
-// 開始編輯
-const startEditing = () => {
-  isEditing.value = true
-  editingTitle.value = props.card.title
-  
-  // 下一個 tick 後聚焦到輸入框並選取所有文字
-  nextTick(() => {
-    if (editInput.value) {
-      editInput.value.focus()
-      editInput.value.select()
-    }
-  })
-}
+// 開始編輯（目前已停用，但保留以備後用）
+// const startEditing = () => {
+//   isEditing.value = true
+//   editingTitle.value = props.card.title
+//   
+//   // 下一個 tick 後聚焦到輸入框並選取所有文字
+//   nextTick(() => {
+//     if (editInput.value) {
+//       editInput.value.focus()
+//       editInput.value.select()
+//     }
+//   })
+// }
 
 // 儲存編輯
 const saveEdit = () => {
@@ -147,29 +148,4 @@ const deleteCard = async () => {
   await deleteCardAction(props.card)
 }
 
-// 格式化 status 顯示文字
-const formatStatus = (status: string): string => {
-  const statusMap: Record<string, string> = {
-    'todo': '待辦',
-    'in-progress': '進行中',
-    'done': '完成',
-    'blocked': '阻塞',
-    'review': '審核中',
-    'testing': '測試中'
-  }
-  return statusMap[status] || status
-}
-
-// 取得 status tag 的 CSS 類別
-const getStatusTagClass = (status: string): string => {
-  const statusClasses: Record<string, string> = {
-    'todo': 'bg-gray-500 text-white',
-    'in-progress': 'bg-blue-500 text-white',
-    'done': 'bg-green-500 text-white',
-    'blocked': 'bg-red-500 text-white',
-    'review': 'bg-yellow-500 text-white',
-    'testing': 'bg-purple-500 text-white'
-  }
-  return statusClasses[status] || 'bg-gray-400 text-white'
-}
 </script>

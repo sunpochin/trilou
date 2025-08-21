@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 驗證至少有一個欄位要更新
-    if (!body.title && !body.description && typeof body.position !== 'number' && !body.list_id && !body.due_date) {
+    if (!body.title && !body.description && typeof body.position !== 'number' && !body.list_id && !body.due_date && !body.status) {
       throw createError({
         statusCode: 400,
         message: '至少需要提供一個要更新的欄位'
@@ -113,6 +113,7 @@ export default defineEventHandler(async (event) => {
     if (typeof body.position === 'number') updateData.position = body.position
     if (body.list_id) updateData.list_id = body.list_id
     if (body.due_date !== undefined) updateData.due_date = body.due_date
+    if (body.status !== undefined) updateData.status = body.status  // 支援更新 AI 任務狀態
 
     console.log('📝 [API] 準備更新的資料:', JSON.stringify(updateData, null, 2))
 
