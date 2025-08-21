@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
       .select('id, title, user_id, cards(count)')
       .eq('id', id)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
     if (queryError) {
       console.error('❌ [API] 查詢列表錯誤:', queryError.message)

@@ -22,6 +22,7 @@ export interface Card {
   title: string
   description?: string
   position: number
+  status?: string
   created_at: string
   updated_at: string
 }
@@ -42,6 +43,7 @@ export interface CreateCardRequest {
   title: string
   description?: string
   position: number
+  status?: string
 }
 
 // 更新請求的型別（所有欄位都是可選的）
@@ -60,6 +62,7 @@ export interface UpdateCardRequest {
   description?: string
   position?: number
   list_id?: string // 允許移動卡片到不同列表
+  status?: string
 }
 
 // API 回應的型別

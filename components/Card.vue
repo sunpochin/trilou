@@ -25,7 +25,19 @@
       
       <!-- 右下角：標籤區域 -->
       <div class="flex gap-1">
-        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-sm">MCP</span>
+        <span 
+          v-if="card.status"
+          class="text-xs px-2 py-1 rounded-sm font-medium"
+          :class="getStatusTagClass(card.status)"
+        >
+          {{ formatStatus(card.status) }}
+        </span>
+        <span 
+          v-else
+          class="bg-gray-400 text-white text-xs px-2 py-1 rounded-sm"
+        >
+          一般
+        </span>
       </div>
     </div>
     
@@ -61,8 +73,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 import { useCardActions } from '@/composables/useCardActions'
+import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 import type { CardUI } from '@/types'
 
 // 使用統一的卡片型別定義
@@ -87,19 +100,19 @@ const isEditing = ref(false)
 const editingTitle = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
 
-// 開始編輯
-const startEditing = () => {
-  isEditing.value = true
-  editingTitle.value = props.card.title
-  
-  // 下一個 tick 後聚焦到輸入框並選取所有文字
-  nextTick(() => {
-    if (editInput.value) {
-      editInput.value.focus()
-      editInput.value.select()
-    }
-  })
-}
+// 開始編輯（目前已停用，但保留以備後用）
+// const startEditing = () => {
+//   isEditing.value = true
+//   editingTitle.value = props.card.title
+//   
+//   // 下一個 tick 後聚焦到輸入框並選取所有文字
+//   nextTick(() => {
+//     if (editInput.value) {
+//       editInput.value.focus()
+//       editInput.value.select()
+//     }
+//   })
+// }
 
 // 儲存編輯
 const saveEdit = () => {
@@ -134,4 +147,5 @@ const deleteCard = async () => {
   // 委託給 composable 處理完整的刪除流程
   await deleteCardAction(props.card)
 }
+
 </script>

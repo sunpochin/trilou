@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 驗證至少有一個欄位要更新
-    if (!body.title && !body.description && typeof body.position !== 'number' && !body.list_id && !body.due_date) {
+    if (!body.title && !body.description && typeof body.position !== 'number' && !body.list_id && !body.due_date && !body.status) {
       throw createError({
         statusCode: 400,
         message: '至少需要提供一個要更新的欄位'
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
 
     // 首先驗證用戶是否有權限編輯此卡片（檢查卡片所屬的列表是否屬於用戶）
     console.log('🔐 [API] 驗證卡片存取權限...')
-    const { data: cardAccess } = await supabase
+    const { data: cardAccess, error: accessError } = await supabase
       .from('cards')
       .select(`
         list_id,
@@ -56,7 +56,16 @@ export default defineEventHandler(async (event) => {
       `)
       .eq('id', id)
       .eq('lists.user_id', user.id)
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤，交由下方 !cardAccess 處理為 403
+
+    // 處理真正的查詢錯誤（如資料庫連線問題、SQL 語法錯誤等）
+    if (accessError) {
+      console.error('❌ [API] 資料庫查詢錯誤:', accessError.message)
+      throw createError({
+        statusCode: 500,
+        message: '查詢卡片權限失敗'
+      })
+    }
 
     console.log('📊 [API] 卡片存取驗證結果:', cardAccess)
 
@@ -80,7 +89,7 @@ export default defineEventHandler(async (event) => {
         .from('lists')
         .select('user_id')
         .eq('id', body.list_id)
-        .single()
+        .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
       console.log('📊 [API] 目標列表存取驗證結果:', targetListAccess)
 
@@ -104,6 +113,7 @@ export default defineEventHandler(async (event) => {
     if (typeof body.position === 'number') updateData.position = body.position
     if (body.list_id) updateData.list_id = body.list_id
     if (body.due_date !== undefined) updateData.due_date = body.due_date
+    if (body.status !== undefined) updateData.status = body.status  // 支援更新 AI 任務狀態
 
     console.log('📝 [API] 準備更新的資料:', JSON.stringify(updateData, null, 2))
 
@@ -112,7 +122,7 @@ export default defineEventHandler(async (event) => {
       .from('cards')
       .select('*')
       .eq('id', id)
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
     
     console.log('📊 [API] 更新前的卡片狀態:', beforeUpdate)
 
@@ -123,7 +133,7 @@ export default defineEventHandler(async (event) => {
       .update(updateData)
       .eq('id', id)
       .select()
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
     if (error) {
       console.error('❌ [API] Supabase 更新錯誤:')
@@ -137,6 +147,14 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    if (!data) {
+      console.log('❌ [API] 錯誤: 找不到要更新的卡片')
+      throw createError({
+        statusCode: 404,
+        message: '找不到要更新的卡片'
+      })
+    }
+
     console.log('✅ [API] Supabase 更新成功!')
     console.log('📊 [API] 更新後的卡片資料:', JSON.stringify(data, null, 2))
     
@@ -145,7 +163,7 @@ export default defineEventHandler(async (event) => {
       .from('cards')
       .select('*')
       .eq('id', id)
-      .single()
+      .maybeSingle() // ✅ 查無資料時不回傳錯誤
     
     console.log('🔍 [API] 驗證更新結果 - 從資料庫重新查詢:', afterUpdate)
     

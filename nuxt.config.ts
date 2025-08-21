@@ -22,5 +22,7 @@ export default defineNuxtConfig({
         key: process.env.SUPABASE_KEY
       }
     }
-  }
+  },
+
+  // 開發模式代理設定已移除，現在使用本地 API 端點
 })
