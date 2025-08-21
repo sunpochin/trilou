@@ -40,7 +40,6 @@
           v-model="userInput"
           placeholder="例如：我需要準備一個產品發表會，包含所有相關的準備工作..."
           class="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          :disabled="loading"
         />
       </div>
 
@@ -48,14 +47,10 @@
       <div class="flex gap-3 mb-6">
         <button
           @click="generateCards"
-          :disabled="!userInput.trim() || loading"
+          :disabled="!userInput.trim()"
           class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
         >
-          <span v-if="loading" class="flex items-center justify-center gap-2">
-            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            生成中...
-          </span>
-          <span v-else>生成任務</span>
+          🚀 開始生成任務
         </button>
         <button
           @click="closeModal"
@@ -65,44 +60,14 @@
         </button>
       </div>
 
-      <!-- 生成結果區域 -->
-      <div v-if="cards.length > 0" class="border-t pt-4">
-        <h3 class="text-lg font-semibold text-gray-800 mb-3">生成的任務 ({{ cards.length }} 項)：</h3>
-        
-        <div class="space-y-3 max-h-60 overflow-y-auto">
-          <div 
-            v-for="(card, index) in cards" 
-            :key="index"
-            class="p-3 bg-gray-50 rounded-lg border"
-          >
-            <div class="flex justify-between items-start">
-              <h4 class="font-medium text-gray-800 flex-1">{{ card.title }}</h4>
-              <span 
-                v-if="card.status" 
-                class="ml-2 px-2 py-1 text-xs rounded-sm font-medium"
-                :class="getStatusTagClass(card.status)"
-              >
-                {{ formatStatus(card.status) }}
-              </span>
-            </div>
-            <p v-if="card.description" class="text-sm text-gray-600 mt-1">{{ card.description }}</p>
-          </div>
-        </div>
-
-        <!-- 新增到看板按鈕 -->
-        <div class="mt-4 pt-4 border-t">
-          <button
-            @click="addCardsToBoard"
-            class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200"
-          >
-            將這些任務加入看板
-          </button>
-        </div>
-      </div>
-
-      <!-- 錯誤訊息 -->
-      <div v-if="errorMessage" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-        <p class="text-red-700 text-sm">{{ errorMessage }}</p>
+      <!-- 樂觀 UI 說明 -->
+      <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-blue-700 text-sm flex items-center gap-2">
+          <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+          </svg>
+          點擊「開始生成任務」後，對話框將立即關閉，AI 將在背景生成任務並自動加入看板
+        </p>
       </div>
     </div>
   </div>
@@ -110,10 +75,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useListActions } from '@/composables/useListActions'
 import { useCardActions } from '@/composables/useCardActions'
-import { useBoardStore } from '@/stores/boardStore'
-import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
+import { useListActions } from '@/composables/useListActions'
+import { eventBus } from '@/events/EventBus'
 
 // 定義 props
 interface Props {
@@ -129,27 +93,31 @@ const emit = defineEmits<{
 
 // 響應式變數
 const userInput = ref('')
-const cards = ref<Array<{title: string, description?: string, status?: string}>>([])
-const loading = ref(false)
-const errorMessage = ref('')
 
-// 取得看板 store 和業務邏輯 composables
-const boardStore = useBoardStore()
+// 樂觀 UI 模式：移除不必要的 loading、cards、errorMessage 狀態
+// 因為模態框會立即關閉，不再需要顯示這些狀態
+
+// 取得業務邏輯 composables（遵循依賴反轉原則）
 const { addCard } = useCardActions()
+const { addListIfEmpty } = useListActions()
 
-// 生成卡片的函數
+// 🚀 樂觀 UI：立即開始生成並加入任務到看板
 async function generateCards() {
   if (!userInput.value.trim()) return
   
-  loading.value = true
-  cards.value = []
-  errorMessage.value = ''
-
+  const taskDescription = userInput.value.trim()
+  console.log('🤖 [AI-MODAL] 樂觀 UI：立即開始任務生成流程')
+  
+  // 🎯 步驟1：立即關閉模態框（樂觀 UI）
+  closeModal()
+  
+  // 🎯 步驟2：開始背景任務生成
   try {
+    console.log('📤 [AI-MODAL] 背景呼叫 MCP API...')
     const res = await fetch('/api/mcp/expand-tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userInput: userInput.value })
+      body: JSON.stringify({ userInput: taskDescription })
     })
     
     if (!res.ok) {
@@ -157,46 +125,68 @@ async function generateCards() {
     }
     
     const data = await res.json()
-    cards.value = data.cards || []
+    const cards = data.cards || []
     
-    if (cards.value.length === 0) {
-      errorMessage.value = '沒有生成任何任務，請嘗試更詳細的描述'
+    if (cards.length === 0) {
+      throw new Error('沒有生成任何任務，請嘗試更詳細的描述')
     }
-  } catch (err) {
-    console.error('生成任務時發生錯誤:', err)
-    errorMessage.value = '無法連接到 AI 服務，請確認本地伺服器是否運行中'
-  } finally {
-    loading.value = false
+    
+    console.log(`✅ [AI-MODAL] 成功生成 ${cards.length} 個任務`, cards)
+    
+    // 🎯 步驟3：自動加入到看板
+    await addGeneratedCardsToBoard(cards)
+    
+  } catch (err: unknown) {
+    console.error('❌ [AI-MODAL] 任務生成失敗:', err)
+    
+    // 🛡️ 類型守衛：安全地提取錯誤訊息
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    
+    // 🚀 使用 EventBus 發送通知事件（符合 Observer Pattern）
+    // 避免阻塞式的 alert，提供更好的用戶體驗
+    eventBus.emit('notification:error', {
+      title: '任務生成失敗',
+      message: errorMessage,
+      duration: 5000
+    })
+    
+    console.log('📢 [AI-MODAL] 已發送錯誤通知事件到 EventBus')
   }
 }
 
-// 將卡片加入看板
-async function addCardsToBoard() {
-  if (cards.value.length === 0) return
-  
+// 將生成的卡片自動加入看板（使用依賴反轉原則）
+async function addGeneratedCardsToBoard(cards: Array<{title: string, description?: string, status?: string}>) {
   try {
-    // 找到第一個列表，如果沒有列表就創建一個
-    let targetList = boardStore.board.lists[0]
+    console.log('📋 [AI-MODAL] 開始將任務加入看板...')
     
-    if (!targetList) {
-      // 對於程式化創建列表，直接使用 store（特殊情況，因為已有標題）
-      await boardStore.addList('AI 生成任務')
-      targetList = boardStore.board.lists[0]
+    // 🎯 使用 composable 的抽象方法，而不直接操作 store
+    const { id: targetListId } = await addListIfEmpty('AI 生成任務')
+    
+    // 逐一加入卡片
+    for (const card of cards) {
+      await addCard(targetListId, card.title, card.status || 'todo', card.description)
     }
     
-    // 將每個生成的卡片加入到列表中
-    for (const card of cards.value) {
-      // 使用 composable 方法，支援完整的描述欄位（遵循依賴反轉原則）
-      await addCard(targetList.id, card.title, card.status || 'todo', card.description)
-    }
+    console.log(`🎉 [AI-MODAL] 成功加入 ${cards.length} 個任務到看板`)
     
-    // 關閉模態框並重置狀態
-    closeModal()
-  } catch (error) {
-    console.error('加入卡片到看板時發生錯誤:', error)
-    errorMessage.value = '加入看板時發生錯誤，請稍後再試'
+  } catch (error: unknown) {
+    console.error('❌ [AI-MODAL] 加入任務到看板失敗:', error)
+    
+    // 🛡️ 類型守衛：安全地提取錯誤訊息
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    
+    // 🚀 使用 EventBus 發送通知事件（符合 Observer Pattern）
+    eventBus.emit('notification:error', {
+      title: '任務加入看板失敗',
+      message: `任務已生成，但加入看板時發生錯誤：${errorMessage}`,
+      duration: 6000
+    })
+    
+    console.log('📢 [AI-MODAL] 已發送加入看板失敗通知事件')
   }
 }
+
+// 移除原來的 addCardsToBoard 函數，因為樂觀 UI 會自動處理
 
 // 關閉模態框
 function closeModal() {
@@ -205,9 +195,6 @@ function closeModal() {
   // 重置狀態（延遲執行，讓動畫完成）
   setTimeout(() => {
     userInput.value = ''
-    cards.value = []
-    errorMessage.value = ''
-    loading.value = false
   }, 300)
 }
 

@@ -361,10 +361,80 @@ export const useListActions = () => {
     // 實際實作會顯示在 UI 上
   }
 
+  // 🚀 Rabbit 建議的新功能：確保有可用列表
+  const ensureFirstList = async (): Promise<{ id: string }> => {
+    console.log('🔍 [COMPOSABLE] ensureFirstList 被呼叫，檢查是否有列表...')
+    
+    // 如果已經有列表，返回第一個
+    if (boardStore.board.lists.length > 0) {
+      const firstList = boardStore.board.lists[0]
+      console.log('✅ [COMPOSABLE] 已有列表，返回第一個:', firstList.id)
+      return { id: firstList.id }
+    }
+    
+    // 如果沒有列表，自動創建一個默認列表
+    console.log('📝 [COMPOSABLE] 沒有列表，自動創建默認列表...')
+    try {
+      await boardStore.addList('任務列表')
+      
+      // 返回新創建的列表
+      const newList = boardStore.board.lists[0]
+      console.log('✅ [COMPOSABLE] 默認列表創建成功:', newList.id)
+      
+      return { id: newList.id }
+    } catch (error) {
+      console.error('❌ [COMPOSABLE] 創建默認列表失敗:', error)
+      throw new Error('無法創建默認列表，請稍後再試')
+    }
+  }
+
+  // 🚀 Rabbit 建議的新功能：如果為空則添加列表
+  const addListIfEmpty = async (title: string = 'AI 生成任務'): Promise<{ id: string }> => {
+    console.log('🔍 [COMPOSABLE] addListIfEmpty 被呼叫，檢查列表狀態...')
+    
+    // 如果有列表，不做任何操作
+    if (boardStore.board.lists.length > 0) {
+      console.log('ℹ️ [COMPOSABLE] 已有列表，不需要添加')
+      return { id: boardStore.board.lists[0].id }
+    }
+    
+    // 如果沒有列表，添加指定標題的列表
+    console.log('📝 [COMPOSABLE] 沒有列表，添加新列表:', title)
+    try {
+      await boardStore.addList(title)
+      
+      const newList = boardStore.board.lists[0]
+      console.log('✅ [COMPOSABLE] 新列表添加成功:', newList.id)
+      
+      return { id: newList.id }
+    } catch (error) {
+      console.error('❌ [COMPOSABLE] 添加列表失敗:', error)
+      throw new Error('無法添加列表，請稍後再試')
+    }
+  }
+
+  // 🚀 提供列表只讀資訊的安全方法（避免組件直接訪問 boardStore）
+  const getListsInfo = () => {
+    return {
+      count: boardStore.board.lists.length,
+      isEmpty: boardStore.board.lists.length === 0,
+      isLoading: boardStore.isLoading,
+      lists: boardStore.board.lists.map(list => ({
+        id: list.id,
+        title: list.title,
+        cardCount: list.cards.length
+      }))
+    }
+  }
+
   return {
     addCard,
     deleteList,
     addList,
-    updateListTitle
+    updateListTitle,
+    // 🚀 新增的 Rabbit 建議功能
+    ensureFirstList,
+    addListIfEmpty,
+    getListsInfo
   }
 }

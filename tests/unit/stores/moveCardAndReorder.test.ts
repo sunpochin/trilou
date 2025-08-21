@@ -184,7 +184,7 @@ describe('moveCardAndReorder Position 更新測試', () => {
       // 檢查關鍵的 console.log 呼叫
       expect(consoleSpy).toHaveBeenCalledWith('🚀 [STORE] 開始重新整理受影響列表的 position:', ['list_1'])
       expect(consoleSpy).toHaveBeenCalledWith('📝 [STORE] 重新整理列表 "待辦" 的 3 張卡片')
-      expect(consoleSpy).toHaveBeenCalledWith('📤 [STORE] 批次更新 3 張卡片的位置...')
+      expect(consoleSpy).toHaveBeenCalledWith('📤 [STORE] 準備批次更新 3 張卡片的位置...')
 
       consoleSpy.mockRestore()
     })

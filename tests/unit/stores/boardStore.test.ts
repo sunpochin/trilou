@@ -66,7 +66,7 @@ const createMockStore = () => {
           })
         }
         
-        console.log(`📤 [STORE] 批次更新 ${updatePromises.length} 張卡片的位置...`)
+        console.log(`📤 [STORE] 準備批次更新 ${updatePromises.length} 張卡片的位置...`)
         
         // 批次執行所有 API 更新請求
         await Promise.all(updatePromises)
