@@ -7,6 +7,7 @@ import AiTaskModal from '@/components/AiTaskModal.vue';
 import { useBoardStore } from '@/stores/boardStore';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useInputDialog } from '@/composables/useInputDialog';
+import { useAuth } from '@/composables/useAuth';
 import { MESSAGES } from '@/constants/messages';
 import { computed } from 'vue';
 
@@ -14,6 +15,9 @@ import { computed } from 'vue';
 const { $supabase } = useNuxtApp();
 // 取得 Pinia store
 const boardStore = useBoardStore();
+
+// 取得認證相關功能
+const { user, handleLogout, initializeAuth } = useAuth();
 
 // 計算 AI 生成狀態的響應式數據
 const pendingCount = computed(() => boardStore.pendingAiCards);
@@ -25,8 +29,6 @@ const { confirmState, handleConfirm, handleCancel } = useConfirmDialog();
 // 取得輸入對話框功能
 const { inputState, handleConfirm: handleInputConfirm, handleCancel: handleInputCancel } = useInputDialog();
 
-// 響應式變數，用於儲存使用者物件
-const user = ref<any>(null);
 
 // AI 生成任務模態框的顯示狀態
 const showAiModal = ref(false);
@@ -35,11 +37,6 @@ const showAiModal = ref(false);
 const emailInput = ref('');
 const isEmailLoading = ref(false);
 
-// 處理登出邏輯
-const handleLogout = async () => {
-  const { error } = await $supabase.auth.signOut();
-  if (error) console.error('登出失敗', error);
-};
 
 // 處理 Magic Email Login
 const signInWithEmail = async () => {
@@ -72,43 +69,9 @@ const signInWithEmail = async () => {
   }
 };
 
-// 在元件掛載後執行
+// 在元件掛載後執行認證初始化
 onMounted(() => {
-  // 追蹤是否已經載入過看板，避免重複載入
-  let hasLoadedBoard = false
-  
-  // 監聽 Supabase 的認證狀態變化
-  $supabase.auth.onAuthStateChange(async (event, session) => {
-    const newUser = session?.user ?? null
-    const userChanged = user.value?.id !== newUser?.id
-    
-    console.log('🔐 [APP] 認證狀態變化:', { 
-      event, 
-      userChanged, 
-      hasLoadedBoard,
-      previousUserId: user.value?.id,
-      newUserId: newUser?.id,
-      timestamp: new Date().toLocaleTimeString()
-    })
-    
-    user.value = newUser
-
-    if (user.value) {
-      // 只在用戶真的變化或首次載入時才獲取看板資料
-      if (userChanged && !hasLoadedBoard) {
-        console.log('📋 [APP] 用戶登入，開始載入看板資料')
-        await boardStore.fetchBoard()
-        hasLoadedBoard = true
-      } else {
-        console.log('📋 [APP] 跳過重複載入看板資料')
-      }
-    } else {
-      // 如果使用者登出，清空看板資料並重置載入狀態
-      console.log('🚪 [APP] 用戶登出，清空看板資料')
-      boardStore.board.lists = []
-      hasLoadedBoard = false
-    }
-  });
+  initializeAuth()
 });
 </script>
 
