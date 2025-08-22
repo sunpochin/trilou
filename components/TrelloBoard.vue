@@ -20,8 +20,14 @@
 -->
 
 <template>
-  <!-- 看板主容器 -->
-  <div class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans">
+  <!-- 看板主容器 - 新增 mobile 觸控支援 -->
+  <div 
+    ref="boardContainerRef"
+    class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans transition-transform duration-200 ease-out"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+  >
     
     <!-- 載入狀態：顯示 loading spinner -->
     <div v-if="viewData.isLoading" class="flex items-center justify-center w-full h-full">
@@ -118,12 +124,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useListActions } from '@/composables/useListActions'
 import { useBoardView } from '@/composables/useBoardView'
+import { useMobileInteractions } from '@/composables/useMobileInteractions'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
@@ -135,6 +142,20 @@ type Card = CardUI
 // 改為依賴抽象的 composables 接口
 const { addList } = useListActions()
 const { viewData, handleCardMove, handleListMove, findListById, getAllListIds } = useBoardView()
+
+// 🎯 Mobile 互動功能：使用 Strategy Pattern 分離觸控邏輯
+const { 
+  touchState, 
+  cardDragState,
+  handleTouchStart, 
+  handleTouchMove, 
+  handleTouchEnd,
+  setBoardContainer,
+  resetBoardPosition 
+} = useMobileInteractions()
+
+// 看板容器的 DOM 引用
+const boardContainerRef = ref<HTMLElement | null>(null)
 
 // 模態框狀態管理
 const showCardModal = ref(false)
@@ -370,6 +391,14 @@ const closeCardModal = () => {
   showCardModal.value = false
   selectedCard.value = null
 }
+
+// 🎯 組件初始化：設定 mobile 互動容器
+onMounted(() => {
+  if (boardContainerRef.value) {
+    setBoardContainer(boardContainerRef.value)
+    console.log('📱 [TRELLO-BOARD] Mobile 互動功能已初始化')
+  }
+})
 </script>
 
 <style scoped>
@@ -382,5 +411,36 @@ const closeCardModal = () => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 🎯 Mobile 卡片拖拽樣式 - CSS Transform 應用 */
+:global(.card-dragging) {
+  /* 傾斜效果：讓卡片看起來在「飄浮」 */
+  transform: rotate(-5deg) scale(1.05) !important;
+  
+  /* 半透明效果：讓用戶知道卡片在拖拽狀態 */
+  opacity: 0.8 !important;
+  
+  /* 陰影效果：增加「飄浮」的立體感 */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  
+  /* 過渡動畫：讓進入拖拽狀態很平滑 */
+  transition: all 0.2s ease-out !important;
+  
+  /* 邊框：讓拖拽的卡片更明顯 */
+  border: 2px dashed #3b82f6 !important;
+}
+
+/* 拖拽時的游標效果 */
+:global(.card-dragging) {
+  cursor: grabbing !important;
+}
+
+/* 防止拖拽時選取文字 */
+:global(.card-draggable) {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 </style>

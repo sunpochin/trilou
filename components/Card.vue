@@ -1,6 +1,7 @@
 <template>
-  <!-- 卡片組件 -->
-  <div class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-shadow duration-200 hover:shadow-md relative group min-h-16 cursor-pointer"
+  <!-- 卡片組件 - 支援 mobile 拖拽 -->
+  <div 
+    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable"
     @click="openCardModal"
   >
     <!-- 顯示模式：顯示卡片標題 -->

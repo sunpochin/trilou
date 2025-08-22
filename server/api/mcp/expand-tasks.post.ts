@@ -35,7 +35,6 @@ export default defineEventHandler(async (event) => {
 
     // 呼叫外部 MCP 服務 - 增加超時和錯誤處理
     const mcpServiceUrl="https://mcp-trilou.up.railway.app/mcp/expand-tasks"
-    // const mcpServiceUrl = process.env.MCP_SERVICE_URL || 'http://localhost:8000/mcp/expand-tasks'
     
     console.log('🚀 [MCP-API] 轉發請求到外部服務:', mcpServiceUrl)
     
