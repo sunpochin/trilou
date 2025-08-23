@@ -497,16 +497,70 @@ const setupMobileGestures = () => {
 
 // 📋 清理：移除不需要的函數，專注於拖拽功能
 
-// 🎯 手機版列表彈性滾動（像trello）- 真正的邏輯！
+/**
+ * 🎮 手機版列表智慧對齊函式 - Trello 風格的彈性滾動
+ * 
+ * 📖 十歲小朋友也能懂的解釋：
+ * 想像你有一排書架（列表），每個書架都一樣寬。
+ * 當你用手指滑動看不同書架時，手指離開後：
+ * - 系統會自動幫你「對齊」到最近的那個書架中間
+ * - 就像磁鐵一樣，會吸到最近的書架！
+ * - 這樣你就不會看到「半個書架」，總是看到完整的書架
+ * 
+ * 🔬 技術原理（程式設計師版本）：
+ * 1. 【測量階段】計算每個列表的寬度和位置
+ * 2. 【分析階段】找出螢幕中心最接近哪個列表的中心
+ * 3. 【動作階段】使用 scrollTo() 平滑滑動到目標位置
+ * 4. 【回饋階段】提供震動回饋讓使用者知道已對齊
+ * 
+ * 🎯 核心算法：
+ * - screenCenter = currentScroll + containerWidth / 2  (螢幕中心位置)
+ * - targetScroll = listIndex * listWidth + (listWidth - containerWidth) / 2  (目標滑動位置)
+ * - 使用歐幾里得距離找最近的列表：Math.abs(listCenter - screenCenter)
+ * 
+ * 🚀 效能考量：
+ * - 使用 querySelector 快速找到列表元素
+ * - 一次性計算所有位置，避免重複 DOM 查詢
+ * - 使用 CSS smooth scroll 硬體加速
+ * - 設置防抖機制避免重複觸發
+ * 
+ * 🎨 使用者體驗設計：
+ * - 模仿 iOS Photos 和 Trello 的滑動體驗
+ * - 30ms 震動回饋提供觸覺確認
+ * - 詳細 console.log 方便開發者除錯
+ * - 500ms 冷卻時間防止過度敏感
+ * 
+ * 🔧 容錯機制：
+ * - 如果找不到 .mobile-list-item，會嘗試備用選擇器
+ * - 如果無法計算寬度，使用預設 320px
+ * - 檢查容器是否存在和是否正在執行中
+ */
 const handleMobileListSnapBack = () => {
   if (!mobileListsContainer.value || isListSnapping.value) return
   
   isListSnapping.value = true
   const container = mobileListsContainer.value
   
-  // 🎯 動態計算列表寬度（更精確！）
+  // 🔍 尋找第一個列表元素（使用正確的選擇器）
   const firstList = container.querySelector('.mobile-list-item') as HTMLElement
-  const listWidth = firstList ? firstList.offsetWidth + 16 : container.clientWidth // 實際寬度 + gap (Tailwind gap-4 = 1rem = 16px)
+  console.log('🔍 [尋找列表] 第一個列表元素:', firstList)
+  
+  // 🔍 如果找不到，嘗試其他可能的選擇器
+  const actualList = firstList || container.querySelector('.bg-gray-200, [data-list-id]') as HTMLElement
+  if (!firstList && actualList) {
+    console.log('🔍 [備用尋找] 使用備用選擇器找到:', actualList)
+  }
+  
+  // 📏 計算列表寬度（如果找不到就估算）
+  const listWidth = actualList ? actualList.offsetWidth + 16 : 320 // 實際寬度 + gap 或預設 320px
+  
+  // 📊 詳細寬度資訊
+  console.log('📏 [寬度計算]', {
+    找到的元素: !!actualList,
+    元素寬度: actualList?.offsetWidth,
+    gap間距: 16,
+    最終寬度: listWidth
+  })
   
   console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動開始 (基於當前位置)')
   console.log('🔍 [DEBUG] 容器檢查:', {
@@ -584,16 +638,15 @@ const handleMobileListSnapBack = () => {
     })
   }, 100)
   
-  // 🎉 添加視覺回饋
+  // 🎉 添加視覺回饋與震動回饋
   console.log('🎯 [MOBILE-GESTURE] 列表跳轉詳情:')
-  console.log('  📍 方向:', deltaX > 0 ? '往左 ←' : '往右 →')
-  console.log('  📊 從列表', currentListIndex, '跳到列表', targetListIndex)
-  console.log('  📏 移動距離:', Math.abs(targetListIndex - currentListIndex), '個列表')
+  console.log('  📊 目標列表:', targetListIndex)
   console.log('  🎯 目標滾動位置:', targetScroll)
   console.log('  📐 當前滾動位置:', currentScroll)
+  console.log('  📏 將滑動:', Math.abs(targetScroll - currentScroll), '像素')
   
-  // 如果有切換列表，添加震動回饋
-  if (targetListIndex !== currentListIndex && navigator.vibrate) {
+  // 如果有明顯滑動，添加震動回饋
+  if (Math.abs(targetScroll - currentScroll) > 10 && navigator.vibrate) {
     navigator.vibrate(30)
   }
   
