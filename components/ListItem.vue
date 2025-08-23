@@ -79,7 +79,13 @@
 
 <template>
   <!-- 單個列表容器 -->
-  <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex flex-col" :data-list-id="list.id">
+  <div 
+    :class="[
+      'bg-gray-200 rounded p-2 flex-shrink-0 flex flex-col',
+      props.isMobile ? 'mobile-list-item' : 'w-80'
+    ]" 
+    :data-list-id="list.id"
+  >
     <!-- 列表標題區域 -->
     <div class="cursor-pointer flex justify-between items-center p-2 mb-2 relative">
       <!-- 非編輯狀態：顯示標題 -->

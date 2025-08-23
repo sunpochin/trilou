@@ -20,8 +20,10 @@
   <!-- 統一看板容器 - 條件式 drag handler -->
   <div 
     ref="boardContainerRef"
-    class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans"
-    :class="{ 'mobile-container': isMobile, 'desktop-container': !isMobile }"
+    :class="[
+      'gap-4 p-4 h-[85vh] bg-gray-100 font-sans',
+      isMobile ? 'block overflow-y-auto mobile-container' : 'flex overflow-x-auto desktop-container'
+    ]"
   >
     
     <!-- 載入狀態：顯示 loading spinner -->
@@ -69,7 +71,7 @@
       
       <!-- 📱 手機版：使用 vue-draggable-next + 自訂手勢處理 -->
       <template v-else>
-        <div class="flex gap-4" ref="mobileListsContainer">
+        <div class="flex gap-4 overflow-x-auto" ref="mobileListsContainer">
           <ListItem
             v-for="list in viewData.lists" 
             :key="list.id"
@@ -83,7 +85,6 @@
             @list-add-card="onListAddCard"
             @list-delete="onListDelete"
             @list-update-title="onListUpdateTitle"
-            class="mobile-list-item"
           />
         </div>
       </template>
@@ -294,27 +295,55 @@ const onListMove = async (event: any) => {
 
 // 📱 手機版：專注於拖拽功能，移除干擾性手勢
 const setupMobileGestures = () => {
-  if (!mobileListsContainer.value) return
+  console.log('🔧 [MOBILE-SETUP] setupMobileGestures 被調用')
+  console.log('🔧 [MOBILE-SETUP] mobileListsContainer.value:', mobileListsContainer.value)
+  console.log('🔧 [MOBILE-SETUP] isMobile.value:', isMobile.value)
   
-  console.log('📱 [MOBILE-BOARD] 初始化手機版拖拽優先系統')
+  if (!mobileListsContainer.value) {
+    console.error('❌ [MOBILE-BOARD] 無法初始化：mobileListsContainer 不存在')
+    console.log('🔧 [DEBUG] DOM 中的 mobileListsContainer ref:', document.querySelector('[ref="mobileListsContainer"]'))
+    return
+  }
+  
+  const container = mobileListsContainer.value
+  const firstList = container.querySelector('.mobile-list-item')
+  
+  console.log('📱 [MOBILE-BOARD] 初始化手機版拖拽優先系統', {
+    container: container,
+    containerTag: container.tagName,
+    containerClasses: container.className,
+    width: container.clientWidth,
+    scrollWidth: container.scrollWidth,
+    children: container.children.length,
+    firstListFound: !!firstList,
+    firstListTag: firstList?.tagName,
+    firstListClasses: firstList?.className
+  })
   
   // 🎯 只處理非拖拽區域的列表切換手勢
   let startX = 0
   let isListGesture = false
   
   const handleListTouchStart = (e: TouchEvent) => {
+    console.log('👆 [MOBILE-TOUCH] touchstart 觸發！', {
+      touches: e.touches.length,
+      target: (e.target as HTMLElement).tagName
+    })
+    
     const target = e.target as HTMLElement
     
     // 只在列表標題區域或空白區域監聽
     if (target.closest('.card-draggable') || 
         target.closest('draggable') || 
         target.closest('[draggable="true"]')) {
+      console.log('🚫 [MOBILE-TOUCH] 在拖拽區域，跳過手勢處理')
       return
     }
     
     const touch = e.touches[0]
     startX = touch.clientX
     isListGesture = false
+    console.log('✅ [MOBILE-TOUCH] 開始手勢追蹤，起始位置:', startX)
   }
   
   const handleListTouchMove = (e: TouchEvent) => {
@@ -331,33 +360,76 @@ const setupMobileGestures = () => {
     
     const touch = e.touches[0]
     const deltaX = touch.clientX - startX
+    console.log('👆 [MOBILE-TOUCH] touchmove，移動距離:', deltaX)
     
     // 只處理明確的水平手勢
-    if (Math.abs(deltaX) > 50 && !isListGesture) {
+    if (Math.abs(deltaX) > 30 && !isListGesture) {  // 💡 降低門檻：從 50px 改為 30px，更敏感
       isListGesture = true
       e.preventDefault()
-      console.log('📋 [MOBILE-GESTURE] 列表切換手勢觸發')
+      console.log('📋 [MOBILE-GESTURE] 列表切換手勢觸發 (移動 >30px)')
     }
   }
   
   const handleListTouchEnd = (e: TouchEvent) => {
+    console.log('👆 [MOBILE-TOUCH] touchend 觸發！', {
+      isListGesture,
+      hasContainer: !!mobileListsContainer.value
+    })
+    
     if (isListGesture && mobileListsContainer.value) {
       const touch = e.changedTouches[0]
       const deltaX = touch.clientX - startX
       
-      if (Math.abs(deltaX) > 80) {
+      console.log('🎯 [MOBILE-TOUCH] 手勢結束，總移動距離:', deltaX)
+      
+      if (Math.abs(deltaX) > 60) {  // 💡 降低門檻：從 80px 改為 60px
+        console.log('✅ [MOBILE-TOUCH] 觸發彈性滾動 (需要 >60px)')
         handleMobileListSnapBack(deltaX)
+      } else {
+        console.log('⏸️ [MOBILE-TOUCH] 移動距離不夠，需要 >60px 才能觸發彈性滾動')
       }
     }
     isListGesture = false
   }
   
   // 只監聽列表容器的特定區域
-  mobileListsContainer.value.addEventListener('touchstart', handleListTouchStart, { passive: true })
-  mobileListsContainer.value.addEventListener('touchmove', handleListTouchMove, { passive: false })
-  mobileListsContainer.value.addEventListener('touchend', handleListTouchEnd, { passive: true })
+  container.addEventListener('touchstart', handleListTouchStart, { passive: true })
+  container.addEventListener('touchmove', handleListTouchMove, { passive: false })
+  container.addEventListener('touchend', handleListTouchEnd, { passive: true })
   
-  console.log('📱 [MOBILE-BOARD] 拖拽優先系統已初始化')
+  // 🧪 桌面測試用：添加滑鼠事件來測試
+  container.addEventListener('mousedown', (e) => {
+    console.log('🖱️ [DESKTOP-TEST] mousedown 觸發')
+    handleListTouchStart({
+      touches: [{ clientX: e.clientX }],
+      target: e.target
+    } as any)
+  })
+  
+  container.addEventListener('mousemove', (e) => {
+    if (isListGesture) {
+      handleListTouchMove({
+        touches: [{ clientX: e.clientX }],
+        preventDefault: () => {},
+        target: e.target
+      } as any)
+    }
+  })
+  
+  container.addEventListener('mouseup', (e) => {
+    if (isListGesture) {
+      console.log('🖱️ [DESKTOP-TEST] mouseup 觸發')
+      handleListTouchEnd({
+        changedTouches: [{ clientX: e.clientX }]
+      } as any)
+    }
+  })
+  
+  console.log('📱 [MOBILE-BOARD] 拖拽優先系統已初始化 (含桌面測試支援)')
+  console.log('🔧 [DEBUG] 事件監聽器已綁定到:', {
+    containerElement: container,
+    eventListeners: ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mousemove', 'mouseup']
+  })
 }
 
 // 📋 清理：移除不需要的函數，專注於拖拽功能
@@ -371,9 +443,17 @@ const handleMobileListSnapBack = (deltaX: number) => {
   
   // 🎯 動態計算列表寬度（更精確！）
   const firstList = container.querySelector('.mobile-list-item') as HTMLElement
-  const listWidth = firstList ? firstList.offsetWidth + 24 : 320 // 實際寬度 + gap
+  const listWidth = firstList ? firstList.offsetWidth + 16 : container.clientWidth // 實際寬度 + gap (Tailwind gap-4 = 1rem = 16px)
   
   console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動開始:', { deltaX, listWidth })
+  console.log('🔍 [DEBUG] 容器檢查:', {
+    hasContainer: !!container,
+    containerWidth: container.clientWidth,
+    containerScrollWidth: container.scrollWidth,
+    foundFirstList: !!firstList,
+    firstListWidth: firstList?.offsetWidth,
+    calculatedListWidth: listWidth
+  })
   
   // 計算當前最接近的列表索引
   const currentScroll = container.scrollLeft
@@ -397,20 +477,40 @@ const handleMobileListSnapBack = (deltaX: number) => {
   
   const targetScroll = targetListIndex * listWidth
   
+  // 🔍 滾動前詳細檢查
+  console.log('🔍 [DEBUG] 滾動前狀態檢查:', {
+    containerScrollLeft: container.scrollLeft,
+    containerOffsetWidth: container.offsetWidth,
+    containerScrollWidth: container.scrollWidth,
+    listCount: viewData.value.lists.length,
+    targetScroll: targetScroll,
+    targetListIndex: targetListIndex,
+    canScroll: container.scrollWidth > container.clientWidth
+  })
+
   // 🎊 超順滑的 Trello 風格滾動
+  console.log('📜 [SCROLL] 開始滾動到位置:', targetScroll)
   container.scrollTo({
     left: targetScroll,
     behavior: 'smooth'
   })
   
+  // 🔍 滾動後立即檢查（可能不會馬上變化，因為是 smooth 滾動）
+  setTimeout(() => {
+    console.log('📜 [SCROLL] 滾動後狀態:', {
+      newScrollLeft: container.scrollLeft,
+      expectedScroll: targetScroll,
+      scrollSuccess: Math.abs(container.scrollLeft - targetScroll) < 10
+    })
+  }, 100)
+  
   // 🎉 添加視覺回饋
-  console.log('🎯 [MOBILE-GESTURE] 列表跳轉成功:', { 
-    direction: deltaX > 0 ? '往左' : '往右',
-    fromIndex: currentListIndex, 
-    toIndex: targetListIndex,
-    距離: Math.abs(targetListIndex - currentListIndex),
-    目標位置: targetScroll
-  })
+  console.log('🎯 [MOBILE-GESTURE] 列表跳轉詳情:')
+  console.log('  📍 方向:', deltaX > 0 ? '往左 ←' : '往右 →')
+  console.log('  📊 從列表', currentListIndex, '跳到列表', targetListIndex)
+  console.log('  📏 移動距離:', Math.abs(targetListIndex - currentListIndex), '個列表')
+  console.log('  🎯 目標滾動位置:', targetScroll)
+  console.log('  📐 當前滾動位置:', currentScroll)
   
   // 如果有切換列表，添加震動回饋
   if (targetListIndex !== currentListIndex && navigator.vibrate) {
@@ -587,9 +687,10 @@ onUnmounted(() => {
 }
 
 .mobile-list-item {
-  width: 320px; /* 固定寬度，配合彈性滾動計算 */
+  width: calc(100vw - 6rem); /* 手機版每個列表佔滿寬度，留更多邊距 */
+  min-width: 280px; /* 最小寬度保證 */
+  max-width: 400px; /* 最大寬度限制 */
   flex-shrink: 0;
-  max-width: none;
 }
 
 /* 📱 手機版卡片拖拽樣式 - 超順滑版本！ */
