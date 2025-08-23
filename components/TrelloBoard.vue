@@ -299,6 +299,15 @@ const setupMobileGestures = () => {
   console.log('🔧 [MOBILE-SETUP] mobileListsContainer.value:', mobileListsContainer.value)
   console.log('🔧 [MOBILE-SETUP] isMobile.value:', isMobile.value)
   
+  // 🔍 立即測試事件綁定
+  setTimeout(() => {
+    console.log('🔍 [TEST] 5秒後測試事件監聽器...')
+    if (mobileListsContainer.value) {
+      console.log('🔍 [TEST] 容器存在，嘗試觸發測試事件')
+      mobileListsContainer.value.click()
+    }
+  }, 5000)
+  
   if (!mobileListsContainer.value) {
     console.error('❌ [MOBILE-BOARD] 無法初始化：mobileListsContainer 不存在')
     console.log('🔧 [DEBUG] DOM 中的 mobileListsContainer ref:', document.querySelector('[ref="mobileListsContainer"]'))
@@ -324,73 +333,127 @@ const setupMobileGestures = () => {
   let startX = 0
   let isListGesture = false
   
+  /**
+   * 🎮 手指開始觸碰螢幕時的處理函式
+   * 
+   * 想像場景：
+   * 就像你在圖書館裡，手指剛碰到書架
+   * 這時候還不知道你要做什麼，所以先記錄下來：
+   * - 手指碰到的位置（startX）
+   * - 碰到的是什麼（書架還是書？）
+   * 
+   * 為什麼要記錄 startX？
+   * - 就像做記號：「手指從這裡開始」
+   * - 之後手指移動時，才能計算移動了多遠
+   * - 像是量距離前要先標記起點一樣！
+   */
   const handleListTouchStart = (e: TouchEvent) => {
     console.log('👆 [MOBILE-TOUCH] touchstart 觸發！', {
       touches: e.touches.length,
-      target: (e.target as HTMLElement).tagName
+      target: (e.target as HTMLElement)?.tagName || 'NO_TARGET'
     })
     
     const target = e.target as HTMLElement
     
-    // 只在列表標題區域或空白區域監聽
+    // 🚫 檢查：手指是不是碰到卡片？
+    // 如果是卡片，就不管（讓卡片自己處理拖拽）
     if (target.closest('.card-draggable') || 
         target.closest('draggable') || 
         target.closest('[draggable="true"]')) {
       console.log('🚫 [MOBILE-TOUCH] 在拖拽區域，跳過手勢處理')
-      return
+      return  // 停止！讓卡片自己處理
     }
     
+    // 📏 記錄起始位置
     const touch = e.touches[0]
-    startX = touch.clientX
-    isListGesture = false
+    startX = touch.clientX  // 記住手指開始的 X 座標（橫向位置）
+    isListGesture = false   // 重置狀態：還不確定是不是列表滑動
     console.log('✅ [MOBILE-TOUCH] 開始手勢追蹤，起始位置:', startX)
   }
   
+  /**
+   * 🎮 手指移動時的處理函式
+   * 
+   * 想像場景：
+   * 你在手機上有一排書架（列表），每個書架上有很多書（卡片）
+   * 這個函式要判斷：你是想「左右滑動看其他書架」還是「拿起一本書」？
+   * 
+   * 判斷方法：
+   * 1. 如果手指碰到的是書（卡片） → 不處理，讓你能拿書
+   * 2. 如果手指在書架空白處，且移動超過 15 像素 → 判定為要滑動書架
+   * 
+   * 為什麼要計算 deltaX（移動距離）？
+   * - 手指輕輕碰一下（移動 <15px）= 可能只是要點擊或手抖
+   * - 手指明顯滑動（移動 >15px）= 真的想要滑動列表
+   * - 就像老師說「舉手超過頭頂才算真的要發問」一樣的道理！
+   */
   const handleListTouchMove = (e: TouchEvent) => {
+    // 沒有列表容器就不處理
     if (!mobileListsContainer.value) return
     
     const target = e.target as HTMLElement
     
-    // 確保不干擾卡片拖拽
+    // 🚫 檢查：手指是不是碰到卡片？
+    // 如果是，就讓卡片自己處理拖拽，我們不管
     if (target.closest('.card-draggable') || 
         target.closest('draggable') ||
         target.closest('[draggable="true"]')) {
-      return
+      return  // 停止！讓卡片自己處理
     }
     
+    // 📏 計算手指移動了多遠
     const touch = e.touches[0]
-    const deltaX = touch.clientX - startX
-    console.log('👆 [MOBILE-TOUCH] touchmove，移動距離:', deltaX)
+    const deltaX = touch.clientX - startX  // 現在位置 - 開始位置 = 移動距離
+    // console.log('👆 [MOBILE-TOUCH] touchmove，移動距離:', deltaX)
     
-    // 只處理明確的水平手勢
-    if (Math.abs(deltaX) > 30 && !isListGesture) {  // 💡 降低門檻：從 50px 改為 30px，更敏感
-      isListGesture = true
-      e.preventDefault()
-      console.log('📋 [MOBILE-GESTURE] 列表切換手勢觸發 (移動 >30px)')
+    // 🎯 判斷：移動超過 15 像素了嗎？
+    // Math.abs() 是取絕對值，因為左滑是負數，右滑是正數
+    // !isListGesture 確保只判斷一次，不重複設定
+    if (Math.abs(deltaX) > 15 && !isListGesture) {
+      isListGesture = true  // 標記：這是列表滑動手勢！
+      e.preventDefault()    // 阻止其他預設行為
+      console.log('📋 [MOBILE-GESTURE] 列表切換手勢觸發 (移動 >15px)')
     }
   }
   
+  /**
+   * 🎮 手指離開螢幕時的處理函式
+   * 
+   * 想像場景：
+   * 就像你滑動手機照片，手指離開時：
+   * - 如果滑到一半，照片會自動「彈回」或「滑到下一張」
+   * - 這叫「snap back」（彈回對齊）
+   * 
+   * 這個函式做什麼？
+   * 1. 檢查：剛剛是不是在滑動列表？（isListGesture）
+   * 2. 如果是 → 呼叫 handleMobileListSnapBack() 讓列表對齊
+   * 3. 重置狀態，準備下次觸碰
+   * 
+   * 為什麼不管移動多少都要檢查？
+   * - 就像 Trello 的設計：只要有滑動，就要幫你對齊到最近的列表
+   * - 讓使用者不用很精準地滑，系統會幫忙對齊
+   */
   const handleListTouchEnd = (e: TouchEvent) => {
     console.log('👆 [MOBILE-TOUCH] touchend 觸發！', {
       isListGesture,
       hasContainer: !!mobileListsContainer.value
     })
     
+    // 如果剛剛是列表滑動手勢，且有列表容器
     if (isListGesture && mobileListsContainer.value) {
-      const touch = e.changedTouches[0]
-      const deltaX = touch.clientX - startX
+      console.log('✅ [MOBILE-TOUCH] 手勢結束，檢查列表位置並決定 snap 目標')
       
-      console.log('🎯 [MOBILE-TOUCH] 手勢結束，總移動距離:', deltaX)
-      
-      if (Math.abs(deltaX) > 60) {  // 💡 降低門檻：從 80px 改為 60px
-        console.log('✅ [MOBILE-TOUCH] 觸發彈性滾動 (需要 >60px)')
-        handleMobileListSnapBack(deltaX)
-      } else {
-        console.log('⏸️ [MOBILE-TOUCH] 移動距離不夠，需要 >60px 才能觸發彈性滾動')
-      }
+      // 🎯 執行彈回對齊
+      handleMobileListSnapBack()  // 讓列表自動對齊到最近的位置
     }
+    
+    // 重置狀態，為下次觸碰做準備
     isListGesture = false
   }
+  
+  // 🔍 先添加簡單的測試事件
+  const testClick = () => console.log('🎯 [TEST] 容器被點擊了！')
+  container.addEventListener('click', testClick)
   
   // 只監聽列表容器的特定區域
   container.addEventListener('touchstart', handleListTouchStart, { passive: true })
@@ -434,8 +497,8 @@ const setupMobileGestures = () => {
 
 // 📋 清理：移除不需要的函數，專注於拖拽功能
 
-// 🎯 手機版列表彈性滾動（像trello）- 超級改進版本！
-const handleMobileListSnapBack = (deltaX: number) => {
+// 🎯 手機版列表彈性滾動（像trello）- 真正的邏輯！
+const handleMobileListSnapBack = () => {
   if (!mobileListsContainer.value || isListSnapping.value) return
   
   isListSnapping.value = true
@@ -445,7 +508,7 @@ const handleMobileListSnapBack = (deltaX: number) => {
   const firstList = container.querySelector('.mobile-list-item') as HTMLElement
   const listWidth = firstList ? firstList.offsetWidth + 16 : container.clientWidth // 實際寬度 + gap (Tailwind gap-4 = 1rem = 16px)
   
-  console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動開始:', { deltaX, listWidth })
+  console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動開始 (基於當前位置)')
   console.log('🔍 [DEBUG] 容器檢查:', {
     hasContainer: !!container,
     containerWidth: container.clientWidth,
@@ -455,27 +518,44 @@ const handleMobileListSnapBack = (deltaX: number) => {
     calculatedListWidth: listWidth
   })
   
-  // 計算當前最接近的列表索引
+  // 🧒 真正的 Trello 邏輯：檢查當前滾動位置
   const currentScroll = container.scrollLeft
-  const currentListIndex = Math.round(currentScroll / listWidth)
+  const containerWidth = container.clientWidth
   
-  // 🚀 改進的滑動邏輯：更敏感，更像 Trello
-  let targetListIndex = currentListIndex
+  // 🎯 步驟1：計算每個列表的邊界位置
+  const listPositions = viewData.value.lists.map((_, index) => ({
+    index,
+    startX: index * listWidth,
+    centerX: index * listWidth + listWidth / 2,
+    endX: (index + 1) * listWidth
+  }))
   
-  // 根據滑動速度和距離決定是否切換列表
-  const shouldSwitch = Math.abs(deltaX) > 30 // 降低閾值，更敏感
+  // 🎯 步驟2：找出最接近螢幕中心的列表
+  const screenCenter = currentScroll + containerWidth / 2
+  let closestListIndex = 0
+  let minDistance = Infinity
   
-  if (shouldSwitch) {
-    if (deltaX > 0) {
-      // 右滑：往前一個列表
-      targetListIndex = Math.max(0, currentListIndex - 1)
-    } else {
-      // 左滑：往後一個列表  
-      targetListIndex = Math.min(viewData.value.lists.length - 1, currentListIndex + 1)
+  listPositions.forEach(pos => {
+    const distance = Math.abs(pos.centerX - screenCenter)
+    if (distance < minDistance) {
+      minDistance = distance
+      closestListIndex = pos.index
     }
-  }
+  })
   
-  const targetScroll = targetListIndex * listWidth
+  console.log('🧒 [真正邏輯] 位置判斷:', {
+    '當前滾動位置': currentScroll,
+    '螢幕中心在': screenCenter,
+    '最近的列表': closestListIndex,
+    '列表中心位置': listPositions[closestListIndex]?.centerX,
+    '距離': minDistance
+  })
+  
+  // 🎯 步驟3：目標就是最近的列表
+  const targetListIndex = closestListIndex
+  
+  // 🎯 步驟4：讓列表置中 - 像拼圖對齊格子中間
+  const targetScroll = targetListIndex * listWidth + (listWidth - containerWidth) / 2
   
   // 🔍 滾動前詳細檢查
   console.log('🔍 [DEBUG] 滾動前狀態檢查:', {
@@ -600,15 +680,19 @@ onMounted(() => {
   // 監聽螢幕尺寸變化
   window.addEventListener('resize', handleResize)
   
-  // 如果是手機版，初始化手勢系統
-  if (isMobile.value) {
+  console.log(`🎯 [UNIFIED-BOARD] 組件初始化完成，模式: ${isMobile.value ? '📱 Mobile' : '🖥️ Desktop'}`)
+})
+
+// 📱 監聽資料載入完成後初始化手勢
+watch(() => viewData.value.lists.length, (newLength) => {
+  if (newLength > 0 && isMobile.value) {
+    console.log('🔧 [WATCH] 列表資料載入完成，準備初始化手機版手勢系統...')
     nextTick(() => {
+      console.log('🔧 [WATCH] nextTick 執行，開始初始化手勢...')
       setupMobileGestures()
     })
   }
-  
-  console.log(`🎯 [UNIFIED-BOARD] 組件初始化完成，模式: ${isMobile.value ? '📱 Mobile' : '🖥️ Desktop'}`)
-})
+}, { immediate: true })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
