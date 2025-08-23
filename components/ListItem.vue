@@ -118,15 +118,21 @@
         group="cards"
         tag="div"
         :disabled="false"
-        :force-fallback="false"
-        :delay="props.isMobile ? 750 : 0"
-        :touch-start-threshold="props.isMobile ? 5 : 0"
-        :animation="300"
-        :easing="props.isMobile ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'cubic-bezier(1, 0, 0, 1)'"
+        :force-fallback="props.isMobile"
+        :fallback-on-body="props.isMobile"
         :fallback-tolerance="0"
+        :delay="props.isMobile ? 750 : 0"
+        :delay-on-touch-only="props.isMobile"
+        :touch-start-threshold="props.isMobile ? 10 : 0"
+        :animation="200"
+        :easing="props.isMobile ? 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'cubic-bezier(1, 0, 0, 1)'"
         :scroll-sensitivity="30"
         :swap-threshold="0.65"
         :bubble-scroll="true"
+        :prevent-on-filter="false"
+        :drag-class="props.isMobile ? 'mobile-drag' : ''"
+        :ghost-class="props.isMobile ? 'mobile-ghost' : ''"
+        :chosen-class="props.isMobile ? 'mobile-chosen' : ''"
         @change="$emit('card-move', $event)"
       >
         <div v-for="card in list.cards" :key="card.id">
@@ -319,3 +325,50 @@ const cancelEdit = () => {
   isEditingTitle.value = false
 }
 </script>
+
+<style scoped>
+/* 🎯 手機版拖拽專用樣式 - 讓卡片跟隨手指移動 */
+:deep(.mobile-drag) {
+  transform: rotate(5deg) !important;
+  opacity: 0.8 !important;
+  transition: none !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  position: absolute !important;
+}
+
+:deep(.mobile-ghost) {
+  opacity: 0.3 !important;
+  background-color: #e5e7eb !important;
+  border: 2px dashed #9ca3af !important;
+  transition: all 0.2s ease !important;
+}
+
+:deep(.mobile-chosen) {
+  transform: scale(1.05) !important;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important;
+  transition: transform 0.1s ease !important;
+}
+
+/* 🎯 SortableJS fallback 模式樣式 - 關鍵：讓拖拽元素跟隨手指 */
+:deep(.sortable-fallback) {
+  display: block !important;
+  position: fixed !important;
+  z-index: 100000 !important;
+  pointer-events: none !important;
+  transition: none !important;
+  transform: rotate(5deg) !important;
+  opacity: 0.8 !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 8px !important;
+  background: white !important;
+}
+
+/* 🎯 確保拖拽容器不會限制元素移動 */
+:deep(.sortable-drag) {
+  position: fixed !important;
+  z-index: 100000 !important;
+  pointer-events: none !important;
+}
+</style>
