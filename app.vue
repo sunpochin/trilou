@@ -69,62 +69,76 @@ const signInWithEmail = async () => {
   }
 };
 
-// 在元件掛載後執行認證初始化
-onMounted(() => {
+// 執行認證初始化（在客戶端或掛載時）
+if (process.client) {
+  // 客戶端環境下立即執行初始化
   initializeAuth()
-});
+} else {
+  // SSR 環境下，在元件掛載後執行
+  onMounted(() => {
+    initializeAuth()
+  });
+}
 </script>
 
 <template>
   <div class="h-screen flex flex-col">
     <!-- 如果使用者已登入，顯示 Trello 看板和使用者資訊 -->
     <div v-if="user">
-      <header class="p-4 bg-gray-200 flex justify-between items-center">
-        <div class="flex items-center gap-4">
-          <h1 class="text-xl font-bold">{{ MESSAGES.board.title }}</h1>
-          
-          <!-- AI 生成任務按鈕和 countdown 區域 -->
+      <!-- 🎨 重新設計的 Header - 分兩層不會擠！ -->
+      <header class="bg-gray-200 border-b border-gray-300">
+        <!-- 第一層：標題和使用者資訊 -->
+        <div class="px-4 py-3 flex justify-between items-center">
+          <h1 class="text-xl font-bold text-gray-800">{{ MESSAGES.board.title }}</h1>
           <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-600 hidden sm:inline">{{ user.email }}</span>
             <button 
-              @click="showAiModal = true" 
-              :class="[
-                'relative px-4 py-2 text-white rounded text-sm font-medium transition-all duration-500 overflow-hidden',
-                isGenerating ? 'ai-generating-magic shadow-2xl' : 'ai-button-magic hover:shadow-lg'
-              ]"
+              @click="handleLogout" 
+              class="px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors duration-200 font-medium shadow-sm hover:shadow-md"
             >
-              <!-- 魔法背景光效（只在生成時顯示） -->
-              <div 
-                v-if="isGenerating"
-                class="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-blue-400/20 to-purple-400/20 animate-ping"
-              ></div>
-              
-              <!-- 按鈕文字 -->
-              <span class="relative z-10 flex items-center gap-2">
-                <svg v-if="isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>AI 生成任務</span>
-              </span>
+              {{ MESSAGES.login.logoutButton }}
             </button>
-            
-            <!-- Countdown 顯示 -->
-            <div 
-              v-if="isGenerating" 
-              class="countdown-display flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white shadow-lg"
-            >
-              <svg class="w-4 h-4 clock-icon" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
-              </svg>
-              <span>還有 {{ pendingCount }} 張卡片生成中...</span>
-            </div>
           </div>
         </div>
-        <div class="flex items-center gap-4">
-          <span class="text-sm">{{ user.email }}</span>
-          <button @click="handleLogout" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm">
-            {{ MESSAGES.login.logoutButton }}
+        
+        <!-- 第二層：AI 按鈕區域 -->
+        <div class="px-4 pb-3 flex items-center gap-4">
+          <!-- AI 生成按鈕 -->
+          <button 
+            @click="showAiModal = true" 
+            :class="[
+              'relative px-4 py-2 text-white rounded-lg text-sm font-medium transition-all duration-500 overflow-hidden shadow-md hover:shadow-lg',
+              isGenerating ? 'ai-generating-magic' : 'ai-button-magic'
+            ]"
+          >
+            <!-- 魔法背景光效 -->
+            <div 
+              v-if="isGenerating"
+              class="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-blue-400/20 to-purple-400/20 animate-ping"
+            ></div>
+            
+            <!-- 按鈕文字 -->
+            <span class="relative z-10 flex items-center gap-2 whitespace-nowrap">
+              <svg v-if="isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>🤖 AI 生成任務</span>
+            </span>
           </button>
+        </div>
+        
+        <!-- 第三層：生成狀態顯示（只在生成時顯示） -->
+        <div 
+          v-if="isGenerating"
+          class="px-4 pb-3"
+        >
+          <div class="countdown-display inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white shadow-lg">
+            <svg class="w-4 h-4 clock-icon" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+            </svg>
+            <span>🚀 還有 {{ pendingCount }} 張卡片生成中...</span>
+          </div>
         </div>
       </header>
       

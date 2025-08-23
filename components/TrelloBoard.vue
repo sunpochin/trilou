@@ -1,32 +1,27 @@
 <!--
-  主看板組件 - 負責整體看板佈局和組件協調
+  統一看板組件 - 條件式 drag handler 架構
   
-  🎯 SOLID 原則設計說明：
+  📱🖥️ ChatGPT 建議的架構設計：
   
-  ✅ S (Single Responsibility) - 單一職責原則
-     只負責「整體看板佈局」和「組件間的事件協調」
-     不處理單個列表的詳細邏輯
+  ✅ 單一 BoardComponent - 控制 desktop/mobile drag handler  
+     - Desktop: vue-draggable-next
+     - Mobile: @vueuse/gesture  
      
-  ✅ O (Open/Closed) - 開放封閉原則
-     要新增看板功能時，透過新增組件或修改子組件來擴展
-     不需要修改此組件的核心佈局邏輯
+  ✅ 共用 Card/List 組件 - 純渲染和樣式
+     - props: cardData, listData, dragging
+     - events: @dragStart, @dragEnd
      
-  ✅ D (Dependency Inversion) - 依賴反轉原則
-     依賴抽象的 ListItem 組件，不直接處理列表內部邏輯
-     
-  📝 重構前後對比：
-     重構前：一個檔案 197 行，處理所有邏輯
-     重構後：主檔案 95 行，職責清晰分離
+  ✅ 條件式邏輯分離
+     - 螢幕尺寸偵測決定使用哪種 drag handler
+     - UI 元件不需要重複，只有事件綁定不同
 -->
 
 <template>
-  <!-- 看板主容器 - 新增 mobile 觸控支援 -->
+  <!-- 統一看板容器 - 條件式 drag handler -->
   <div 
     ref="boardContainerRef"
-    class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans transition-transform duration-200 ease-out"
-    @touchstart="handleTouchStart"
-    @touchmove="handleTouchMove"
-    @touchend="handleTouchEnd"
+    class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans"
+    :class="{ 'mobile-container': isMobile, 'desktop-container': !isMobile }"
   >
     
     <!-- 載入狀態：顯示 loading spinner -->
@@ -43,24 +38,58 @@
 
     <!-- 載入完成：顯示實際看板內容 -->
     <template v-else>
-      <!-- 可拖拉的列表容器 -->
-      <draggable 
-        class="flex gap-4" 
-        :list="viewData.lists" 
-        @change="onListMove"
-        tag="div"
-      >
-        <ListItem
-          v-for="list in viewData.lists" 
-          :key="list.id"
-          :list="list"
-          @card-move="onCardMove"
-          @open-card-modal="openCardModal"
-        />
-      </draggable>
+      <!-- 🖥️ 桌面版：使用 vue-draggable-next -->
+      <template v-if="!isMobile">
+        <draggable 
+          class="flex gap-4" 
+          :list="viewData.lists" 
+          @change="onListMove"
+          tag="div"
+          :disabled="false"
+          :animation="200"
+          ghostClass="list-ghost"
+          chosenClass="list-chosen"
+          dragClass="list-dragging"
+        >
+          <ListItem
+            v-for="list in viewData.lists" 
+            :key="list.id"
+            :list="list"
+            :dragging="draggingState.isDragging"
+            @card-move="onCardMove"
+            @open-card-modal="openCardModal"
+            @card-delete="onCardDelete"
+            @card-update-title="onCardUpdateTitle"
+            @list-add-card="onListAddCard"
+            @list-delete="onListDelete"
+            @list-update-title="onListUpdateTitle"
+          />
+        </draggable>
+      </template>
+      
+      <!-- 📱 手機版：使用 vue-draggable-next + 自訂手勢處理 -->
+      <template v-else>
+        <div class="flex gap-4" ref="mobileListsContainer">
+          <ListItem
+            v-for="list in viewData.lists" 
+            :key="list.id"
+            :list="list"
+            :dragging="draggingState.isDragging"
+            :is-mobile="true"
+            @card-move="onCardMove"
+            @open-card-modal="openCardModal"
+            @card-delete="onCardDelete"
+            @card-update-title="onCardUpdateTitle"
+            @list-add-card="onListAddCard"
+            @list-delete="onListDelete"
+            @list-update-title="onListUpdateTitle"
+            class="mobile-list-item"
+          />
+        </div>
+      </template>
 
-      <!-- 新增列表區域 -->
-      <div class="w-80 p-2 flex-shrink-0">
+      <!-- 新增列表區域 - 響應式寬度 -->
+      <div :class="isMobile ? 'w-[calc(100vw-3rem)] mx-6 max-w-none p-2 flex-shrink-0' : 'w-80 p-2 flex-shrink-0'">
         <!-- 顯示按鈕模式 -->
         <Transition name="fade" mode="out-in">
           <div 
@@ -124,38 +153,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useListActions } from '@/composables/useListActions'
 import { useBoardView } from '@/composables/useBoardView'
-import { useMobileInteractions } from '@/composables/useMobileInteractions'
+import { useCardActions } from '@/composables/useCardActions'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
+// import { useGesture } from '@vueuse/gesture' // 暫時不用
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
 
-// 🎯 使用 Rabbit 建議的依賴反轉：不直接依賴 boardStore
-// 改為依賴抽象的 composables 接口
+// 🎯 統一架構：條件式 drag handler
 const { addList } = useListActions()
-const { viewData, handleCardMove, handleListMove, findListById, getAllListIds } = useBoardView()
+const { viewData, handleCardMove, handleListMove } = useBoardView()
 
-// 🎯 Mobile 互動功能：使用 Strategy Pattern 分離觸控邏輯
-const { 
-  touchState, 
-  cardDragState,
-  handleTouchStart, 
-  handleTouchMove, 
-  handleTouchEnd,
-  setBoardContainer,
-  resetBoardPosition 
-} = useMobileInteractions()
+// 📱🖥️ 響應式螢幕尺寸偵測
+const screenWidth = ref(window.innerWidth)
+const isMobile = computed(() => screenWidth.value < 768)
 
-// 看板容器的 DOM 引用
+// DOM 引用
 const boardContainerRef = ref<HTMLElement | null>(null)
+const mobileListsContainer = ref<HTMLElement | null>(null)
+
+// 🎯 統一的拖拽狀態管理
+const draggingState = ref({
+  isDragging: false,
+  draggedItem: null as any,
+  dragType: null as 'card' | 'list' | null
+})
+
+// 📱 手機版手勢系統變數（簡化版）
+const isListSnapping = ref(false)
 
 // 模態框狀態管理
 const showCardModal = ref(false)
@@ -166,29 +199,49 @@ const isAddingList = ref(false)
 const newListTitle = ref('')
 const newListInput = ref<HTMLInputElement | null>(null)
 
-// 處理卡片拖拉移動事件
+// 🎯 組件已簡化：vue-draggable-next 完全接管拖拽逻輯
+
+// 🎯 統一的卡片操作處理
+const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction } = useCardActions()
+
+const onCardDelete = async (card: Card) => {
+  console.log('🗑️ [UNIFIED-BOARD] 刪除卡片:', card.title)
+  await deleteCardAction(card)
+}
+
+const onCardUpdateTitle = async (cardId: string, newTitle: string) => {
+  console.log('✏️ [UNIFIED-BOARD] 更新卡片標題:', { cardId, newTitle })
+  await updateCardTitleAction(cardId, newTitle)
+}
+
+// 🎯 統一的列表操作處理
+const { deleteList: deleteListAction, updateListTitle: updateListTitleAction } = useListActions()
+const { addCard: addCardAction } = useCardActions()
+
+const onListAddCard = async (listId: string, title: string) => {
+  console.log('📌 [UNIFIED-BOARD] 新增卡片:', { listId, title })
+  await addCardAction(listId, title, 'medium')
+}
+
+const onListDelete = async (listId: string) => {
+  console.log('🗑️ [UNIFIED-BOARD] 刪除列表:', listId)
+  await deleteListAction(listId)
+}
+
+const onListUpdateTitle = async (listId: string, newTitle: string) => {
+  console.log('✏️ [UNIFIED-BOARD] 更新列表標題:', { listId, newTitle })
+  await updateListTitleAction(listId, newTitle)
+}
+
+// 🖥️ 桌面版：處理卡片拖拽事件（vue-draggable-next）
 const onCardMove = async (event: any) => {
-  console.log('📦 [COMPONENT] Card moved event:', event)
+  console.log('🖥️ [DESKTOP-DRAG] 卡片移動事件:', event)
   
-  // 處理卡片被新增到列表的情況（從其他列表移動過來）
-  if (event.added) {
-    console.log('🔄 [COMPONENT] 卡片被新增到列表:', event.added)
-    // 🎯 跨列表移動會觸發兩個事件：removed + added
-    // 我們需要等 removed 事件處理完成，才處理 added
-    // 但這裡可以先記錄，實際的 moveCard 邏輯交給 removed 事件處理
-    console.log('📝 [COMPONENT] 跨列表移動的 added 事件，由 removed 事件統一處理')
-  }
-  
-  // 處理卡片在同一列表內移動的情況
   if (event.moved) {
-    console.log('🔄 [COMPONENT] 卡片在列表內移動:', event.moved)
     const { element: card } = event.moved
-    
-    // 🎯 找到卡片所在的列表（使用抽象方法）
     let currentListId = null
-    for (const list of viewData.lists) {
-      const foundCard = list.cards.find(c => c.id === card.id)
-      if (foundCard) {
+    for (const list of viewData.value.lists) {
+      if (list.cards.find((c: any) => c.id === card.id)) {
         currentListId = list.id
         break
       }
@@ -196,138 +249,240 @@ const onCardMove = async (event: any) => {
     
     if (currentListId) {
       try {
-        console.log(`🚀 [COMPONENT] 同一列表內移動，重新整理列表 ${currentListId} 的位置`)
-        // ✅ Vue Draggable 已經更新了 UI，我們只需要重新排序 position
         await handleCardMove([currentListId])
-        console.log('✅ [COMPONENT] 成功更新列表內卡片位置')
+        console.log('✅ [DESKTOP-DRAG] 同列表移動成功')
       } catch (error) {
-        console.error('❌ [COMPONENT] 更新卡片位置失敗:', error)
-        // 可選：重新載入資料以確保一致性
-        // await boardStore.fetchBoard()
+        console.error('❌ [DESKTOP-DRAG] 移動失敗:', error)
       }
     }
   }
   
-  // 處理卡片從列表移除的情況（跨列表移動）
   if (event.removed) {
-    console.log('📤 [COMPONENT] 卡片從列表被移除（跨列表移動）:', event.removed)
     const { element: card } = event.removed
-    
-    // 🎯 找到卡片現在在哪個列表中（Vue Draggable 已經移動了）
     let targetListId = null
-    for (const list of viewData.lists) {
-      const foundCard = list.cards.find(c => c.id === card.id)
-      if (foundCard) {
+    for (const list of viewData.value.lists) {
+      if (list.cards.find((c: any) => c.id === card.id)) {
         targetListId = list.id
         break
       }
     }
     
-    // 🔧 改良版：多重方式嘗試找到原來的列表 ID
-    let sourceListId = null
-    
-    // 方法 1：嘗試從 DOM 元素獲取
-    if (event.from) {
-      const sourceContainer = event.from.closest('[data-list-id]')
-      if (sourceContainer) {
-        sourceListId = sourceContainer.getAttribute('data-list-id')
-        console.log('✅ [COMPONENT] 方法1成功獲取 sourceListId:', sourceListId)
-      }
-    }
-    
-    // 方法 2：如果方法1失敗，使用排除法推算
-    if (!sourceListId && targetListId) {
-      console.log('⚠️ [COMPONENT] 方法1失敗，嘗試方法2：排除法推算 sourceListId')
-      // 假設只有兩個列表發生變化，找出不是 targetListId 的那個
-      for (const list of viewData.lists) {
-        if (list.id !== targetListId) {
-          // 檢查這個列表是否有位置變化（表示有卡片被移出）
-          const hasGaps = list.cards.some((c, index) => c.position !== undefined && c.position !== index)
-          if (hasGaps) {
-            sourceListId = list.id
-            console.log('✅ [COMPONENT] 方法2推算出 sourceListId:', sourceListId)
-            break
-          }
-        }
-      }
-    }
-    
-    // 方法 3：如果前兩種方法都失敗，重新整理所有列表
-    if (!sourceListId && targetListId) {
-      console.log('⚠️ [COMPONENT] 方法1和2都失敗，使用方法3：重新整理所有列表')
-      try {
-        const allListIds = getAllListIds()
-        await handleCardMove(allListIds)
-        console.log('✅ [COMPONENT] 方法3：成功重新整理所有列表位置')
-        return // 早期返回，避免重複執行
-      } catch (error) {
-        console.error('❌ [COMPONENT] 方法3失敗:', error)
-      }
-    }
-    
-    // 🎯 執行跨列表移動邏輯
     if (targetListId) {
-      // 只要能識別到 targetListId，就執行更新
-      const listsToUpdate = sourceListId ? [sourceListId, targetListId] : [targetListId]
-      
       try {
-        console.log(`🚀 [COMPONENT] 跨列表移動：${sourceListId || '未知'} → ${targetListId}`)
-        console.log(`📋 [COMPONENT] 需要更新的列表:`, listsToUpdate)
-        
-        await handleCardMove(listsToUpdate)
-        console.log('✅ [COMPONENT] 成功完成跨列表移動並重新整理位置')
+        await handleCardMove([targetListId])
+        console.log('✅ [DESKTOP-DRAG] 跨列表移動成功')
       } catch (error) {
-        console.error('❌ [COMPONENT] 跨列表移動失敗:', error)
-        // 🔄 最後的恢復策略：重新載入資料確保一致性
-        console.log('🔄 [COMPONENT] 嘗試重新載入看板資料...')
-        // 可以選擇是否重新載入（可能會影響用戶體驗）
-        // await boardStore.fetchBoard()
+        console.error('❌ [DESKTOP-DRAG] 跨列表移動失敗:', error)
       }
-    } else {
-      console.warn('⚠️ [COMPONENT] 無法識別 targetListId，跳過跨列表移動處理')
-      console.log('📊 [COMPONENT] 當前看板狀態:', {
-        listsCount: viewData.listsCount,
-        cardId: card.id,
-        cardTitle: card.title
-      })
     }
   }
 }
 
-// 處理列表拖拉移動事件
+// 🖥️ 桌面版：處理列表移動事件（vue-draggable-next）
 const onListMove = async (event: any) => {
-  console.log('📋 [COMPONENT] List moved event:', event)
+  console.log('🖥️ [DESKTOP-DRAG] 列表移動事件:', event)
   
-  // 🎯 Vue Draggable 的 :list 屬性會自動修改 viewData.lists 陣列順序
-  // 這就是為什麼 UI 立即更新的原因！
-  
-  // 但是我們需要將新的順序保存到資料庫
   if (event.moved) {
-    console.log('🔄 [COMPONENT] 列表在看板內移動:', event.moved)
-    
     try {
-      // 🎯 委派給 Store 處理：符合 SRP (單一職責原則)
-      // 組件只負責佈局協調，資料儲存由 Store 負責
-      console.log('💾 [COMPONENT] 委派保存列表順序到 Store...')
       await handleListMove()
-      console.log('✅ [COMPONENT] 列表位置已更新')
-      
+      console.log('✅ [DESKTOP-DRAG] 列表順序更新成功')
     } catch (error) {
-      console.error('❌ [COMPONENT] 更新列表順序失敗:', error)
-      // 可選：重新載入資料以確保一致性
-      // await boardStore.fetchBoard()
+      console.error('❌ [DESKTOP-DRAG] 列表順序更新失敗:', error)
     }
   }
 }
 
-// 在組件載入時記錄 lists 的數量
-console.log('🖼️ [COMPONENT] TrelloBoard 載入，目前 lists 數量:', viewData.listsCount)
-console.log('🖼️ [COMPONENT] TrelloBoard 使用依賴反轉原則，透過 composable 訪問資料')
-
-// 處理新增列表（舊的 modal 方式，保留以備後用）
-const handleAddList = () => {
-  addList()
+// 📱 手機版：簡單的列表滾動手勢處理
+const setupMobileGestures = () => {
+  if (!mobileListsContainer.value) return
+  
+  console.log('📱 [MOBILE-BOARD] 初始化手機版手勢系統')
+  
+  let startX = 0
+  let startY = 0
+  let isScrolling = false
+  
+  // 只監聽非卡片區域的觸控事件，避免與 draggable 衝突
+  const handleTouchStart = (e: TouchEvent) => {
+    const target = e.target as HTMLElement
+    
+    // 如果點擊的是卡片，讓 vue-draggable-next 處理
+    if (target.closest('.card-draggable')) {
+      return
+    }
+    
+    const touch = e.touches[0]
+    startX = touch.clientX
+    startY = touch.clientY
+    isScrolling = false
+  }
+  
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!mobileListsContainer.value) return
+    
+    const target = e.target as HTMLElement
+    
+    // 如果是在卡片上滑動，讓 vue-draggable-next 和卡片滾動處理
+    if (target.closest('.card-draggable')) {
+      return
+    }
+    
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - startX
+    const deltaY = touch.clientY - startY
+    
+    // 檢查是否為水平滑動（列表切換）- 只在列表背景區域
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30 && !isScrolling) {
+      isScrolling = true
+      e.preventDefault()
+      handleMobileListSwipe(deltaX, 0)
+    }
+    // 檢查是否為垂直滑動（卡片區域滾動）
+    else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 30 && !isScrolling) {
+      isScrolling = true
+      handleMobileCardScroll(deltaY, e)
+    }
+  }
+  
+  const handleTouchEnd = (e: TouchEvent) => {
+    const target = e.target as HTMLElement
+    
+    // 如果是在卡片上，讓 vue-draggable-next 處理
+    if (target.closest('.card-draggable')) {
+      return
+    }
+    
+    if (isScrolling && mobileListsContainer.value) {
+      const touch = e.changedTouches[0]
+      const deltaX = touch.clientX - startX
+      
+      // 改進彈性滾動：降低觸發閾值，增加彈性
+      if (Math.abs(deltaX) > 50) {
+        handleMobileListSnapBack(deltaX)
+      }
+    }
+    isScrolling = false
+  }
+  
+  // 使用更精確的事件監聽
+  mobileListsContainer.value.addEventListener('touchstart', handleTouchStart, { passive: true })
+  mobileListsContainer.value.addEventListener('touchmove', handleTouchMove, { passive: false })
+  mobileListsContainer.value.addEventListener('touchend', handleTouchEnd, { passive: true })
+  
+  console.log('📱 [MOBILE-BOARD] 手機版手勢系統已初始化')
 }
+
+// 📋 手機版列表滑動處理
+const handleMobileListSwipe = (deltaX: number, velocityX: number) => {
+  if (isListSnapping.value) return
+  
+  // 簡化版列表切換：直接滾動容器
+  if (mobileListsContainer.value) {
+    const currentScroll = mobileListsContainer.value.scrollLeft
+    const newScroll = Math.max(0, currentScroll - deltaX)
+    mobileListsContainer.value.scrollTo({
+      left: newScroll,
+      behavior: 'smooth'
+    })
+  }
+  
+  // 使用 velocityX 來決定滑動強度 (日後可擴展)
+  console.log('📋 [MOBILE-GESTURE] 滑動速度:', velocityX)
+}
+
+// 📋 手機版卡片垂直滾動處理
+const handleMobileCardScroll = (deltaY: number, e: TouchEvent) => {
+  // 找到觸控點下的列表容器
+  const target = e.target as HTMLElement
+  const listContainer = target.closest('[data-list-id]')
+  const cardContainer = listContainer?.querySelector('.overflow-y-auto') as HTMLElement
+  
+  if (cardContainer) {
+    console.log('📋 [MOBILE-GESTURE] 卡片垂直滾動:', { deltaY })
+    
+    // 計算新的滾動位置
+    const currentScrollTop = cardContainer.scrollTop
+    const newScrollTop = Math.max(0, 
+      Math.min(
+        cardContainer.scrollHeight - cardContainer.clientHeight,
+        currentScrollTop - deltaY
+      )
+    )
+    
+    cardContainer.scrollTop = newScrollTop
+    e.preventDefault() // 防止頁面滾動
+  }
+}
+
+// 🎯 手機版列表彈性滾動（像trello）- 超級改進版本！
+const handleMobileListSnapBack = (deltaX: number) => {
+  if (!mobileListsContainer.value || isListSnapping.value) return
+  
+  isListSnapping.value = true
+  const container = mobileListsContainer.value
+  
+  // 🎯 動態計算列表寬度（更精確！）
+  const firstList = container.querySelector('.mobile-list-item') as HTMLElement
+  const listWidth = firstList ? firstList.offsetWidth + 24 : 320 // 實際寬度 + gap
+  
+  console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動開始:', { deltaX, listWidth })
+  
+  // 計算當前最接近的列表索引
+  const currentScroll = container.scrollLeft
+  const currentListIndex = Math.round(currentScroll / listWidth)
+  
+  // 🚀 改進的滑動邏輯：更敏感，更像 Trello
+  let targetListIndex = currentListIndex
+  
+  // 根據滑動速度和距離決定是否切換列表
+  const shouldSwitch = Math.abs(deltaX) > 30 // 降低閾值，更敏感
+  
+  if (shouldSwitch) {
+    if (deltaX > 0) {
+      // 右滑：往前一個列表
+      targetListIndex = Math.max(0, currentListIndex - 1)
+    } else {
+      // 左滑：往後一個列表  
+      targetListIndex = Math.min(viewData.value.lists.length - 1, currentListIndex + 1)
+    }
+  }
+  
+  const targetScroll = targetListIndex * listWidth
+  
+  // 🎊 超順滑的 Trello 風格滾動
+  container.scrollTo({
+    left: targetScroll,
+    behavior: 'smooth'
+  })
+  
+  // 🎉 添加視覺回饋
+  console.log('🎯 [MOBILE-GESTURE] 列表跳轉成功:', { 
+    direction: deltaX > 0 ? '往左' : '往右',
+    fromIndex: currentListIndex, 
+    toIndex: targetListIndex,
+    距離: Math.abs(targetListIndex - currentListIndex),
+    目標位置: targetScroll
+  })
+  
+  // 如果有切換列表，添加震動回饋
+  if (targetListIndex !== currentListIndex && navigator.vibrate) {
+    navigator.vibrate(30)
+  }
+  
+  // 重設彈性狀態
+  setTimeout(() => {
+    isListSnapping.value = false
+  }, 500)
+}
+
+// 🎯 螢幕尺寸變化監聽
+const handleResize = () => {
+  screenWidth.value = window.innerWidth
+  console.log(`📏 [UNIFIED-BOARD] 螢幕尺寸變化: ${screenWidth.value}px, isMobile: ${isMobile.value}`)
+}
+
+console.log(`🎯 [UNIFIED-BOARD] 統一看板載入，當前模式: ${isMobile.value ? '📱 Mobile' : '🖥️ Desktop'}`)
+
 
 // 開始 inline 新增列表
 const startAddList = async () => {
@@ -392,12 +547,23 @@ const closeCardModal = () => {
   selectedCard.value = null
 }
 
-// 🎯 組件初始化：設定 mobile 互動容器
+// 🎯 組件初始化：根據螢幕尺寸設定對應功能
 onMounted(() => {
-  if (boardContainerRef.value) {
-    setBoardContainer(boardContainerRef.value)
-    console.log('📱 [TRELLO-BOARD] Mobile 互動功能已初始化')
+  // 監聽螢幕尺寸變化
+  window.addEventListener('resize', handleResize)
+  
+  // 如果是手機版，初始化手勢系統
+  if (isMobile.value) {
+    nextTick(() => {
+      setupMobileGestures()
+    })
   }
+  
+  console.log(`🎯 [UNIFIED-BOARD] 組件初始化完成，模式: ${isMobile.value ? '📱 Mobile' : '🖥️ Desktop'}`)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -413,34 +579,156 @@ onMounted(() => {
   opacity: 0;
 }
 
-/* 🎯 Mobile 卡片拖拽樣式 - CSS Transform 應用 */
-:global(.card-dragging) {
-  /* 傾斜效果：讓卡片看起來在「飄浮」 */
-  transform: rotate(-5deg) scale(1.05) !important;
-  
-  /* 半透明效果：讓用戶知道卡片在拖拽狀態 */
-  opacity: 0.8 !important;
-  
-  /* 陰影效果：增加「飄浮」的立體感 */
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
-  
-  /* 過渡動畫：讓進入拖拽狀態很平滑 */
-  transition: all 0.2s ease-out !important;
-  
-  /* 邊框：讓拖拽的卡片更明顯 */
-  border: 2px dashed #3b82f6 !important;
+/* 🖥️ 桌面版列表拖拽樣式 - 修復：列表不要歪 */
+:deep(.list-ghost) {
+  background: #e2e8f0 !important;
+  border: 2px dashed #64748b !important;
+  border-radius: 8px !important;
+  opacity: 0.6 !important;
 }
 
-/* 拖拽時的游標效果 */
-:global(.card-dragging) {
+:deep(.list-chosen) {
+  opacity: 0.8 !important;
+  transform: scale(1.01) !important; /* 只放大一點點，不要歪 */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.2s ease-out !important;
+}
+
+:deep(.list-dragging) {
+  /* 🚫 移除歪斜，只保留輕微放大和陰影 */
+  transform: scale(1.02) !important; /* 不歪，只放大 */
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.2s ease-out !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* 🖥️ 桌面版卡片拖拽樣式 - 修復跨列表拖拽視覺反饋 */
+:deep(.sortable-ghost) {
+  background: #f0fdf4 !important;
+  border: 2px dashed #22c55e !important;
+  border-radius: 8px !important;
+  opacity: 0.5 !important;
+  transform: none !important;
+}
+
+:deep(.sortable-chosen) {
+  transform: scale(1.02) rotate(-2deg) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+  opacity: 0.9 !important;
+  z-index: 999 !important;
+  cursor: grabbing !important;
+  transition: all 0.15s ease-out !important;
+}
+
+:deep(.sortable-drag) {
+  transform: scale(1.05) rotate(-3deg) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25) !important;
+  opacity: 0.95 !important;
+  z-index: 1000 !important;
+  cursor: grabbing !important;
+  border: 2px solid #3b82f6 !important;
+  background: #ffffff !important;
+}
+
+/* 📱 手機版容器樣式 */
+.mobile-container {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-list-item {
+  width: 320px; /* 固定寬度，配合彈性滾動計算 */
+  flex-shrink: 0;
+  max-width: none;
+}
+
+/* 📱 手機版卡片拖拽樣式 - 超順滑版本！ */
+:deep(.mobile-list-item .sortable-delay) {
+  opacity: 0.8 !important;
+  transform: scale(0.98) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; /* 超順滑過渡 */
+  background: linear-gradient(135deg, #fef3c7, #fde68a) !important; /* 漸層黃色 */
+  border: 2px dashed #f59e0b !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2) !important;
+}
+
+:deep(.mobile-list-item .sortable-chosen) {
+  opacity: 0.95 !important;
+  transform: scale(1.03) rotate(-1deg) !important; /* 減少傾斜角度 */
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+  z-index: 999 !important;
+  border: 2px solid #10b981 !important;
+  background: linear-gradient(135deg, #ffffff, #f0fdf4) !important; /* 淡綠漸層 */
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important; /* 彈性過渡 */
+}
+
+:deep(.mobile-list-item .sortable-drag) {
+  transform: scale(1.08) rotate(-3deg) !important; /* 減少角度讓它更自然 */
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
+  opacity: 0.98 !important;
+  z-index: 1000 !important;
+  border: 2px solid #3b82f6 !important;
+  background: linear-gradient(135deg, #ffffff, #dbeafe) !important; /* 淡藍漸層 */
+  transition: transform 0.1s ease-out !important; /* 快速響應，超順滑 */
+}
+
+/* 📱 手機版拖拽時的特殊效果 */
+:deep(.mobile-list-item .sortable-ghost) {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+  border: 2px dashed #22c55e !important;
+  opacity: 0.6 !important;
+  transform: scale(0.95) !important;
+  transition: all 0.2s ease !important;
+}
+
+/* 🖥️ 桌面版容器樣式 */
+.desktop-container {
+  overflow-x: auto;
+}
+
+/* 💯 修復「歪歪卡片」問題：只對正在被拖拽的卡片套用樣式 */
+:deep(.sortable-drag .card-draggable) {
+  transform: rotate(-5deg) scale(1.05) !important;
+  opacity: 0.8 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s ease-out !important;
+  border: 2px dashed #3b82f6 !important;
   cursor: grabbing !important;
 }
 
-/* 防止拖拽時選取文字 */
+/* 預防拖拽時選取文字 */
 :global(.card-draggable) {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+
+/* 💡 新增：卡片拖拽狀態樣式 */
+:deep(.sortable-ghost .card-draggable) {
+  background: #f1f5f9 !important;
+  border: 2px dashed #64748b !important;
+  opacity: 0.5 !important;
+}
+
+:deep(.sortable-chosen .card-draggable) {
+  transform: scale(1.02) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 響應式間距 */
+@media (max-width: 768px) {
+  .mobile-container {
+    padding: 1rem;
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
 }
 </style>

@@ -2,6 +2,24 @@
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineNuxtConfig({
+  devServer: {
+    host: '0.0.0.0', // 讓外部可連進來
+    port: 3000,
+  },
+  vite: {
+    server: {
+      host: '0.0.0.0',
+      allowedHosts: [
+        'gogo.sunpochin.space', // 👈 加上你的固定 Tunnel 網域
+      ],
+      hmr: {
+        protocol: 'wss',
+        host: 'gogo.sunpochin.space',
+        port: 443,
+      },
+    },
+  },
+
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   srcDir: '.',
@@ -20,7 +38,9 @@ export default defineNuxtConfig({
       supabase: {
         url: process.env.SUPABASE_URL,
         key: process.env.SUPABASE_KEY
-      }
+      },
+      // 開發模式認證繞過設定
+      devSkipAuth: process.env.DEV_SKIP_AUTH === 'true'
     }
   },
 

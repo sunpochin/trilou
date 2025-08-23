@@ -79,7 +79,7 @@
 
 <template>
   <!-- 單個列表容器 -->
-  <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0" :data-list-id="list.id">
+  <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex flex-col" :data-list-id="list.id">
     <!-- 列表標題區域 -->
     <div class="cursor-pointer flex justify-between items-center p-2 mb-2 relative">
       <!-- 非編輯狀態：顯示標題 -->
@@ -111,17 +111,32 @@
     </div>
     
     <!-- 可拖拉的卡片容器 -->
-    <draggable
-      class="min-h-5"
-      :list="list.cards"
-      group="cards"
-      tag="div"
-      @change="$emit('card-move', $event)"
-    >
-      <div v-for="card in list.cards" :key="card.id">
-        <Card :card="card" @open-modal="$emit('open-card-modal', card)" />
-      </div>
-    </draggable>
+    <div class="flex-1 overflow-y-auto">
+      <draggable
+        class="min-h-5"
+        :list="list.cards"
+        group="cards"
+        tag="div"
+        :disabled="false"
+        :force-fallback="props.isMobile"
+        :delay="props.isMobile ? 750 : 0"
+        :touch-start-threshold="props.isMobile ? 10 : 0"
+        :animation="200"
+        easing="cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+        @change="$emit('card-move', $event)"
+      >
+        <div v-for="card in list.cards" :key="card.id">
+          <Card 
+            :card="card" 
+            :dragging="dragging"
+            :is-mobile="props.isMobile"
+            @open-modal="$emit('open-card-modal', card)"
+            @delete="$emit('card-delete', card)"
+            @update-title="(cardId, newTitle) => $emit('card-update-title', cardId, newTitle)"
+          />
+        </div>
+      </draggable>
+    </div>
     
     <!-- 新增卡片區域 -->
     <div class="mt-2">
@@ -173,29 +188,34 @@
 import Card from '@/components/Card.vue'
 import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
-import { useListActions } from '@/composables/useListActions'
-import { useCardActions } from '@/composables/useCardActions'
+// 🎯 純渲染組件：不直接使用 composables
 import { ref, nextTick } from 'vue'
 
 // 使用統一的型別定義
 import type { ListUI } from '@/types'
 type List = ListUI
 
-// 組件 props
+// 🎯 純渲染組件：接收父組件傳入的資料和狀態
 const props = defineProps<{
   list: List
+  dragging: boolean  // 父組件控制的拖拽狀態
+  isMobile?: boolean  // 是否為手機版
 }>()
 
-// 組件 emit 事件
-defineEmits<{
+// 🎯 純渲染組件：定義事件 (父組件處理邏輯)
+const emit = defineEmits<{
   'card-move': [event: any]
   'open-card-modal': [card: any]
+  'drag-start': [item: any, type: 'card' | 'list']
+  'drag-end': []
+  'card-delete': [card: any]
+  'card-update-title': [cardId: string, newTitle: string]
+  'list-add-card': [listId: string, title: string]
+  'list-delete': [listId: string]
+  'list-update-title': [listId: string, newTitle: string]
 }>()
 
-// 使用列表操作邏輯 - 透過 composable 統一處理所有列表相關操作
-const { deleteList, updateListTitle } = useListActions()
-// 使用卡片操作邏輯 - 符合依賴反轉原則
-const { addCard } = useCardActions()
+// 🎯 純渲染組件：移除直接 composable 使用
 
 // 編輯狀態
 const isEditingTitle = ref(false)
@@ -207,9 +227,11 @@ const isAddingCard = ref(false)
 const newCardTitle = ref('')
 const newCardInput = ref<HTMLTextAreaElement | null>(null)
 
-// 處理新增卡片（舊的 modal 方式，保留以備後用）
+// 🎯 純渲染：處理新增卡片 (委派給父組件)
 const handleAddCard = () => {
-  addCard(props.list.id)
+  console.log('📌 [PURE-LIST] 新增卡片事件，委派給父組件')
+  // 使用 inline 新增模式
+  startAddCard()
 }
 
 // 開始 inline 新增卡片
@@ -227,9 +249,8 @@ const startAddCard = async () => {
 // 新增狀態管理：防止重複提交
 const isSavingCard = ref(false)
 
-// 保存新卡片 - 重構版：符合依賴反轉原則
+// 🎯 純渲染：保存新卡片 (委派給父組件)
 const saveNewCard = async () => {
-  // 防止重複提交
   if (isSavingCard.value) return
   
   const titleToSave = newCardTitle.value.trim()
@@ -238,18 +259,16 @@ const saveNewCard = async () => {
   isSavingCard.value = true
   
   try {
-    // 🎯 透過 composable 執行：避免組件直接存取 store (依賴反轉原則)
-    await addCard(props.list.id, titleToSave, 'medium')
+    // 委派給父組件處理業務邏輯
+    emit('list-add-card', props.list.id, titleToSave)
     
-    // 僅成功後才更新 UI
+    // UI 更新
     isAddingCard.value = false
     newCardTitle.value = ''
-    console.log(`✅ [LIST-ITEM] 成功創建卡片: ${titleToSave}`)
+    console.log(`📌 [PURE-LIST] 新增卡片事件已發送: ${titleToSave}`)
     
   } catch (error) {
-    console.error('❌ [LIST-ITEM] 創建卡片失敗:', error)
-    // 失敗則維持輸入以便重試
-    
+    console.error('❌ [PURE-LIST] 發送新增卡片事件失敗:', error)
   } finally {
     isSavingCard.value = false
   }
@@ -261,9 +280,10 @@ const cancelAddCard = () => {
   newCardTitle.value = ''
 }
 
-// 處理刪除列表
+// 🎯 純渲染：處理刪除列表 (委派給父組件)
 const handleDeleteList = () => {
-  deleteList(props.list.id)
+  console.log('🗑️ [PURE-LIST] 刪除列表事件，委派給父組件:', props.list.title)
+  emit('list-delete', props.list.id)
 }
 
 // 開始編輯標題
@@ -279,16 +299,12 @@ const startEditTitle = async () => {
   }
 }
 
-// 儲存標題變更 - 透過 composable 統一處理
+// 🎯 純渲染：儲存標題變更 (委派給父組件)
 const saveTitle = async () => {
-  if (editingTitle.value.trim() && editingTitle.value.trim() !== props.list.title) {
-    try {
-      await updateListTitle(props.list.id, editingTitle.value.trim())
-    } catch (error) {
-      console.error('更新列表標題失敗:', error)
-      // 失敗時恢復原始標題
-      editingTitle.value = props.list.title
-    }
+  const newTitle = editingTitle.value.trim()
+  if (newTitle && newTitle !== props.list.title) {
+    console.log('✏️ [PURE-LIST] 更新列表標題事件，委派給父組件:', { old: props.list.title, new: newTitle })
+    emit('list-update-title', props.list.id, newTitle)
   }
   isEditingTitle.value = false
 }
