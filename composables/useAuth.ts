@@ -36,9 +36,7 @@ export const useAuth = () => {
       // 📱 增強手機版繞過檢查
       const skipAuth = config.public.devSkipAuth || 
                        route.query.skipAuth === 'true' ||
-                       window.location.search.includes('skipAuth=true') ||
-                       window.location.hostname.includes('sunpochin') // 在 tunnel 上自動繞過
-    
+                       window.location.search.includes('skipAuth=true')
       console.log('🔍 [AUTH] 認證檢查:', {
         devSkipAuth: config.public.devSkipAuth,
         querySkipAuth: route.query.skipAuth,
