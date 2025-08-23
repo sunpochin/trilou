@@ -67,7 +67,7 @@
         </draggable>
       </template>
       
-      <!-- 📱 手機版：使用 @vueuse/gesture -->
+      <!-- 📱 手機版：使用 vue-draggable-next + 自訂手勢處理 -->
       <template v-else>
         <div class="flex gap-4" ref="mobileListsContainer">
           <ListItem
@@ -75,6 +75,7 @@
             :key="list.id"
             :list="list"
             :dragging="draggingState.isDragging"
+            :is-mobile="true"
             @card-move="onCardMove"
             @open-card-modal="openCardModal"
             @card-delete="onCardDelete"
@@ -160,7 +161,7 @@ import { useListActions } from '@/composables/useListActions'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardActions } from '@/composables/useCardActions'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
-import { useGesture } from '@vueuse/gesture'
+// import { useGesture } from '@vueuse/gesture' // 暫時不用
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
 
@@ -186,10 +187,7 @@ const draggingState = ref({
   dragType: null as 'card' | 'list' | null
 })
 
-// 📱 手機版長按 + 拖拽系統變數
-const longPressTimer = ref<number | null>(null)
-const isLongPressing = ref(false)
-const cardLongPressMode = ref(false)
+// 📱 手機版手勢系統變數（簡化版）
 const isListSnapping = ref(false)
 
 // 模態框狀態管理
@@ -294,76 +292,84 @@ const onListMove = async (event: any) => {
   }
 }
 
-// 📱 手機版：使用 @vueuse/gesture 處理觸控 + 長按邏輯
+// 📱 手機版：簡單的列表滾動手勢處理
 const setupMobileGestures = () => {
   if (!mobileListsContainer.value) return
   
-  console.log('📱 [MOBILE-BOARD] 初始化進階手勢系統...')
+  console.log('📱 [MOBILE-BOARD] 初始化手機版手勢系統')
   
-  // 📱 整個看板的手勢處理（列表切換 + 長按卡片拖拽）
-  useGesture({
-    onDragStart: ({ event }) => {
-      console.log('🔋 [MOBILE-GESTURE] 開始觸控')
-      isLongPressing.value = false
-      cardLongPressMode.value = false
-      
-      // 設定 1.5 秒計時器
-      longPressTimer.value = window.setTimeout(() => {
-        console.log('⏰ [MOBILE-GESTURE] 長按 1.5 秒達成！進入卡片拖拽模式')
-        isLongPressing.value = true
-        cardLongPressMode.value = true
-        // 📳 簡單震動回饋
-        if (navigator.vibrate) {
-          navigator.vibrate(50)
-        }
-      }, 1500)
-    },
-    
-    onDrag: ({ movement, velocity }) => {
-      const [mx, my] = movement
-      const [vx, vy] = velocity
-      
-      // 📦 卡片拖拽模式：1.5秒後允許垂直拖拽
-      if (cardLongPressMode.value) {
-        console.log('📦 [MOBILE-GESTURE] 卡片拖拽模式:', { mx, my })
-        // 這時候 vue-draggable-next 應該接手處理卡片拖拽
-        return
-      }
-      
-      // 📋 列表切換模式：水平拖拽
-      if (Math.abs(mx) > Math.abs(my) && Math.abs(mx) > 30) {
-        console.log('📋 [MOBILE-GESTURE] 列表水平切換:', { mx, vx })
-        handleMobileListSwipe(mx, vx)
-      }
-    },
-    
-    onDragEnd: ({ movement }) => {
-      const [mx] = movement
-      console.log('🏁 [MOBILE-GESTURE] 觸控結束')
-      
-      // 清除計時器
-      if (longPressTimer.value) {
-        clearTimeout(longPressTimer.value)
-        longPressTimer.value = null
-      }
-      
-      // 如果是短時間拖拽，處理列表彈性滾動
-      if (!cardLongPressMode.value && Math.abs(mx) > 50) {
-        handleMobileListSnapBack(mx)
-      }
-      
-      // 重設狀態
-      isLongPressing.value = false
-      cardLongPressMode.value = false
-    }
-  }, {
-    domTarget: mobileListsContainer,
-    drag: {
-      threshold: 5, // 降低閾值，更敏感
-    }
-  })
+  let startX = 0
+  let startY = 0
+  let isScrolling = false
   
-  console.log('📱 [MOBILE-BOARD] 進階手機手勢系統已初始化')
+  // 只監聽非卡片區域的觸控事件，避免與 draggable 衝突
+  const handleTouchStart = (e: TouchEvent) => {
+    const target = e.target as HTMLElement
+    
+    // 如果點擊的是卡片，讓 vue-draggable-next 處理
+    if (target.closest('.card-draggable')) {
+      return
+    }
+    
+    const touch = e.touches[0]
+    startX = touch.clientX
+    startY = touch.clientY
+    isScrolling = false
+  }
+  
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!mobileListsContainer.value) return
+    
+    const target = e.target as HTMLElement
+    
+    // 如果是在卡片上滑動，讓 vue-draggable-next 和卡片滾動處理
+    if (target.closest('.card-draggable')) {
+      return
+    }
+    
+    const touch = e.touches[0]
+    const deltaX = touch.clientX - startX
+    const deltaY = touch.clientY - startY
+    
+    // 檢查是否為水平滑動（列表切換）- 只在列表背景區域
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30 && !isScrolling) {
+      isScrolling = true
+      e.preventDefault()
+      handleMobileListSwipe(deltaX, 0)
+    }
+    // 檢查是否為垂直滑動（卡片區域滾動）
+    else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 30 && !isScrolling) {
+      isScrolling = true
+      handleMobileCardScroll(deltaY, e)
+    }
+  }
+  
+  const handleTouchEnd = (e: TouchEvent) => {
+    const target = e.target as HTMLElement
+    
+    // 如果是在卡片上，讓 vue-draggable-next 處理
+    if (target.closest('.card-draggable')) {
+      return
+    }
+    
+    if (isScrolling && mobileListsContainer.value) {
+      const touch = e.changedTouches[0]
+      const deltaX = touch.clientX - startX
+      
+      // 改進彈性滾動：降低觸發閾值，增加彈性
+      if (Math.abs(deltaX) > 50) {
+        handleMobileListSnapBack(deltaX)
+      }
+    }
+    isScrolling = false
+  }
+  
+  // 使用更精確的事件監聽
+  mobileListsContainer.value.addEventListener('touchstart', handleTouchStart, { passive: true })
+  mobileListsContainer.value.addEventListener('touchmove', handleTouchMove, { passive: false })
+  mobileListsContainer.value.addEventListener('touchend', handleTouchEnd, { passive: true })
+  
+  console.log('📱 [MOBILE-BOARD] 手機版手勢系統已初始化')
 }
 
 // 📋 手機版列表滑動處理
@@ -384,26 +390,84 @@ const handleMobileListSwipe = (deltaX: number, velocityX: number) => {
   console.log('📋 [MOBILE-GESTURE] 滑動速度:', velocityX)
 }
 
-// 🎯 手機版列表彈性滾動（像trello）
+// 📋 手機版卡片垂直滾動處理
+const handleMobileCardScroll = (deltaY: number, e: TouchEvent) => {
+  // 找到觸控點下的列表容器
+  const target = e.target as HTMLElement
+  const listContainer = target.closest('[data-list-id]')
+  const cardContainer = listContainer?.querySelector('.overflow-y-auto') as HTMLElement
+  
+  if (cardContainer) {
+    console.log('📋 [MOBILE-GESTURE] 卡片垂直滾動:', { deltaY })
+    
+    // 計算新的滾動位置
+    const currentScrollTop = cardContainer.scrollTop
+    const newScrollTop = Math.max(0, 
+      Math.min(
+        cardContainer.scrollHeight - cardContainer.clientHeight,
+        currentScrollTop - deltaY
+      )
+    )
+    
+    cardContainer.scrollTop = newScrollTop
+    e.preventDefault() // 防止頁面滾動
+  }
+}
+
+// 🎯 手機版列表彈性滾動（像trello）- 超級改進版本！
 const handleMobileListSnapBack = (deltaX: number) => {
   if (!mobileListsContainer.value || isListSnapping.value) return
   
   isListSnapping.value = true
   const container = mobileListsContainer.value
-  const listWidth = 300 // 列表的大致寬度
   
-  console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動:', { deltaX })
+  // 🎯 動態計算列表寬度（更精確！）
+  const firstList = container.querySelector('.mobile-list-item') as HTMLElement
+  const listWidth = firstList ? firstList.offsetWidth + 24 : 320 // 實際寬度 + gap
   
-  // 決定滾動方向和距離
-  const direction = deltaX > 0 ? -1 : 1 // 左滑右移，右滑左移
+  console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動開始:', { deltaX, listWidth })
+  
+  // 計算當前最接近的列表索引
   const currentScroll = container.scrollLeft
-  const targetScroll = Math.max(0, currentScroll + (direction * listWidth))
+  const currentListIndex = Math.round(currentScroll / listWidth)
   
-  // 平滑滾動到目標位置
+  // 🚀 改進的滑動邏輯：更敏感，更像 Trello
+  let targetListIndex = currentListIndex
+  
+  // 根據滑動速度和距離決定是否切換列表
+  const shouldSwitch = Math.abs(deltaX) > 30 // 降低閾值，更敏感
+  
+  if (shouldSwitch) {
+    if (deltaX > 0) {
+      // 右滑：往前一個列表
+      targetListIndex = Math.max(0, currentListIndex - 1)
+    } else {
+      // 左滑：往後一個列表  
+      targetListIndex = Math.min(viewData.value.lists.length - 1, currentListIndex + 1)
+    }
+  }
+  
+  const targetScroll = targetListIndex * listWidth
+  
+  // 🎊 超順滑的 Trello 風格滾動
   container.scrollTo({
     left: targetScroll,
     behavior: 'smooth'
   })
+  
+  // 🎉 添加視覺回饋
+  console.log('🎯 [MOBILE-GESTURE] 列表跳轉成功:', { 
+    direction: deltaX > 0 ? '往左' : '往右',
+    fromIndex: currentListIndex, 
+    toIndex: targetListIndex,
+    距離: Math.abs(targetListIndex - currentListIndex),
+    目標位置: targetScroll
+  })
+  
+  // 如果有切換列表，添加震動回饋
+  if (targetListIndex !== currentListIndex && navigator.vibrate) {
+    navigator.vibrate(30)
+  }
   
   // 重設彈性狀態
   setTimeout(() => {
@@ -539,6 +603,34 @@ onUnmounted(() => {
   border: 1px solid #e2e8f0 !important;
 }
 
+/* 🖥️ 桌面版卡片拖拽樣式 - 修復跨列表拖拽視覺反饋 */
+:deep(.sortable-ghost) {
+  background: #f0fdf4 !important;
+  border: 2px dashed #22c55e !important;
+  border-radius: 8px !important;
+  opacity: 0.5 !important;
+  transform: none !important;
+}
+
+:deep(.sortable-chosen) {
+  transform: scale(1.02) rotate(-2deg) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+  opacity: 0.9 !important;
+  z-index: 999 !important;
+  cursor: grabbing !important;
+  transition: all 0.15s ease-out !important;
+}
+
+:deep(.sortable-drag) {
+  transform: scale(1.05) rotate(-3deg) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25) !important;
+  opacity: 0.95 !important;
+  z-index: 1000 !important;
+  cursor: grabbing !important;
+  border: 2px solid #3b82f6 !important;
+  background: #ffffff !important;
+}
+
 /* 📱 手機版容器樣式 */
 .mobile-container {
   touch-action: pan-x pan-y;
@@ -546,9 +638,48 @@ onUnmounted(() => {
 }
 
 .mobile-list-item {
-  width: calc(100vw - 3rem);
-  margin: 0 1.5rem;
+  width: 320px; /* 固定寬度，配合彈性滾動計算 */
+  flex-shrink: 0;
   max-width: none;
+}
+
+/* 📱 手機版卡片拖拽樣式 - 超順滑版本！ */
+:deep(.mobile-list-item .sortable-delay) {
+  opacity: 0.8 !important;
+  transform: scale(0.98) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; /* 超順滑過渡 */
+  background: linear-gradient(135deg, #fef3c7, #fde68a) !important; /* 漸層黃色 */
+  border: 2px dashed #f59e0b !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2) !important;
+}
+
+:deep(.mobile-list-item .sortable-chosen) {
+  opacity: 0.95 !important;
+  transform: scale(1.03) rotate(-1deg) !important; /* 減少傾斜角度 */
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+  z-index: 999 !important;
+  border: 2px solid #10b981 !important;
+  background: linear-gradient(135deg, #ffffff, #f0fdf4) !important; /* 淡綠漸層 */
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important; /* 彈性過渡 */
+}
+
+:deep(.mobile-list-item .sortable-drag) {
+  transform: scale(1.08) rotate(-3deg) !important; /* 減少角度讓它更自然 */
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
+  opacity: 0.98 !important;
+  z-index: 1000 !important;
+  border: 2px solid #3b82f6 !important;
+  background: linear-gradient(135deg, #ffffff, #dbeafe) !important; /* 淡藍漸層 */
+  transition: transform 0.1s ease-out !important; /* 快速響應，超順滑 */
+}
+
+/* 📱 手機版拖拽時的特殊效果 */
+:deep(.mobile-list-item .sortable-ghost) {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+  border: 2px dashed #22c55e !important;
+  opacity: 0.6 !important;
+  transform: scale(0.95) !important;
+  transition: all 0.2s ease !important;
 }
 
 /* 🖥️ 桌面版容器樣式 */

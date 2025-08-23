@@ -110,6 +110,7 @@ type Card = CardUI
 const props = defineProps<{
   card: Card
   dragging: boolean  // 父組件控制的拖拽狀態
+  isMobile?: boolean  // 是否為手機版
 }>()
 
 // 🎯 純渲染組件：定義事件 (父組件處理邏輯)
@@ -129,6 +130,8 @@ const editInput = ref<HTMLInputElement | null>(null)
 
 // 勾選狀態管理
 const isChecked = ref(false)
+
+// 📱 手機版拖拽狀態（由 vue-draggable-next 控制）
 
 // 🎯 純渲染：切換勾選狀態（本地 UI 狀態）
 const toggleCheckbox = () => {
@@ -180,6 +183,8 @@ const deleteCard = () => {
   console.log('🗑️ [PURE-CARD] 刪除事件，委派給父組件:', props.card.title)
   emit('delete', props.card)
 }
+
+// 📱 手機版拖拽由 vue-draggable-next 的 delay 選項控制
 
 // 🎯 純渲染組件：讓 vue-draggable-next 完全接管拖拽逻輯
 // 移除自定義拖拽事件，避免與 vue-draggable-next 衝突

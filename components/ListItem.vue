@@ -117,12 +117,19 @@
         :list="list.cards"
         group="cards"
         tag="div"
+        :disabled="false"
+        :force-fallback="props.isMobile"
+        :delay="props.isMobile ? 750 : 0"
+        :touch-start-threshold="props.isMobile ? 10 : 0"
+        :animation="200"
+        easing="cubic-bezier(0.25, 0.46, 0.45, 0.94)"
         @change="$emit('card-move', $event)"
       >
         <div v-for="card in list.cards" :key="card.id">
           <Card 
             :card="card" 
             :dragging="dragging"
+            :is-mobile="props.isMobile"
             @open-modal="$emit('open-card-modal', card)"
             @delete="$emit('card-delete', card)"
             @update-title="(cardId, newTitle) => $emit('card-update-title', cardId, newTitle)"
@@ -192,6 +199,7 @@ type List = ListUI
 const props = defineProps<{
   list: List
   dragging: boolean  // 父組件控制的拖拽狀態
+  isMobile?: boolean  // 是否為手機版
 }>()
 
 // 🎯 純渲染組件：定義事件 (父組件處理邏輯)
