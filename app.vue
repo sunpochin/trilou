@@ -69,10 +69,16 @@ const signInWithEmail = async () => {
   }
 };
 
-// 在元件掛載後執行認證初始化
-onMounted(() => {
+// 執行認證初始化（在客戶端或掛載時）
+if (process.client) {
+  // 客戶端環境下立即執行初始化
   initializeAuth()
-});
+} else {
+  // SSR 環境下，在元件掛載後執行
+  onMounted(() => {
+    initializeAuth()
+  });
+}
 </script>
 
 <template>

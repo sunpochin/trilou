@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { ref, nextTick, type Ref } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
 import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 
@@ -24,65 +24,77 @@ export const useAuth = () => {
 
   // 初始化認證狀態監聽
   const initializeAuth = () => {
+    console.log('🔧 [AUTH] initializeAuth 開始執行')
     // 追蹤是否已經載入過看板，避免重複載入
     let hasLoadedBoard = false
     
-    // 檢查是否要繞過認證（環境變數或 URL 參數）
-    const route = useRoute()
-    const skipAuth = process.env.DEV_SKIP_AUTH === 'true' || route.query.skipAuth === 'true'
+    // 等待一個 tick 確保路由完全載入，特別是 URL 參數
+    nextTick(() => {
+      // 檢查是否要繞過認證（環境變數或 URL 參數）
+      const route = useRoute()
+      const config = useRuntimeConfig()
+      const skipAuth = config.public.devSkipAuth || route.query.skipAuth === 'true'
     
-    if (skipAuth) {
-      user.value = { 
-        id: "dev-user", 
-        name: "Developer Mode", 
-        email: "dev@trilou.local",
-        app_metadata: {},
-        user_metadata: {},
-        aud: 'authenticated',
-        created_at: new Date().toISOString()
-      } as unknown as User
-      
-      // 載入看板資料
-      if (!hasLoadedBoard) {
-        console.log('🚀 [DEV] 開發模式啟用，跳過認證直接載入看板')
-        boardStore.fetchBoard()
-        hasLoadedBoard = true
-      }
-      
-      return
-    }
-    
-    // 監聽 Supabase 的認證狀態變化
-    $supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      const newUser = session?.user ?? null
-      const userChanged = user.value?.id !== newUser?.id
-      
-      console.log('🔐 [AUTH] 認證狀態變化:', { 
-        event, 
-        userChanged, 
-        hasLoadedBoard,
-        previousUserId: user.value?.id,
-        newUserId: newUser?.id,
-        timestamp: new Date().toLocaleTimeString()
+      console.log('🔍 [AUTH] 認證檢查:', {
+        devSkipAuth: config.public.devSkipAuth,
+        querySkipAuth: route.query.skipAuth,
+        skipAuth: skipAuth,
+        route: route.fullPath
       })
       
-      user.value = newUser
-
-      if (user.value) {
-        // 只在用戶真的變化或首次載入時才獲取看板資料
-        if (userChanged && !hasLoadedBoard) {
-          console.log('📋 [AUTH] 用戶登入，開始載入看板資料')
-          await boardStore.fetchBoard()
+      if (skipAuth) {
+        user.value = { 
+          id: "a971548d-298f-4513-883f-a6bd370eff1b", 
+          name: "Developer Mode", 
+          email: "dev@trilou.local",
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString()
+        } as unknown as User
+        
+        // 載入看板資料
+        if (!hasLoadedBoard) {
+          console.log('🚀 [DEV] 開發模式啟用，跳過認證直接載入看板')
+          boardStore.fetchBoard()
           hasLoadedBoard = true
-        } else {
-          console.log('📋 [AUTH] 跳過重複載入看板資料')
         }
-      } else {
-        // 如果使用者登出，清空看板資料並重置載入狀態
-        console.log('🚪 [AUTH] 用戶登出，清空看板資料')
-        boardStore.board.lists = []
-        hasLoadedBoard = false
+        
+        return
       }
+      
+      // 監聽 Supabase 的認證狀態變化
+      $supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+        const newUser = session?.user ?? null
+        const userChanged = user.value?.id !== newUser?.id
+        
+        console.log('🔐 [AUTH] 認證狀態變化:', { 
+          event, 
+          userChanged, 
+          hasLoadedBoard,
+          previousUserId: user.value?.id,
+          newUserId: newUser?.id,
+          timestamp: new Date().toLocaleTimeString()
+        })
+        
+        user.value = newUser
+
+        if (user.value) {
+          // 只在用戶真的變化或首次載入時才獲取看板資料
+          if (userChanged && !hasLoadedBoard) {
+            console.log('📋 [AUTH] 用戶登入，開始載入看板資料')
+            await boardStore.fetchBoard()
+            hasLoadedBoard = true
+          } else {
+            console.log('📋 [AUTH] 跳過重複載入看板資料')
+          }
+        } else {
+          // 如果使用者登出，清空看板資料並重置載入狀態
+          console.log('🚪 [AUTH] 用戶登出，清空看板資料')
+          boardStore.board.lists = []
+          hasLoadedBoard = false
+        }
+      })
     })
   }
 

@@ -25,7 +25,11 @@
       "Bash(npx nuxi typecheck:*)",
       "Bash(yarn run:*)",
       "Bash(rm:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(export DEV_SKIP_AUTH=true)",
+      "Bash(DEV_SKIP_AUTH=true yarn dev)"
     ],
     "defaultMode": "acceptEdits"
   }

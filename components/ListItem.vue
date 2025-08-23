@@ -79,7 +79,7 @@
 
 <template>
   <!-- 單個列表容器 -->
-  <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0" :data-list-id="list.id">
+  <div class="bg-gray-200 rounded w-80 p-2 flex-shrink-0 flex flex-col" :data-list-id="list.id">
     <!-- 列表標題區域 -->
     <div class="cursor-pointer flex justify-between items-center p-2 mb-2 relative">
       <!-- 非編輯狀態：顯示標題 -->
@@ -111,17 +111,19 @@
     </div>
     
     <!-- 可拖拉的卡片容器 -->
-    <draggable
-      class="min-h-5"
-      :list="list.cards"
-      group="cards"
-      tag="div"
-      @change="$emit('card-move', $event)"
-    >
-      <div v-for="card in list.cards" :key="card.id">
-        <Card :card="card" @open-modal="$emit('open-card-modal', card)" />
-      </div>
-    </draggable>
+    <div class="flex-1 overflow-y-auto">
+      <draggable
+        class="min-h-5"
+        :list="list.cards"
+        group="cards"
+        tag="div"
+        @change="$emit('card-move', $event)"
+      >
+        <div v-for="card in list.cards" :key="card.id">
+          <Card :card="card" @open-modal="$emit('open-card-modal', card)" />
+        </div>
+      </draggable>
+    </div>
     
     <!-- 新增卡片區域 -->
     <div class="mt-2">
@@ -209,7 +211,9 @@ const newCardInput = ref<HTMLTextAreaElement | null>(null)
 
 // 處理新增卡片（舊的 modal 方式，保留以備後用）
 const handleAddCard = () => {
-  addCard(props.list.id)
+  // 使用 useListActions 的 addCard，它會彈出輸入對話框
+  const { addCard: addCardWithModal } = useListActions()
+  addCardWithModal(props.list.id)
 }
 
 // 開始 inline 新增卡片

@@ -22,6 +22,8 @@ interface TouchState {
   currentY: number        // 當前 Y 座標
   isDragging: boolean     // 是否正在拖拽版面
   isLongPress: boolean    // 是否觸發了長按
+  isScrolling: boolean    // 是否正在滾動列表
+  targetElement: HTMLElement | null  // 觸控目標元素
 }
 
 // 卡片拖拽狀態介面定義
@@ -41,7 +43,9 @@ export function useMobileInteractions() {
     currentX: 0,
     currentY: 0,
     isDragging: false,
-    isLongPress: false
+    isLongPress: false,
+    isScrolling: false,
+    targetElement: null
   })
 
   // 卡片拖拽狀態管理
@@ -80,18 +84,24 @@ export function useMobileInteractions() {
     const newX = currentX + deltaX
     const newY = currentY + deltaY
     
-    // 限制移動範圍，避免版面移動過遠
-    const maxX = 200
-    const maxY = 100
-    const minX = -200
-    const minY = -100
+    // 動態計算 board 邊界限制
+    const boardRect = boardContainer.value.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    
+    // 限制不能拖拽超出視窗範圍，保留一些邊界
+    const padding = 0
+    const maxX = Math.max(0, viewportWidth - boardRect.width + padding)
+    const maxY = Math.max(0, viewportHeight - boardRect.height + padding)
+    const minX = Math.min(0, -(boardRect.width - viewportWidth + padding))
+    const minY = Math.min(0, -(boardRect.height - viewportHeight + padding))
     
     const clampedX = Math.max(minX, Math.min(maxX, newX))
     const clampedY = Math.max(minY, Math.min(maxY, newY))
     
     boardContainer.value.style.transform = `translate(${clampedX}px, ${clampedY}px)`
     
-    console.log('📱 [MOBILE] 版面移動:', { deltaX, deltaY, newX: clampedX, newY: clampedY })
+    console.log('📱 [MOBILE] 版面移動:', { deltaX, deltaY, newX: clampedX, newY: clampedY, boardSize: { width: boardRect.width, height: boardRect.height } })
   }
 
   // 策略2：處理卡片拖拽模式
@@ -119,12 +129,37 @@ export function useMobileInteractions() {
     
     console.log('📱 [MOBILE] 卡片進入拖拽模式:', cardElement)
   }
+  
+  // 策略3：處理列表滾動
+  const handleListScrolling = (deltaY: number, listElement: HTMLElement) => {
+    // 檢查列表是否可以滾動
+    const isScrollable = listElement.scrollHeight > listElement.clientHeight
+    
+    if (isScrollable) {
+      // 計算新的滾動位置
+      const currentScrollTop = listElement.scrollTop
+      const newScrollTop = currentScrollTop - deltaY * 2 // 乘以 2 讓滾動更靈敏
+      
+      // 限制滾動範圍
+      const maxScrollTop = listElement.scrollHeight - listElement.clientHeight
+      const clampedScrollTop = Math.max(0, Math.min(maxScrollTop, newScrollTop))
+      
+      listElement.scrollTop = clampedScrollTop
+      
+      console.log('📱 [MOBILE] 列表滾動:', { deltaY, currentScrollTop, newScrollTop: clampedScrollTop, maxScrollTop })
+      return true // 表示已處理滾動
+    }
+    
+    return false // 表示無法滾動
+  }
 
   // 觸控開始事件處理
   const handleTouchStart = (event: TouchEvent) => {
     const touch = event.touches[0]
     if (!touch) return
 
+    const target = event.target as HTMLElement
+    
     touchState.isActive = true
     touchState.startX = touch.clientX
     touchState.startY = touch.clientY
@@ -132,13 +167,14 @@ export function useMobileInteractions() {
     touchState.currentY = touch.clientY
     touchState.isDragging = false
     touchState.isLongPress = false
+    touchState.isScrolling = false
+    touchState.targetElement = target
 
     // 設定長按定時器
     longPressTimer = window.setTimeout(() => {
-      if (touchState.isActive) {
+      if (touchState.isActive && !touchState.isScrolling) {
         touchState.isLongPress = true
         // 檢查是否在卡片上長按
-        const target = event.target as HTMLElement
         if (target && target.closest('.card-draggable')) {
           handleCardDragMode(target, touch)
           // 添加震動回饋（如果裝置支援）
@@ -149,7 +185,7 @@ export function useMobileInteractions() {
       }
     }, LONG_PRESS_DURATION)
 
-    console.log('📱 [MOBILE] 觸控開始:', { x: touch.clientX, y: touch.clientY })
+    console.log('📱 [MOBILE] 觸控開始:', { x: touch.clientX, y: touch.clientY, target: target.className })
   }
 
   // 觸控移動事件處理
@@ -162,35 +198,72 @@ export function useMobileInteractions() {
     // 計算移動距離
     const deltaX = touch.clientX - touchState.currentX
     const deltaY = touch.clientY - touchState.currentY
+    const totalDeltaX = touch.clientX - touchState.startX
+    const totalDeltaY = touch.clientY - touchState.startY
     
     touchState.currentX = touch.clientX
     touchState.currentY = touch.clientY
 
-    // 如果移動距離超過閾值，取消長按並開始拖拽
-    const moveDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-    if (moveDistance > 10 && !touchState.isDragging && !touchState.isLongPress) {
+    // 如果移動距離超過闾值，決定是滾動還是拖拽
+    const moveDistance = Math.sqrt(totalDeltaX * totalDeltaX + totalDeltaY * totalDeltaY)
+    
+    if (moveDistance > 10 && !touchState.isDragging && !touchState.isLongPress && !touchState.isScrolling) {
       // 清除長按定時器
       if (longPressTimer) {
         clearTimeout(longPressTimer)
         longPressTimer = null
       }
-      touchState.isDragging = true
+      
+      // 如果觸控開始在卡片上但沒有長按，則不做任何 board 級別的操作
+      if (touchState.targetElement?.closest('.card-draggable')) {
+        console.log('📱 [MOBILE] 在卡片上短距離移動，跳過處理')
+        touchState.isActive = false
+        return
+      }
+      
+      // 檢查是否應該做列表滾動 (尋找可滾動的卡片容器)
+      const listElement = touchState.targetElement?.closest('[data-list-id]') as HTMLElement
+      const scrollableContainer = listElement?.querySelector('.overflow-y-auto') as HTMLElement
+      
+      if (scrollableContainer && !touchState.targetElement?.closest('.card-draggable')) {
+        // 在列表區域且不是卡片，優先嘗試垂直滾動
+        const isVerticalMove = Math.abs(totalDeltaY) > Math.abs(totalDeltaX) * 1.5
+        
+        if (isVerticalMove && scrollableContainer.scrollHeight > scrollableContainer.clientHeight) {
+          touchState.isScrolling = true
+          console.log('📱 [MOBILE] 進入列表滾動模式')
+        } else {
+          touchState.isDragging = true
+          console.log('📱 [MOBILE] 進入版面拖拽模式')
+        }
+      } else {
+        // 其他情況預設拖拽版面
+        touchState.isDragging = true
+        console.log('📱 [MOBILE] 進入版面拖拽模式')
+      }
     }
 
     // 根據當前模式處理移動
     if (cardDragState.isDragging) {
-      // 卡片拖拽模式：移動卡片
+      // 卡片拖拽模式：移動卡片，並限制在 viewport 範圍內
       if (cardDragState.draggedCard) {
-        const newX = touch.clientX - cardDragState.offset.x
-        const newY = touch.clientY - cardDragState.offset.y
+        const newX = Math.max(0, Math.min(window.innerWidth - 100, touch.clientX - cardDragState.offset.x))
+        const newY = Math.max(0, Math.min(window.innerHeight - 100, touch.clientY - cardDragState.offset.y))
         
         cardDragState.draggedCard.style.left = `${newX}px`
         cardDragState.draggedCard.style.top = `${newY}px`
       }
+      event.preventDefault()
+    } else if (touchState.isScrolling) {
+      // 列表滾動模式：滾動列表
+      const listElement = touchState.targetElement?.closest('[data-list-id]') as HTMLElement
+      const scrollableContainer = listElement?.querySelector('.overflow-y-auto') as HTMLElement
+      if (scrollableContainer && handleListScrolling(deltaY, scrollableContainer)) {
+        event.preventDefault()
+      }
     } else if (touchState.isDragging) {
       // 版面拖拽模式：移動整個版面
       handleBoardPanning(deltaX, deltaY)
-      // 防止預設的滾動行為
       event.preventDefault()
     }
   }
@@ -223,6 +296,8 @@ export function useMobileInteractions() {
     touchState.isActive = false
     touchState.isDragging = false
     touchState.isLongPress = false
+    touchState.isScrolling = false
+    touchState.targetElement = null
     cardDragState.isDragging = false
     cardDragState.draggedCard = null
 
