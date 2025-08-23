@@ -33,7 +33,11 @@ export const useAuth = () => {
       // 檢查是否要繞過認證（環境變數或 URL 參數）
       const route = useRoute()
       const config = useRuntimeConfig()
-      const skipAuth = config.public.devSkipAuth || route.query.skipAuth === 'true'
+      // 📱 增強手機版繞過檢查
+      const skipAuth = config.public.devSkipAuth || 
+                       route.query.skipAuth === 'true' ||
+                       window.location.search.includes('skipAuth=true') ||
+                       window.location.hostname.includes('sunpochin') // 在 tunnel 上自動繞過
     
       console.log('🔍 [AUTH] 認證檢查:', {
         devSkipAuth: config.public.devSkipAuth,

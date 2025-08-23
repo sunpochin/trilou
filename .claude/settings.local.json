@@ -29,7 +29,8 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(export DEV_SKIP_AUTH=true)",
-      "Bash(DEV_SKIP_AUTH=true yarn dev)"
+      "Bash(DEV_SKIP_AUTH=true yarn dev)",
+      "Bash(open \"http://localhost:3000\")"
     ],
     "defaultMode": "acceptEdits"
   }

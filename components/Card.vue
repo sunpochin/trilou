@@ -1,7 +1,8 @@
 <template>
-  <!-- 卡片組件 - 支援 mobile 拖拽 -->
+  <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
   <div 
     class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable"
+    :class="{ 'card-dragging': dragging }"
     @click="openCardModal"
   >
     <!-- 顯示模式：顯示卡片標題 -->
@@ -99,26 +100,27 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useCardActions } from '@/composables/useCardActions'
 import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 import type { CardUI } from '@/types'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
 
-// 接收父組件傳入的卡片資料
+// 🎯 純渲染組件：接收父組件傳入的資料和狀態
 const props = defineProps<{
   card: Card
+  dragging: boolean  // 父組件控制的拖拽狀態
 }>()
 
-// 定義事件
+// 🎯 純渲染組件：定義事件 (父組件處理邏輯)
 const emit = defineEmits<{
   openModal: [card: Card]
+  delete: [card: Card]
+  updateTitle: [cardId: string, newTitle: string]
+  dragStart: [card: Card, type: 'card']
+  dragEnd: []
 }>()
 
-
-// 取得卡片操作功能
-const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction } = useCardActions()
 
 // 編輯狀態管理
 const isEditing = ref(false)
@@ -128,10 +130,11 @@ const editInput = ref<HTMLInputElement | null>(null)
 // 勾選狀態管理
 const isChecked = ref(false)
 
-// 切換勾選狀態
+// 🎯 純渲染：切換勾選狀態（本地 UI 狀態）
 const toggleCheckbox = () => {
   isChecked.value = !isChecked.value
-  console.log(`📋 [CARD] 切換勾選狀態: ${props.card.title} -> ${isChecked.value ? '已完成' : '未完成'}`)
+  console.log(`📋 [PURE-CARD] 本地勾選狀態: ${props.card.title} -> ${isChecked.value ? '已完成' : '未完成'}`)
+  // 純渲染組件不處理業務邏輯，只管理 UI 狀態
 }
 
 // 開始編輯（目前已停用，但保留以備後用）
@@ -148,14 +151,14 @@ const toggleCheckbox = () => {
 //   })
 // }
 
-// 儲存編輯
+// 🎯 純渲染：儲存編輯 (委派給父組件)
 const saveEdit = () => {
   const newTitle = editingTitle.value.trim()
-  if (newTitle) {
-    // 只要有內容就更新，不管是否與原標題相同
-    updateCardTitleAction(props.card.id, newTitle)
+  if (newTitle && newTitle !== props.card.title) {
+    // 委派給父組件處理業務邏輯
+    emit('updateTitle', props.card.id, newTitle)
   } else {
-    // 如果是空字串，恢復原始標題
+    // 如果是空字串或無變化，恢復原始標題
     editingTitle.value = props.card.title
   }
   isEditing.value = false
@@ -167,19 +170,18 @@ const cancelEdit = () => {
   editingTitle.value = props.card.title
 }
 
-// 開啟卡片模態框
+// 🎯 純渲染：開啟卡片模態框
 const openCardModal = () => {
   emit('openModal', props.card)
 }
 
-// 刪除卡片功能
-const deleteCard = async () => {
-  console.log('🗑️ [CARD] deleteCard 被呼叫，卡片:', props.card)
-  
-  // 顯示漂亮的確認對話框
-  console.log('💬 [CARD] 顯示刪除確認對話框...')
-  // 委託給 composable 處理完整的刪除流程
-  await deleteCardAction(props.card)
+// 🎯 純渲染：刪除卡片 (委派給父組件)
+const deleteCard = () => {
+  console.log('🗑️ [PURE-CARD] 刪除事件，委派給父組件:', props.card.title)
+  emit('delete', props.card)
 }
+
+// 🎯 純渲染組件：讓 vue-draggable-next 完全接管拖拽逻輯
+// 移除自定義拖拽事件，避免與 vue-draggable-next 衝突
 
 </script>
