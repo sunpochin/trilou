@@ -532,31 +532,96 @@ const onCardMove = async (event: any) => {
   }
 }
 
-// 卡片操作處理
+/**
+ * 🎯 超強樂觀更新系統 - 既快又安全！
+ * 
+ * 🧒 十歲小朋友解釋：
+ * - 🚀 快：你一按按鈕，畫面立刻變化（不用等網路）
+ * - 🛡️ 安全：如果網路有問題，會恢復原狀並告訴你
+ * - 💡 聰明：不同操作用不同策略，給你最好的體驗
+ */
+
+// 🗑️ 卡片刪除 - 需要確認的重要操作
 const onCardDelete = async (card: Card) => {
   console.log('🗑️ [MOBILE-BOARD] 刪除卡片:', card.title)
-  await deleteCardAction(card)
+  
+  // 🛡️ 重要操作：先確認，再執行，讓用戶知道結果
+  if (!confirm(`確定要刪除卡片「${card.title}」嗎？`)) {
+    return
+  }
+  
+  try {
+    // 這個操作用戶需要知道是否成功，所以等待結果
+    await deleteCardAction(card)
+    console.log('✅ [MOBILE-BOARD] 卡片刪除成功')
+    // 可以顯示成功提示（可選）
+  } catch (error) {
+    console.error('❌ [MOBILE-BOARD] 卡片刪除失敗:', error)
+    alert('刪除失敗，請稍後再試')
+  }
 }
 
+// ✏️ 卡片標題更新 - 樂觀更新策略  
 const onCardUpdateTitle = async (cardId: string, newTitle: string) => {
   console.log('✏️ [MOBILE-BOARD] 更新卡片標題:', { cardId, newTitle })
-  await updateCardTitleAction(cardId, newTitle)
+  
+  // 🚀 樂觀更新：不等待，讓用戶感覺超快
+  // Store 內部已經實現了樂觀更新 + 失敗回滾
+  updateCardTitleAction(cardId, newTitle).catch(error => {
+    console.error('❌ [MOBILE-BOARD] 卡片標題更新失敗:', error)
+    // 錯誤已在 Store 層處理回滾，這裡只需要記錄
+  })
+  
+  console.log('⚡ [MOBILE-BOARD] 卡片標題樂觀更新完成')
 }
 
-// 列表操作處理
+// 📌 新增卡片 - 樂觀更新 + 錯誤處理
 const onListAddCard = async (listId: string, title: string) => {
   console.log('📌 [MOBILE-BOARD] 新增卡片:', { listId, title })
-  await addCardAction(listId, title, 'medium')
+  
+  try {
+    // 🚀 Store 已實現樂觀更新，我們只需要處理錯誤
+    await addCardAction(listId, title, 'medium')
+    console.log('✅ [MOBILE-BOARD] 卡片新增完成')
+  } catch (error) {
+    console.error('❌ [MOBILE-BOARD] 新增卡片失敗:', error)
+    // Store 已經回滾了，我們提供用戶友好的錯誤訊息
+    alert('新增卡片失敗，請檢查網路連線後再試')
+  }
 }
 
+// 🗑️ 列表刪除 - 需要確認的重要操作
 const onListDelete = async (listId: string) => {
   console.log('🗑️ [MOBILE-BOARD] 刪除列表:', listId)
-  await deleteListAction(listId)
+  
+  // 🛡️ 重要操作：先確認，這是不可逆的操作
+  if (!confirm('確定要刪除這個列表嗎？列表中的所有卡片也會一併刪除！')) {
+    return
+  }
+  
+  try {
+    // 刪除操作用戶需要明確的結果反饋
+    await deleteListAction(listId)
+    console.log('✅ [MOBILE-BOARD] 列表刪除成功')
+    // 可以顯示成功提示
+  } catch (error) {
+    console.error('❌ [MOBILE-BOARD] 列表刪除失敗:', error)
+    alert('刪除失敗，請稍後再試')
+  }
 }
 
+// ✏️ 列表標題更新 - 樂觀更新策略
 const onListUpdateTitle = async (listId: string, newTitle: string) => {
   console.log('✏️ [MOBILE-BOARD] 更新列表標題:', { listId, newTitle })
-  await updateListTitleAction(listId, newTitle)
+  
+  // 🚀 樂觀更新：不等待，讓用戶感覺超快
+  // Store 內部已經實現了樂觀更新 + 失敗回滾
+  updateListTitleAction(listId, newTitle).catch(error => {
+    console.error('❌ [MOBILE-BOARD] 列表標題更新失敗:', error)
+    // 錯誤已在 Store 層處理回滾，這裡只需要記錄
+  })
+  
+  console.log('⚡ [MOBILE-BOARD] 列表標題樂觀更新完成')
 }
 
 // 新增列表功能

@@ -217,29 +217,91 @@ const onListMove = async (event: any) => {
   }
 }
 
+/**
+ * 🖥️ 桌面版樂觀更新系統 - 與手機版相同的強大體驗！
+ * 
+ * 🎯 智慧策略分類：
+ * - 🗑️ 刪除操作：需要確認 + 等待結果（不可逆）
+ * - ✏️ 編輯操作：樂觀更新（快速體驗）
+ * - 📌 新增操作：樂觀更新 + 錯誤處理
+ */
+
+// 🗑️ 卡片刪除 - 需要確認的重要操作
 const onCardDelete = async (card: CardUI) => {
   console.log('🗑️ [DESKTOP-BOARD] 刪除卡片:', card.title)
-  await deleteCardAction(card)
+  
+  // 🛡️ 重要操作：先確認，再執行
+  if (!confirm(`確定要刪除卡片「${card.title}」嗎？`)) {
+    return
+  }
+  
+  try {
+    // 刪除是重要操作，用戶需要知道結果
+    await deleteCardAction(card)
+    console.log('✅ [DESKTOP-BOARD] 卡片刪除成功')
+  } catch (error) {
+    console.error('❌ [DESKTOP-BOARD] 卡片刪除失敗:', error)
+    alert('刪除失敗，請稍後再試')
+  }
 }
 
+// ✏️ 卡片標題更新 - 桌面版樂觀更新
 const onCardUpdateTitle = async (cardId: string, newTitle: string) => {
   console.log('✏️ [DESKTOP-BOARD] 更新卡片標題:', { cardId, newTitle })
-  await updateCardTitleAction(cardId, newTitle)
+  
+  // 🚀 桌面版也享受樂觀更新的快速體驗
+  updateCardTitleAction(cardId, newTitle).catch(error => {
+    console.error('❌ [DESKTOP-BOARD] 卡片標題更新失敗:', error)
+    // Store 層已處理回滾
+  })
+  
+  console.log('⚡ [DESKTOP-BOARD] 卡片標題樂觀更新完成')
 }
 
+// 📌 新增卡片 - 桌面版樂觀更新
 const onListAddCard = async (listId: string, title: string) => {
   console.log('📌 [DESKTOP-BOARD] 新增卡片:', { listId, title })
-  await addCardAction(listId, title, 'medium')
+  
+  try {
+    // 桌面版也使用樂觀更新，但處理錯誤
+    await addCardAction(listId, title, 'medium')
+    console.log('✅ [DESKTOP-BOARD] 卡片新增完成')
+  } catch (error) {
+    console.error('❌ [DESKTOP-BOARD] 新增卡片失敗:', error)
+    alert('新增卡片失敗，請檢查網路連線後再試')
+  }
 }
 
+// 🗑️ 列表刪除 - 需要確認的重要操作
 const onListDelete = async (listId: string) => {
   console.log('🗑️ [DESKTOP-BOARD] 刪除列表:', listId)
-  await deleteListAction(listId)
+  
+  // 🛡️ 重要操作：先確認
+  if (!confirm('確定要刪除這個列表嗎？列表中的所有卡片也會一併刪除！')) {
+    return
+  }
+  
+  try {
+    // 刪除操作需要明確的結果反饋
+    await deleteListAction(listId)
+    console.log('✅ [DESKTOP-BOARD] 列表刪除成功')
+  } catch (error) {
+    console.error('❌ [DESKTOP-BOARD] 列表刪除失敗:', error)
+    alert('刪除失敗，請稍後再試')
+  }
 }
 
+// ✏️ 列表標題更新 - 桌面版樂觀更新
 const onListUpdateTitle = async (listId: string, newTitle: string) => {
   console.log('✏️ [DESKTOP-BOARD] 更新列表標題:', { listId, newTitle })
-  await updateListTitleAction(listId, newTitle)
+  
+  // 🚀 桌面版也享受樂觀更新的快速體驗
+  updateListTitleAction(listId, newTitle).catch(error => {
+    console.error('❌ [DESKTOP-BOARD] 列表標題更新失敗:', error)
+    // Store 層已處理回滾
+  })
+  
+  console.log('⚡ [DESKTOP-BOARD] 列表標題樂觀更新完成')
 }
 
 // 開始 inline 新增列表

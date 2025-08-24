@@ -67,36 +67,94 @@ export function useBoardCore() {
   /**
    * 🗂️ 列表操作
    */
-  const onListAddCard = (listId: string, title: string) => {
-    console.log('➕ [CORE] 新增卡片到列表:', { listId, title })
-    boardStore.addCard(listId, title)
-  }
+  /**
+   * 🎯 Core 層樂觀更新系統 - 統一的智慧策略
+   * 
+   * 📋 設計原則：
+   * - 🗑️ 刪除：需要確認 + 等待結果（安全第一）
+   * - ✏️ 編輯：樂觀更新（速度優先）
+   * - 📌 新增：樂觀更新 + 錯誤處理（平衡體驗）
+   */
   
-  const onListDelete = (listId: string) => {
-    console.log('🗑️ [CORE] 刪除列表:', listId)
-    if (confirm('確定要刪除這個列表嗎？')) {
-      boardStore.removeList(listId)
+  // 📌 新增卡片 - 樂觀更新策略
+  const onListAddCard = async (listId: string, title: string) => {
+    console.log('➕ [CORE] 新增卡片到列表:', { listId, title })
+    
+    try {
+      // Store 已實現樂觀更新，這裡處理錯誤
+      await boardStore.addCard(listId, title)
+      console.log('✅ [CORE] 卡片新增完成')
+    } catch (error) {
+      console.error('❌ [CORE] 新增卡片失敗:', error)
+      // 用戶友好的錯誤處理
+      alert('新增卡片失敗，請檢查網路連線後再試')
     }
   }
   
-  const onListUpdateTitle = (listId: string, newTitle: string) => {
+  // 🗑️ 刪除列表 - 需要確認的重要操作
+  const onListDelete = async (listId: string) => {
+    console.log('🗑️ [CORE] 刪除列表:', listId)
+    
+    // 🛡️ 重要操作：先確認
+    if (!confirm('確定要刪除這個列表嗎？列表中的所有卡片也會一併刪除！')) {
+      return
+    }
+    
+    try {
+      // 刪除操作需要明確反饋
+      await boardStore.removeList(listId)
+      console.log('✅ [CORE] 列表刪除成功')
+    } catch (error) {
+      console.error('❌ [CORE] 列表刪除失敗:', error)
+      alert('刪除失敗，請稍後再試')
+    }
+  }
+  
+  // ✏️ 列表標題更新 - 樂觀更新策略
+  const onListUpdateTitle = async (listId: string, newTitle: string) => {
     console.log('✏️ [CORE] 更新列表標題:', { listId, newTitle })
-    boardStore.updateListTitle(listId, newTitle)
+    
+    // 🚀 樂觀更新：不等待，讓用戶感覺超快
+    boardStore.updateListTitle(listId, newTitle).catch(error => {
+      console.error('❌ [CORE] 列表標題更新失敗:', error)
+      // Store 層已處理回滾
+    })
+    
+    console.log('⚡ [CORE] 列表標題樂觀更新完成')
   }
   
   /**
-   * 🃏 卡片操作
+   * 🃏 卡片操作 - 同樣的智慧策略
    */
-  const onCardDelete = (card: CardUI) => {
+  
+  // 🗑️ 刪除卡片 - 需要確認的重要操作
+  const onCardDelete = async (card: CardUI) => {
     console.log('🗑️ [CORE] 刪除卡片:', card.title)
-    if (confirm('確定要刪除這張卡片嗎？')) {
-      boardStore.removeCard(card.listId, card.id)
+    
+    // 🛡️ 重要操作：先確認
+    if (!confirm(`確定要刪除卡片「${card.title}」嗎？`)) {
+      return
+    }
+    
+    try {
+      // 刪除操作需要明確反饋
+      await boardStore.removeCard(card.listId, card.id)
+      console.log('✅ [CORE] 卡片刪除成功')
+    } catch (error) {
+      console.error('❌ [CORE] 卡片刪除失敗:', error)
+      alert('刪除失敗，請稍後再試')
     }
   }
   
+  // ✏️ 卡片標題更新 - 樂觀更新策略
   const onCardUpdateTitle = (cardId: string, newTitle: string) => {
     console.log('✏️ [CORE] 更新卡片標題:', { cardId, newTitle })
+    
+    // 🚀 樂觀更新：直接更新本地狀態，超快體驗
+    // 這個方法是同步的，所以不需要 catch
     boardStore.updateCardTitle(cardId, newTitle)
+    
+    console.log('⚡ [CORE] 卡片標題更新完成')
   }
   
   /**
