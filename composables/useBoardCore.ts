@@ -90,7 +90,7 @@ export function useBoardCore() {
   const onCardDelete = (card: CardUI) => {
     console.log('🗑️ [CORE] 刪除卡片:', card.title)
     if (confirm('確定要刪除這張卡片嗎？')) {
-      boardStore.deleteCard(card.id)
+      boardStore.removeCard(card.listId, card.id)
     }
   }
   
