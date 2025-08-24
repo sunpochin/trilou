@@ -11,21 +11,22 @@
 <template>
   <!-- 桌面版看板主容器 - 純桌面優化 -->
   <div 
-    class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans"
+    :class="[
+      'w-full p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans',
+      viewData.isLoading ? 'flex items-center justify-center' : 'flex gap-4'
+    ]"
     @contextmenu.prevent
     @selectstart.prevent
   >
     
     <!-- 載入狀態：顯示 loading spinner -->
-    <div v-if="viewData.isLoading" class="flex items-center justify-center w-full h-full">
-      <div class="text-center">
-        <SkeletonLoader 
-          size="lg" 
-          :text="MESSAGES.board.loadingFromCloud"
-          color="#3B82F6"
-          :animate="true"
-        />
-      </div>
+    <div v-if="viewData.isLoading" class="text-center">
+      <SkeletonLoader 
+        size="lg" 
+        :text="MESSAGES.board.loadingFromCloud"
+        color="#3B82F6"
+        :animate="true"
+      />
     </div>
 
     <!-- 載入完成：顯示實際看板內容 -->
@@ -445,22 +446,4 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   border-radius: 8px !important; /* 保持圓角 */
 }
 
-/* 🔧 桌面版不使用 fallback，所以這個樣式已刪除 */
-
-/* 🖥️ 桌面版容器樣式 */
-.desktop-container {
-  overflow-x: auto;
-}
-
-/* 🖥️ 桌面版不使用 fallback，移除重複的 sortable 樣式 */
-
-/* 響應式間距 */
-@media (min-width: 769px) {
-  .desktop-container {
-    padding: 1rem;
-    gap: 1rem;
-  }
-}
-
-/* 🖥️ 桌面版防止拖拽時選取文字和右鍵選單 - 已在模板中處理 */
 </style>
