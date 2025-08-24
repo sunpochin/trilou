@@ -138,7 +138,8 @@
     <button 
       v-if="!isEditing"
       @click.stop="deleteCard"
-      class="absolute top-2 right-2 p-1 rounded hover:bg-red-100 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+      class="absolute top-2 right-2 p-1 rounded hover:bg-red-100 transition-colors duration-200"
+      :class="isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
       title="刪除卡片"
     >
       <svg 

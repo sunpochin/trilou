@@ -164,7 +164,7 @@
         group="cards"
         tag="div"
         :disabled="false"
-        :force-fallback="true"
+        :force-fallback="props.isMobile"
         :fallback-on-body="true"
         :fallback-tolerance="0"
         :delay="props.isMobile ? 750 : 0"
