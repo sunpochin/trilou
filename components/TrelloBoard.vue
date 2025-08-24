@@ -18,19 +18,9 @@
 
 <template>
   <!-- 統一看板容器 - 條件式 drag handler -->
-  <div 
-    ref="boardContainerRef"
-    :class="[
-      'gap-4 p-4 h-[85vh] bg-gray-100 font-sans',
-      isMobile ? 'block overflow-y-auto mobile-container' : 'flex overflow-x-auto desktop-container'
-    ]"
-  >
-    <div v-if="isMobile">
-      <MobileBoard />
-    </div>
-    <div v-else>
-      <DesktopBoard />
-    </div>
+  <div ref="boardContainerRef">
+    <MobileBoard v-if="isMobile" />
+    <DesktopBoard v-else />
   </div>
 </template>
 
