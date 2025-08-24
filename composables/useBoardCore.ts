@@ -75,7 +75,7 @@ export function useBoardCore() {
   const onListDelete = (listId: string) => {
     console.log('🗑️ [CORE] 刪除列表:', listId)
     if (confirm('確定要刪除這個列表嗎？')) {
-      boardStore.deleteList(listId)
+      boardStore.removeList(listId)
     }
   }
   
