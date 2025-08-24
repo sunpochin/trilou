@@ -545,11 +545,6 @@ const onCardMove = async (event: any) => {
 const onCardDelete = async (card: Card) => {
   console.log('🗑️ [MOBILE-BOARD] 刪除卡片:', card.title)
   
-  // 🛡️ 重要操作：先確認，再執行，讓用戶知道結果
-  if (!confirm(`確定要刪除卡片「${card.title}」嗎？`)) {
-    return
-  }
-  
   try {
     // 這個操作用戶需要知道是否成功，所以等待結果
     await deleteCardAction(card)

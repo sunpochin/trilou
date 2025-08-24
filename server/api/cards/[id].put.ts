@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
   
   if (skipAuth) {
     // 🎯 開發模式：使用固定的測試用戶 ID
-    userId = "a971548d-298f-4513-883f-a6bd370eff1b"
+    userId = process.env.DEV_USER_ID || ""
     console.log('🧪 [DEV-MODE] 更新卡片 - 使用開發模式固定用戶 ID:', userId)
   } else {
     // 🔐 生產模式：驗證真實用戶身份

@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
   
   if (skipAuth) {
     // 🎯 開發模式：使用固定的測試用戶 ID
-    userId = "a971548d-298f-4513-883f-a6bd370eff1b"
+    userId = process.env.DEV_USER_ID || ""
     // 創建假的 user 物件供 ensureUserExists 使用
     user = {
       id: userId,

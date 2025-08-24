@@ -230,11 +230,6 @@ const onListMove = async (event: any) => {
 const onCardDelete = async (card: CardUI) => {
   console.log('🗑️ [DESKTOP-BOARD] 刪除卡片:', card.title)
   
-  // 🛡️ 重要操作：先確認，再執行
-  if (!confirm(`確定要刪除卡片「${card.title}」嗎？`)) {
-    return
-  }
-  
   try {
     // 刪除是重要操作，用戶需要知道結果
     await deleteCardAction(card)

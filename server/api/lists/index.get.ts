@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     if (process.env.DEV_SKIP_AUTH === 'true') {
       console.log('🚀 [DEV] 開發模式啟用，跳過 API 認證')
       user = { 
-        id: "a971548d-298f-4513-883f-a6bd370eff1b" 
+        id: process.env.DEV_USER_ID || "a971548d-298f-4513-883f-a6bd370eff1b" 
       }
     } else {
       // 驗證用戶身份

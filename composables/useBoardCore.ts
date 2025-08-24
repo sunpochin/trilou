@@ -131,11 +131,6 @@ export function useBoardCore() {
   const onCardDelete = async (card: CardUI) => {
     console.log('🗑️ [CORE] 刪除卡片:', card.title)
     
-    // 🛡️ 重要操作：先確認
-    if (!confirm(`確定要刪除卡片「${card.title}」嗎？`)) {
-      return
-    }
-    
     try {
       // 刪除操作需要明確反饋
       await boardStore.removeCard(card.listId, card.id)

@@ -96,7 +96,7 @@ export const useAuth = () => {
     if (skipAuth) {
       console.log('🚀 [DEV] 開發模式啟用，設置開發者用戶，跳過 Supabase')
       user.value = { 
-        id: "a971548d-298f-4513-883f-a6bd370eff1b", 
+        id: process.env.DEV_USER_ID || "a971548d-298f-4513-883f-a6bd370eff1b", 
         name: "Developer Mode", 
         email: "dev@trilou.local",
         app_metadata: {},
