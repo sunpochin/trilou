@@ -606,25 +606,36 @@ const closeCardModal = () => {
   selectedCard.value = null
 }
 
-// 初始化
+// 初始化 - 只處理基本手勢，避免重複初始化列表手勢
 onMounted(async () => {
   console.log('📱 [MOBILE-BOARD] 組件初始化')
   
   // 🚫 不重複載入資料，由上層 TrelloBoard 負責
   // await loadBoard() 
   
-  // 初始化手勢系統
+  // 🎯 只初始化基本手勢系統（長按、contextmenu 等）
+  // 列表手勢由 watcher 負責，避免重複初始化
   setupAdvancedGestures()
+  console.log('📱 [MOBILE-BOARD] 基本手勢系統已初始化，等待列表數據載入...')
 })
 
-// 監聽資料載入完成後初始化列表手勢
+// 🎯 監聽資料載入完成後初始化列表手勢
+// 
+// 📋 為什麼不用 immediate: true？
+// - immediate 可能在 DOM 未就緒時執行，導致 mobileListsContainer.value 為 null
+// - 我們需要確保容器元素已經存在才能綁定事件監聽器
+//
+// 🔒 雙重檢查確保安全：
+// - newLength > 0：確保有列表數據
+// - mobileListsContainer.value：確保 DOM 容器已就緒
+// - nextTick：確保 Vue 的 DOM 更新完成
 watch(() => viewData.value.lists.length, (newLength) => {
-  if (newLength > 0) {
+  if (newLength > 0 && mobileListsContainer.value) {
     nextTick(() => {
       setupMobileGestures()
     })
   }
-}, { immediate: true })
+})
 
 // 🧹 組件卸載時清理事件監聽器
 onUnmounted(() => {
