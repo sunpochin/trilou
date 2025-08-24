@@ -4,10 +4,21 @@ import { serverSupabaseClient } from '@/server/utils/supabase'
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseClient(event)
 
-  // 驗證用戶身份
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  // 🧪 開發模式：允許跳過認證使用固定測試用戶
+  let userId: string
+  const skipAuth = process.env.DEV_SKIP_AUTH === 'true'
+  
+  if (skipAuth) {
+    // 🎯 開發模式：使用環境變數定義的測試用戶 ID
+    userId = process.env.DEV_USER_ID || ""
+    console.log('🧪 [DEV-MODE] 刪除列表 - 使用開發模式固定用戶 ID:', userId)
+  } else {
+    // 🔐 生產模式：驗證真實用戶身份
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw createError({ statusCode: 401, message: 'Unauthorized' })
+    }
+    userId = user.id
   }
 
   try {
@@ -16,7 +27,7 @@ export default defineEventHandler(async (event) => {
     // 🔍 [API] 記錄收到的請求資料
     console.log('🗑️ [API] DELETE /api/lists/[id] 收到請求:')
     console.log('  📋 列表 ID:', id)
-    console.log('  👤 用戶 ID:', user.id)
+    console.log('  👤 用戶 ID:', userId)
     
     if (!id) {
       console.log('❌ [API] 錯誤: 列表 ID 為空')
@@ -32,7 +43,7 @@ export default defineEventHandler(async (event) => {
       .from('lists')
       .select('id, title, user_id, cards(count)')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle() // ✅ 查無資料時不回傳錯誤
 
     if (queryError) {
@@ -83,7 +94,7 @@ export default defineEventHandler(async (event) => {
       .from('lists')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     if (error) {
       console.error('❌ [API] 刪除列表錯誤:')

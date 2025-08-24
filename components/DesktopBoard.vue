@@ -420,7 +420,7 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
 
 :deep(.desktop-chosen) {
   opacity: 0.95 !important;
-  transform: scale(1.03) rotate(-1deg) !important;
+  transform: scale(1.03) !important; /* 移除歪斜 */
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
   z-index: 999 !important;
   border: 2px solid #10b981 !important;
@@ -429,18 +429,20 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   cursor: grabbing !important;
 }
 
-/* 🎯 桌面版拖拽卡片 - 確保跟著滑鼠！ */
+/* 🎯 桌面版拖拽卡片 - 跟手機版保持一致的行為 */
 :deep(.desktop-drag) {
-  transform: scale(1.1) rotate(-3deg) !important; /* 明顯的視覺變化 */
-  box-shadow: 0 20px 50px rgba(59, 130, 246, 0.4) !important; /* 更強烈的陰影 */
-  opacity: 0.8 !important; /* 稍微提高透明度讓使用者看得清楚 */
+  width: 320px !important; /* 固定寬度避免縮小 */
+  transform: scale(1.05) !important; /* 移除歪斜，只保留放大 */
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important; /* 柔和的陰影 */
+  opacity: 0.9 !important; /* 保持清晰可見 */
   z-index: 99999 !important; /* 最高層級 */
-  border: 3px solid #3b82f6 !important; /* 更明顯的邊框 */
+  border: 2px solid #3b82f6 !important; /* 適中的邊框 */
   background: linear-gradient(135deg, #ffffff, #dbeafe) !important;
   transition: none !important; /* 🔑 關鍵：無過渡動畫 */
   cursor: grabbing !important;
   pointer-events: none !important; /* 避免滑鼠事件干擾 */
   position: fixed !important; /* 🔑 關鍵：固定定位跟隨滑鼠 */
+  border-radius: 8px !important; /* 保持圓角 */
 }
 
 /* 🔧 桌面版不使用 fallback，所以這個樣式已刪除 */
