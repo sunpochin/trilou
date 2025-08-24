@@ -386,77 +386,14 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   position: fixed !important; /* 🔑 關鍵：固定定位跟隨滑鼠 */
 }
 
-/* 🔧 Fallback 樣式 - 當使用 force-fallback 時 */
-:deep(.sortable-fallback) {
-  transform: scale(1.1) rotate(-3deg) !important;
-  box-shadow: 0 20px 50px rgba(59, 130, 246, 0.4) !important;
-  opacity: 0.8 !important;
-  z-index: 99999 !important;
-  border: 3px solid #3b82f6 !important;
-  background: linear-gradient(135deg, #ffffff, #dbeafe) !important;
-  transition: none !important;
-  cursor: grabbing !important;
-  pointer-events: none !important;
-}
-
-/* 🖥️ 桌面版卡片拖拽樣式 - 兼容舊的 sortable 類別 */
-:deep(.sortable-ghost) {
-  background: #f0fdf4 !important;
-  border: 2px dashed #22c55e !important;
-  border-radius: 8px !important;
-  opacity: 0.5 !important;
-  transform: none !important;
-}
-
-:deep(.sortable-chosen) {
-  transform: scale(1.02) !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
-  opacity: 0.9 !important;
-  z-index: 999 !important;
-  cursor: grabbing !important;
-  transition: all 0.15s ease-out !important;
-}
-
-:deep(.sortable-drag) {
-  transform: scale(1.05) rotate(-2deg) !important;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4) !important;
-  opacity: 0.7 !important;
-  z-index: 9999 !important;
-  cursor: grabbing !important;
-  border: 2px dashed #3b82f6 !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  transition: none !important;
-  pointer-events: none !important;
-}
+/* 🔧 桌面版不使用 fallback，所以這個樣式已刪除 */
 
 /* 🖥️ 桌面版容器樣式 */
 .desktop-container {
   overflow-x: auto;
 }
 
-/* 💯 桌面版拖拽卡片樣式 - 跟隨滑鼠且透明 */
-:deep(.sortable-drag .card-draggable) {
-  transform: rotate(-3deg) scale(1.08) !important; /* 🔧 輕微傾斜和放大 */
-  opacity: 0.75 !important; /* 🔧 透明但不會太透明看不到 */
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4) !important; /* 🔧 更強的陰影 */
-  transition: none !important; /* 🔧 無動畫，立即跟隨滑鼠 */
-  border: 2px dashed #3b82f6 !important;
-  cursor: grabbing !important;
-  z-index: 10000 !important; /* 🔧 最高層級 */
-  background: rgba(255, 255, 255, 0.95) !important; /* 🔧 半透明背景 */
-}
-
-/* 💡 新增：卡片拖拽狀態樣式 */
-:deep(.sortable-ghost .card-draggable) {
-  background: #f1f5f9 !important;
-  border: 2px dashed #64748b !important;
-  opacity: 0.5 !important;
-}
-
-:deep(.sortable-chosen .card-draggable) {
-  transform: scale(1.02) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
+/* 🖥️ 桌面版不使用 fallback，移除重複的 sortable 樣式 */
 
 /* 響應式間距 */
 @media (min-width: 769px) {
@@ -466,22 +403,5 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   }
 }
 
-/* 🖥️ 桌面版防止拖拽時選取文字和右鍵選單 */
-:global(.card-draggable) {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -webkit-touch-callout: none; /* 防止長按彈出選單 */
-}
-
-/* 🚫 桌面版容器防止右鍵選單 */
-.flex.gap-4.p-4 {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
+/* 🖥️ 桌面版防止拖拽時選取文字和右鍵選單 - 已在模板中處理 */
 </style>
