@@ -1,13 +1,67 @@
+/**
+ * 🎯 更新卡片的 API 端點
+ * 
+ * 📋 功能說明：
+ * - 根據卡片 ID 更新卡片的各種屬性（標題、描述、位置、所屬列表等）
+ * - 包含完整的權限驗證：只有卡片所屬列表的擁有者才能更新
+ * - 支援跨列表移動：自動驗證目標列表的所有權
+ * - 🧪 開發模式支援：當設定 DEV_SKIP_AUTH=true 時，使用固定測試用戶 ID
+ * 
+ * 🔐 安全機制：
+ * - 生產模式：驗證用戶登入狀態
+ * - 開發模式：使用固定用戶 ID (a971548d-298f-4513-883f-a6bd370eff1b) 進行測試
+ * - 雙重權限檢查：原始列表 + 目標列表（跨列表移動時）
+ * - 使用 maybeSingle() 避免查詢錯誤
+ * 
+ * 🧒 十歲小朋友解釋：
+ * - 平常：需要真的鑰匙才能修改你的玩具
+ * - 練習時：可以用特殊練習鑰匙來玩
+ * - 移動玩具：要確認兩個玩具箱都是你的
+ * 
+ * 📊 支援更新的欄位：
+ * - title: 卡片標題
+ * - description: 卡片描述
+ * - position: 排序位置
+ * - list_id: 所屬列表（可跨列表移動）
+ * - due_date: 到期日
+ * - status: AI 任務狀態
+ * 
+ * 📊 回應格式：
+ * - 成功：200 + 更新後的完整卡片資料
+ * - 未登入：401 Unauthorized
+ * - 無權限：403 Forbidden
+ * - 不存在：404 Not Found
+ * - 參數錯誤：400 Bad Request
+ * - 伺服器錯誤：500 Internal Server Error
+ * 
+ * 🎮 使用範例：
+ * PUT /api/cards/uuid-1234
+ * Body: { title: "新標題", position: 2, list_id: "uuid-5678" }
+ * → { id, title: "新標題", position: 2, list_id: "uuid-5678", ... }
+ */
+
 // 更新卡片的 API 端點
 import { serverSupabaseClient } from '@/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseClient(event)
 
-  // 驗證用戶身份
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  // 🧪 開發模式：允許跳過認證使用固定測試用戶
+  let userId: string
+  const skipAuth = process.env.DEV_SKIP_AUTH === 'true'
+  
+  if (skipAuth) {
+    // 🎯 開發模式：使用固定的測試用戶 ID
+    userId = process.env.DEV_USER_ID || ""
+    console.log('🧪 [DEV-MODE] 更新卡片 - 使用開發模式固定用戶 ID:', userId)
+  } else {
+    // 🔐 生產模式：驗證真實用戶身份
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw createError({ statusCode: 401, message: 'Unauthorized' })
+    }
+    userId = user.id
+    console.log('🔐 [PROD-MODE] 更新卡片 - 使用真實用戶 ID:', userId)
   }
 
   try {
@@ -18,7 +72,7 @@ export default defineEventHandler(async (event) => {
     console.log('🚀 [API] PUT /api/cards/[id] 收到請求:')
     console.log('  📋 卡片 ID:', id)
     console.log('  📝 請求 body:', JSON.stringify(body, null, 2))
-    console.log('  👤 用戶 ID:', user.id)
+    console.log('  👤 用戶 ID:', userId)
     
     if (!id) {
       console.log('❌ [API] 錯誤: 卡片 ID 為空')
@@ -55,7 +109,7 @@ export default defineEventHandler(async (event) => {
         )
       `)
       .eq('id', id)
-      .eq('lists.user_id', user.id)
+      .eq('lists.user_id', userId)
       .maybeSingle() // ✅ 查無資料時不回傳錯誤，交由下方 !cardAccess 處理為 403
 
     // 處理真正的查詢錯誤（如資料庫連線問題、SQL 語法錯誤等）
@@ -93,7 +147,7 @@ export default defineEventHandler(async (event) => {
 
       console.log('📊 [API] 目標列表存取驗證結果:', targetListAccess)
 
-      if (!targetListAccess || targetListAccess.user_id !== user.id) {
+      if (!targetListAccess || targetListAccess.user_id !== userId) {
         console.log('❌ [API] 錯誤: 沒有權限將卡片移動到目標列表')
         throw createError({
           statusCode: 403,

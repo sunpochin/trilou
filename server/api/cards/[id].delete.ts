@@ -5,14 +5,21 @@
  * - 安全地刪除指定的卡片
  * - 驗證用戶權限（只能刪除自己列表中的卡片）
  * - 從 Supabase 資料庫中永久移除卡片記錄
+ * - 🧪 開發模式支援：當設定 DEV_SKIP_AUTH=true 時，使用固定測試用戶 ID
  * 
  * 🔐 安全機制：
- * 1. 用戶身份驗證
- * 2. 權限檢查（透過 lists 表的 user_id）
- * 3. SQL Injection 防護（參數化查詢）
+ * - 生產模式：用戶身份驗證
+ * - 開發模式：使用環境變數定義的測試用戶 ID
+ * - 權限檢查（透過 lists 表的 user_id）
+ * - SQL Injection 防護（參數化查詢）
+ * 
+ * 🧒 十歲小朋友解釋：
+ * - 平常：需要真的鑰匙才能刪除你的玩具
+ * - 練習時：可以用特殊練習鑰匙來練習刪玩具
+ * - 只能刪自己的玩具，不能刪別人的
  * 
  * 📋 處理流程：
- * 1. 驗證用戶登入狀態
+ * 1. 驗證用戶登入狀態（或使用開發模式）
  * 2. 檢查卡片 ID 有效性
  * 3. 驗證用戶是否有權限刪除此卡片
  * 4. 執行刪除操作
@@ -35,14 +42,25 @@ export default defineEventHandler(async (event) => {
 
   const supabase = serverSupabaseClient(event)
 
-  // 🔐 步驟1: 驗證用戶身份
-  console.log('🔐 [API] 開始驗證用戶身份...')
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    console.log('❌ [API] 用戶未登入')
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  // 🧪 開發模式：允許跳過認證使用固定測試用戶
+  let userId: string
+  const skipAuth = process.env.DEV_SKIP_AUTH === 'true'
+  
+  if (skipAuth) {
+    // 🎯 開發模式：使用環境變數定義的測試用戶 ID
+    userId = process.env.DEV_USER_ID || ""
+    console.log('🧪 [DEV-MODE] 刪除卡片 - 使用開發模式固定用戶 ID:', userId)
+  } else {
+    // 🔐 生產模式：驗證真實用戶身份
+    console.log('🔐 [API] 開始驗證用戶身份...')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.log('❌ [API] 用戶未登入')
+      throw createError({ statusCode: 401, message: 'Unauthorized' })
+    }
+    userId = user.id
+    console.log('✅ [API] 用戶身份驗證通過，用戶 ID:', userId)
   }
-  console.log('✅ [API] 用戶身份驗證通過，用戶 ID:', user.id)
 
   try {
     const id = getRouterParam(event, 'id')
@@ -50,7 +68,7 @@ export default defineEventHandler(async (event) => {
     // 🔍 [API] 記錄收到的請求資料
     console.log('🗑️ [API] DELETE /api/cards/[id] 收到請求:')
     console.log('  📋 卡片 ID:', id)
-    console.log('  👤 用戶 ID:', user.id)
+    console.log('  👤 用戶 ID:', userId)
     
     if (!id) {
       console.log('❌ [API] 錯誤: 卡片 ID 為空')
@@ -75,7 +93,7 @@ export default defineEventHandler(async (event) => {
         )
       `)
       .eq('id', id)
-      .eq('lists.user_id', user.id)
+      .eq('lists.user_id', userId)
       .maybeSingle<CardWithList>() // ✅ 查無資料時不回傳錯誤，交由下方 !cardInfo 處理為 404
 
     // 處理真正的查詢錯誤（如資料庫連線問題、SQL 語法錯誤等）
