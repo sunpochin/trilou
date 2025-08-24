@@ -5,32 +5,32 @@ export default defineEventHandler(async (event) => {
   try {
     const supabase = serverSupabaseClient(event)
 
-    let user = null
+    // 🧪 開發模式：允許跳過認證使用固定測試用戶
+    let userId: string
+    const skipAuth = process.env.DEV_SKIP_AUTH === 'true'
     
-    // 檢查開發模式繞過認證
-    if (process.env.DEV_SKIP_AUTH === 'true') {
-      console.log('🚀 [DEV] 開發模式啟用，跳過 API 認證')
-      user = { 
-        id: process.env.DEV_USER_ID || "a971548d-298f-4513-883f-a6bd370eff1b" 
-      }
+    if (skipAuth) {
+      // 🎯 開發模式：使用環境變數定義的測試用戶 ID
+      userId = process.env.DEV_USER_ID || ""
+      console.log('🧪 [DEV-MODE] 獲取列表清單 - 使用開發模式固定用戶 ID:', userId)
     } else {
-      // 驗證用戶身份
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      // 🔐 生產模式：驗證真實用戶身份
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
       
-      if (!authUser) {
+      if (!user) {
         throw createError({ statusCode: 401, message: 'Unauthorized' })
       }
       
-      user = authUser
+      userId = user.id
     }
 
-    console.log(`🔍 [LISTS-API] 查詢用戶 ${user.id} 的列表`)
+    console.log(`🔍 [LISTS-API] 查詢用戶 ${userId} 的列表`)
     
     // 查詢用戶的列表，按 position 排序
     const { data, error } = await supabase
       .from('lists')
       .select('id, title, position')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('position', { ascending: true })
 
     if (error) {

@@ -7,13 +7,34 @@ export default defineEventHandler(async (event) => {
   
   const supabase = serverSupabaseClient(event)
 
-  // 驗證用戶身份
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  console.log('🔐 [LISTS POST] Auth 結果:', { user: user?.id, authError: authError?.message })
+  // 🧪 開發模式：允許跳過認證使用固定測試用戶
+  let userId: string
+  let user: any = null
+  const skipAuth = process.env.DEV_SKIP_AUTH === 'true'
   
-  if (!user) {
-    console.log('❌ [LISTS POST] 用戶未認證')
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  if (skipAuth) {
+    // 🎯 開發模式：使用環境變數定義的測試用戶 ID
+    userId = process.env.DEV_USER_ID || ""
+    // 創建假的 user 物件供 ensureUserExists 使用
+    user = {
+      id: userId,
+      email: 'dev-user@test.com',
+      user_metadata: {
+        name: 'Development User'
+      }
+    }
+    console.log('🧪 [DEV-MODE] 建立列表 - 使用開發模式固定用戶 ID:', userId)
+  } else {
+    // 🔐 生產模式：驗證真實用戶身份
+    const { data: { user: realUser }, error: authError } = await supabase.auth.getUser()
+    console.log('🔐 [LISTS POST] Auth 結果:', { user: realUser?.id, authError: authError?.message })
+    
+    if (!realUser) {
+      console.log('❌ [LISTS POST] 用戶未認證')
+      throw createError({ statusCode: 401, message: 'Unauthorized' })
+    }
+    user = realUser
+    userId = realUser.id
   }
 
   try {
@@ -44,7 +65,7 @@ export default defineEventHandler(async (event) => {
       const { data: lastList, error: positionError } = await supabase
         .from('lists')
         .select('position')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('position', { ascending: false })
         .limit(1)
         .maybeSingle() // ✅ 查無資料時不回傳錯誤
@@ -65,7 +86,7 @@ export default defineEventHandler(async (event) => {
       .from('lists')
       .insert({
         title: body.title,
-        user_id: user.id,
+        user_id: userId,
         position: position
       })
       .select()

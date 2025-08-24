@@ -1,3 +1,70 @@
+<!--
+  🃏 Card 組件 - 單張卡片渲染組件
+  
+  ======================== 功能定位 ========================
+  
+  🎯 這個組件負責什麼？
+  ✅ 渲染「單張卡片」的外觀和基本交互
+  ✅ 處理卡片的勾選狀態（checkbox）
+  ✅ 顯示卡片標題、描述圖示、到期日等資訊
+  ✅ 提供卡片的點擊、刪除等基本操作
+  ❌ 不負責拖拽邏輯（由 ListItem 的 draggable 處理）
+  ❌ 不負責資料更新（只發送事件給父組件）
+  
+  ======================== 與 ListItem 的差別 ========================
+  
+  📋 ListItem.vue（列表組件）：
+  - 負責「整個列表」的管理
+  - 包含多張卡片
+  - 處理拖拽排序邏輯（透過 vue-draggable-next）
+  - 管理列表標題、新增卡片等列表層級功能
+  - 架構：列表容器 > draggable > 多個 Card 組件
+  
+  🃏 Card.vue（卡片組件）：
+  - 只負責「單張卡片」的顯示
+  - 被 ListItem 使用的子組件
+  - 純渲染組件，不處理複雜邏輯
+  - 透過事件向上傳遞用戶操作
+  - 架構：單一卡片的 UI 元素
+  
+  ======================== 十歲小朋友解釋 ========================
+  
+  🏠 想像一個書架（ListItem）：
+  - 書架可以放很多本書
+  - 書架有標題（例如：「科學類」）
+  - 你可以在書架間搬動書本
+  - 書架底部有「加新書」的按鈕
+  
+  📚 每本書（Card）：
+  - 顯示書名
+  - 可以打勾標記「已讀」
+  - 點擊可以看詳細內容
+  - 可以刪除這本書
+  
+  ListItem = 書架（管理所有書）
+  Card = 單本書（只管自己的顯示）
+  
+  ======================== Props 接收 ========================
+  - card: 卡片資料物件
+  - dragging: 是否正在拖拽中
+  - isMobile: 是否為手機版
+  
+  ======================== Events 發送 ========================
+  - open-modal: 開啟卡片詳細編輯
+  - delete: 刪除卡片
+  - update-title: 更新卡片標題（inline 編輯）
+  
+  ======================== 使用範例 ========================
+  在 ListItem.vue 中被這樣使用：
+  <Card 
+    :card="card" 
+    :dragging="dragging"
+    :is-mobile="isMobile"
+    @open-modal="$emit('open-card-modal', card)"
+    @delete="$emit('card-delete', card)"
+  />
+-->
+
 <template>
   <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
   <div 
@@ -131,8 +198,6 @@ const editInput = ref<HTMLInputElement | null>(null)
 // 勾選狀態管理
 const isChecked = ref(false)
 
-// 📱 手機版拖拽狀態（由 vue-draggable-next 控制）
-
 // 🎯 純渲染：切換勾選狀態（本地 UI 狀態）
 const toggleCheckbox = () => {
   isChecked.value = !isChecked.value
@@ -183,10 +248,5 @@ const deleteCard = () => {
   console.log('🗑️ [PURE-CARD] 刪除事件，委派給父組件:', props.card.title)
   emit('delete', props.card)
 }
-
-// 📱 手機版拖拽由 vue-draggable-next 的 delay 選項控制
-
-// 🎯 純渲染組件：讓 vue-draggable-next 完全接管拖拽逻輯
-// 移除自定義拖拽事件，避免與 vue-draggable-next 衝突
 
 </script>
