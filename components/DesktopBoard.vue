@@ -12,6 +12,8 @@
   <!-- 桌面版看板主容器 - 純桌面優化 -->
   <div 
     class="flex gap-4 p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans"
+    @contextmenu.prevent
+    @selectstart.prevent
   >
     
     <!-- 載入狀態：顯示 loading spinner -->
@@ -464,11 +466,22 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   }
 }
 
-/* 防止拖拽時選取文字 */
+/* 🖥️ 桌面版防止拖拽時選取文字和右鍵選單 */
 :global(.card-draggable) {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  -webkit-touch-callout: none; /* 防止長按彈出選單 */
+}
+
+/* 🚫 桌面版容器防止右鍵選單 */
+.flex.gap-4.p-4 {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 </style>
