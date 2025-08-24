@@ -176,9 +176,9 @@
         :swap-threshold="0.65"
         :bubble-scroll="true"
         :prevent-on-filter="false"
-        :drag-class="props.isMobile ? 'mobile-drag' : ''"
-        :ghost-class="props.isMobile ? 'mobile-ghost' : ''"
-        :chosen-class="props.isMobile ? 'mobile-chosen' : ''"
+        :drag-class="props.isMobile ? 'mobile-drag' : 'desktop-drag'"
+        :ghost-class="props.isMobile ? 'mobile-ghost' : 'desktop-ghost'"
+        :chosen-class="props.isMobile ? 'mobile-chosen' : 'desktop-chosen'"
         @change="$emit('card-move', $event)"
       >
         <div v-for="card in list.cards" :key="card.id">

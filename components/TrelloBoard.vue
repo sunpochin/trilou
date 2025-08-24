@@ -160,7 +160,7 @@ type Card = CardUI
 
 // 🎯 統一架構：條件式 drag handler
 const { addList } = useListActions()
-const { viewData, handleCardMove, handleListMove } = useBoardView()
+const { viewData, handleCardMove, handleListMove, loadBoard } = useBoardView()
 
 // 📱🖥️ 響應式螢幕尺寸偵測
 const screenWidth = ref(window.innerWidth)
@@ -285,7 +285,6 @@ const onListMove = async (event: any) => {
 // 🎯 螢幕尺寸變化監聽
 const handleResize = () => {
   screenWidth.value = window.innerWidth
-  console.log(`📏 [UNIFIED-BOARD] 螢幕尺寸變化: ${screenWidth.value}px, isMobile: ${isMobile.value}`)
 }
 
 console.log(`🎯 [UNIFIED-BOARD] 統一看板載入，當前模式: ${isMobile.value ? '📱 Mobile' : '🖥️ Desktop'}`)
@@ -355,9 +354,12 @@ const closeCardModal = () => {
 }
 
 // 🎯 組件初始化：根據螢幕尺寸設定對應功能
-onMounted(() => {
+onMounted(async () => {
   // 監聽螢幕尺寸變化
   window.addEventListener('resize', handleResize)
+  
+  // 🎯 統一載入資料，避免子組件重複載入
+  await loadBoard()
   
   console.log(`🎯 [UNIFIED-BOARD] 組件初始化完成，模式: ${isMobile.value ? '📱 Mobile' : '🖥️ Desktop'}`)
 })

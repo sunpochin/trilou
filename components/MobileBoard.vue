@@ -14,6 +14,8 @@
   <div 
     ref="boardContainerRef"
     class="block overflow-y-auto mobile-container gap-4 p-4 h-[85vh] bg-gray-100 font-sans"
+    @contextmenu.prevent
+    @selectstart.prevent
   >
     
     <!-- 載入狀態：顯示 loading spinner -->
@@ -121,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, watch } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
@@ -137,7 +139,7 @@ type Card = CardUI
 
 // 📱 手機版：使用 composables
 const { addList, deleteList: deleteListAction, updateListTitle: updateListTitleAction } = useListActions()
-const { viewData, handleCardMove, loadBoard } = useBoardView()
+const { viewData, handleCardMove } = useBoardView()
 const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction, addCard: addCardAction } = useCardActions()
 
 // 看板容器的 DOM 引用
@@ -169,6 +171,9 @@ const isDraggingDisabled = ref(true)  // 是否禁用拖拽（預設禁用）
 
 // 📋 手機版列表切換系統
 const isListSnapping = ref(false)
+
+// 🧹 清理函數存儲
+const cleanupFunctions = ref<(() => void)[]>([])
 
 // 🎯 進階手機手勢初始化（整合自 TrelloBoard）
 const setupMobileGestures = () => {
@@ -386,6 +391,19 @@ const setupAdvancedGestures = () => {
   
   console.log('📱 [MOBILE-BOARD] 初始化進階手勢系統')
   
+  // 🚫 禁用右鍵選單，防止長按時出現 context menu
+  const handleContextMenu = (e: Event) => {
+    e.preventDefault()
+    return false
+  }
+  
+  boardContainerRef.value.addEventListener('contextmenu', handleContextMenu, { passive: false })
+  
+  // 存儲清理函數以便組件卸載時使用
+  cleanupFunctions.value.push(() => {
+    boardContainerRef.value?.removeEventListener('contextmenu', handleContextMenu)
+  })
+  
   useGesture({
     onDragStart: () => {
       console.log('🔋 [MOBILE-GESTURE] 開始觸控')
@@ -425,7 +443,7 @@ const setupAdvancedGestures = () => {
     },
     
     onDragEnd: ({ movement }) => {
-      const [mx] = movement
+      const [mx] = movement as [number, number]
       console.log('🏁 [MOBILE-GESTURE] 觸控結束')
       
       // 清除計時器
@@ -582,8 +600,8 @@ const closeCardModal = () => {
 onMounted(async () => {
   console.log('📱 [MOBILE-BOARD] 組件初始化')
   
-  // 載入看板資料
-  await loadBoard()
+  // 🚫 不重複載入資料，由上層 TrelloBoard 負責
+  // await loadBoard() 
   
   // 初始化手勢系統
   setupAdvancedGestures()
@@ -597,6 +615,13 @@ watch(() => viewData.value.lists.length, (newLength) => {
     })
   }
 }, { immediate: true })
+
+// 🧹 組件卸載時清理事件監聽器
+onUnmounted(() => {
+  console.log('📱 [MOBILE-BOARD] 組件卸載，清理事件監聽器')
+  cleanupFunctions.value.forEach(cleanup => cleanup())
+  cleanupFunctions.value = []
+})
 </script>
 
 <style scoped>
@@ -623,6 +648,13 @@ watch(() => viewData.value.lists.length, (newLength) => {
 .mobile-container {
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
+  /* 🚫 防止長按時出現右鍵選單和選取文字 */
+  -webkit-touch-callout: none; /* iOS Safari 防止長按彈出選單 */
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .mobile-list-item {

@@ -349,7 +349,41 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   border: 1px solid #e2e8f0 !important;
 }
 
-/* 🖥️ 桌面版卡片拖拽樣式 - 修復跨列表拖拽視覺反饋 */
+/* 🖥️ 桌面版卡片拖拽樣式 - 參考手機版的結構 */
+:deep(.desktop-ghost) {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+  border: 2px dashed #22c55e !important;
+  border-radius: 8px !important;
+  opacity: 0.6 !important;
+  transform: scale(0.95) !important;
+  transition: all 0.2s ease !important;
+}
+
+:deep(.desktop-chosen) {
+  opacity: 0.95 !important;
+  transform: scale(1.03) rotate(-1deg) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+  z-index: 999 !important;
+  border: 2px solid #10b981 !important;
+  background: linear-gradient(135deg, #ffffff, #f0fdf4) !important;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  cursor: grabbing !important;
+}
+
+/* 🎯 桌面版拖拽卡片 - 確保跟著滑鼠！ */
+:deep(.desktop-drag) {
+  transform: scale(1.08) rotate(-2deg) !important; /* 輕微傾斜和放大 */
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
+  opacity: 0.75 !important; /* 🔑 透明但可見 */
+  z-index: 10000 !important;
+  border: 2px solid #3b82f6 !important;
+  background: linear-gradient(135deg, #ffffff, #dbeafe) !important;
+  transition: none !important; /* 🔑 無動畫，立即跟滑鼠 */
+  cursor: grabbing !important;
+  pointer-events: none !important;
+}
+
+/* 🖥️ 桌面版卡片拖拽樣式 - 兼容舊的 sortable 類別 */
 :deep(.sortable-ghost) {
   background: #f0fdf4 !important;
   border: 2px dashed #22c55e !important;
@@ -358,9 +392,8 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   transform: none !important;
 }
 
-/* 🖥️ 桌面版卡片拖拽 - 不傾斜，保持正立 */
 :deep(.sortable-chosen) {
-  transform: scale(1.02) !important; /* 🔧 移除 rotate，保持正立 */
+  transform: scale(1.02) !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
   opacity: 0.9 !important;
   z-index: 999 !important;
@@ -369,13 +402,15 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
 }
 
 :deep(.sortable-drag) {
-  transform: scale(1.05) !important; /* 🔧 移除 rotate，保持正立 */
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25) !important;
-  opacity: 0.95 !important;
-  z-index: 1000 !important;
+  transform: scale(1.05) rotate(-2deg) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4) !important;
+  opacity: 0.7 !important;
+  z-index: 9999 !important;
   cursor: grabbing !important;
-  border: 2px solid #3b82f6 !important;
-  background: #ffffff !important;
+  border: 2px dashed #3b82f6 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  transition: none !important;
+  pointer-events: none !important;
 }
 
 /* 🖥️ 桌面版容器樣式 */
@@ -383,14 +418,16 @@ console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composabl
   overflow-x: auto;
 }
 
-/* 💯 修復「歪歪卡片」問題：只對正在被拖拽的卡片套用樣式 */
+/* 💯 桌面版拖拽卡片樣式 - 跟隨滑鼠且透明 */
 :deep(.sortable-drag .card-draggable) {
-  transform: rotate(-5deg) scale(1.05) !important;
-  opacity: 0.8 !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
-  transition: all 0.2s ease-out !important;
+  transform: rotate(-3deg) scale(1.08) !important; /* 🔧 輕微傾斜和放大 */
+  opacity: 0.75 !important; /* 🔧 透明但不會太透明看不到 */
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4) !important; /* 🔧 更強的陰影 */
+  transition: none !important; /* 🔧 無動畫，立即跟隨滑鼠 */
   border: 2px dashed #3b82f6 !important;
   cursor: grabbing !important;
+  z-index: 10000 !important; /* 🔧 最高層級 */
+  background: rgba(255, 255, 255, 0.95) !important; /* 🔧 半透明背景 */
 }
 
 /* 💡 新增：卡片拖拽狀態樣式 */
