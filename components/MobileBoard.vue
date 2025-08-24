@@ -237,6 +237,16 @@ const setupMobileGestures = () => {
   container.addEventListener('touchmove', handleListTouchMove, { passive: false })
   container.addEventListener('touchend', handleListTouchEnd, { passive: true })
   
+  // 🧹 存儲清理函數，防止記憶體洩漏
+  cleanupFunctions.value.push(() => {
+    if (container) {
+      container.removeEventListener('touchstart', handleListTouchStart)
+      container.removeEventListener('touchmove', handleListTouchMove)
+      container.removeEventListener('touchend', handleListTouchEnd)
+      console.log('🧹 [MOBILE-BOARD] 手機版手勢事件監聽器已清理')
+    }
+  })
+  
   console.log('📱 [MOBILE-BOARD] 手勢系統已初始化')
 }
 
