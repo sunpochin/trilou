@@ -685,15 +685,64 @@ onUnmounted(() => {
   transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 }
 
-/* 🎯 手機版拖拽卡片 - 確保跟著手指！ */
+/* 🎯 手機版拖拽卡片 - 確保跟著手指！跟桌面版一樣透明 */
 :deep(.mobile-list-item .sortable-drag) {
-  transform: scale(1.08) rotate(-2deg) !important; /* 輕微傾斜 */
-  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3) !important;
-  opacity: 0.98 !important;
-  z-index: 1000 !important;
-  border: 2px solid #3b82f6 !important;
+  transform: scale(1.1) rotate(-3deg) !important; /* 更明顯的視覺變化 */
+  box-shadow: 0 20px 50px rgba(59, 130, 246, 0.4) !important; /* 更強烈的陰影 */
+  opacity: 0.75 !important; /* 🔑 跟桌面版一樣透明 */
+  z-index: 10000 !important; /* 最高層級 */
+  border: 3px solid #3b82f6 !important; /* 更明顯的邊框 */
   background: linear-gradient(135deg, #ffffff, #dbeafe) !important;
   transition: none !important; /* 🔑 無動畫，立即跟手指 */
+  position: fixed !important; /* 🔑 關鍵：固定定位跟隨手指 */
+  cursor: grabbing !important;
+  pointer-events: none !important; /* 避免觸控事件干擾 */
+}
+
+/* 🎯 手機版拖拽類別樣式 - 對應 ListItem 設定的 mobile-drag */
+:deep(.mobile-drag) {
+  transform: scale(1.1) rotate(-3deg) !important;
+  box-shadow: 0 20px 50px rgba(59, 130, 246, 0.4) !important;
+  opacity: 0.75 !important;
+  z-index: 10000 !important;
+  border: 3px solid #3b82f6 !important;
+  background: linear-gradient(135deg, #ffffff, #dbeafe) !important;
+  transition: none !important;
+  cursor: grabbing !important;
+  pointer-events: none !important;
+  position: fixed !important; /* 🔑 關鍵：固定定位跟隨手指 */
+}
+
+/* 🔧 手機版 Fallback 樣式 - 當使用 force-fallback 時（跟桌面版一樣） */
+:deep(.sortable-fallback) {
+  transform: scale(1.1) rotate(-3deg) !important;
+  box-shadow: 0 20px 50px rgba(59, 130, 246, 0.4) !important;
+  opacity: 0.8 !important; /* 跟桌面版一樣 */
+  z-index: 99999 !important;
+  border: 3px solid #3b82f6 !important;
+  background: linear-gradient(135deg, #ffffff, #dbeafe) !important;
+  transition: none !important;
+  cursor: grabbing !important;
+  pointer-events: none !important;
+  position: fixed !important; /* 🔑 關鍵：固定定位跟隨手指 */
+}
+
+:deep(.mobile-ghost) {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
+  border: 2px dashed #22c55e !important;
+  opacity: 0.6 !important;
+  transform: scale(0.95) !important;
+  transition: all 0.2s ease !important;
+}
+
+:deep(.mobile-chosen) {
+  opacity: 0.95 !important;
+  transform: scale(1.03) rotate(-1deg) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+  z-index: 999 !important;
+  border: 2px solid #10b981 !important;
+  background: linear-gradient(135deg, #ffffff, #f0fdf4) !important;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 }
 
 :deep(.mobile-list-item .sortable-ghost) {
