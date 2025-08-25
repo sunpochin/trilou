@@ -91,6 +91,8 @@ const props = defineProps<Props>()
 // 定義 emits
 const emit = defineEmits<{
   close: []
+  'generation-start': [listId: string]
+  'generation-complete': []
 }>()
 
 // 響應式變數
@@ -110,6 +112,11 @@ async function generateCards() {
   
   const taskDescription = userInput.value.trim()
   console.log('🤖 [AI-MODAL] 樂觀 UI：立即開始任務生成流程')
+  
+  // 🌈 觸發生成開始事件
+  if (props.targetListId) {
+    emit('generation-start', props.targetListId)
+  }
   
   // 🎯 步驟1：立即關閉模態框（樂觀 UI）
   closeModal()
@@ -169,6 +176,9 @@ async function generateCards() {
     // 🎯 步驟6：自動加入到看板
     await addGeneratedCardsToBoard(sortedCards, actualCardCount)
     
+    // 🌈 觸發生成完成事件
+    emit('generation-complete')
+    
   } catch (err: unknown) {
     console.error('❌ [AI-MODAL] 任務生成失敗:', err)
     
@@ -188,6 +198,9 @@ async function generateCards() {
     })
     
     console.log('📢 [AI-MODAL] 已發送錯誤通知事件到 EventBus')
+    
+    // 🌈 即使錯誤也要觸發完成事件，清除按鈕動畫
+    emit('generation-complete')
   }
 }
 

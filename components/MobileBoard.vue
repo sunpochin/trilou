@@ -45,6 +45,7 @@
           :dragging="draggingState.isDragging"
           :is-mobile="true"
           :is-dragging-disabled="isDraggingDisabled"
+          :ai-generating-list-id="aiGeneratingListId"
           @card-move="onCardMove"
           @open-card-modal="openCardModal"
           @drag-start="onDragStart"
@@ -126,6 +127,8 @@
       :show="showAiModal"
       :target-list-id="targetListId"
       @close="showAiModal = false"
+      @generation-start="onAiGenerationStart"
+      @generation-complete="onAiGenerationComplete"
     />
   </div>
 </template>
@@ -606,11 +609,24 @@ const onListAddCard = async (listId: string, title: string) => {
 // 🤖 AI 生成任務 - 開啟 AiTaskModal
 const showAiModal = ref(false)
 const targetListId = ref<string | null>(null)
+const aiGeneratingListId = ref<string | null>(null)
 
 const onAiGenerate = (listId: string) => {
   console.log('🤖 [MOBILE-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
   targetListId.value = listId
   showAiModal.value = true
+}
+
+// 🌈 處理 AI 生成開始事件
+const onAiGenerationStart = (listId: string) => {
+  console.log('🌈 [MOBILE-BOARD] AI 開始生成，列表:', listId)
+  aiGeneratingListId.value = listId
+}
+
+// 🌈 處理 AI 生成完成事件
+const onAiGenerationComplete = () => {
+  console.log('✅ [MOBILE-BOARD] AI 生成完成，清除狀態')
+  aiGeneratingListId.value = null
 }
 
 // 🗑️ 列表刪除 - 需要確認的重要操作
