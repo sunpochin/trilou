@@ -12,6 +12,7 @@ import { useBoardStore } from '@/stores/boardStore'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { MESSAGES } from '@/constants/messages'
 import type { CardUI } from '@/types'
+import { eventBus } from '@/events/EventBus'
 
 export const useCardActions = () => {
   const boardStore = useBoardStore()
@@ -110,8 +111,12 @@ export const useCardActions = () => {
         })
       }
       
-      // 使用集中式錯誤訊息
-      alert(MESSAGES.card.moveError)
+      // 使用 EventBus 通知系統替代笑閉的 alert
+      eventBus.emit('notification:error', {
+        title: '卡片移動失敗',
+        message: MESSAGES.card.moveError,
+        duration: 5000
+      })
       console.log('💥 [CARD-ACTION] 錯誤處理與回滾完成')
       return false
     }

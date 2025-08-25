@@ -142,6 +142,7 @@ import { useCardActions } from '@/composables/useCardActions'
 import { useGesture } from '@vueuse/gesture'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
+import { eventBus } from '@/events/EventBus'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
@@ -561,7 +562,11 @@ const onCardDelete = async (card: Card) => {
     // 可以顯示成功提示（可選）
   } catch (error) {
     console.error('❌ [MOBILE-BOARD] 卡片刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    eventBus.emit('notification:error', {
+      title: '刪除失敗',
+      message: '刪除失敗，請稍後再試',
+      duration: 5000
+    })
   }
 }
 
@@ -590,7 +595,11 @@ const onListAddCard = async (listId: string, title: string) => {
   } catch (error) {
     console.error('❌ [MOBILE-BOARD] 新增卡片失敗:', error)
     // Store 已經回滾了，我們提供用戶友好的錯誤訊息
-    alert('新增卡片失敗，請檢查網路連線後再試')
+    eventBus.emit('notification:error', {
+      title: '新增失敗',
+      message: '新增卡片失敗，請檢查網路連線後再試',
+      duration: 5000
+    })
   }
 }
 
@@ -615,7 +624,11 @@ const onListDelete = async (listId: string) => {
     // 可以顯示成功提示
   } catch (error) {
     console.error('❌ [MOBILE-BOARD] 列表刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    eventBus.emit('notification:error', {
+      title: '刪除失敗',
+      message: '刪除失敗，請稍後再試',
+      duration: 5000
+    })
   }
 }
 

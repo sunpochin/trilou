@@ -3,12 +3,14 @@ import TrelloBoard from '@/components/TrelloBoard.vue';
 import GoogleLoginButton from '@/components/GoogleLoginButton.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import InputDialog from '@/components/InputDialog.vue';
+import ToastNotification from '@/components/ToastNotification.vue';
 import { useBoardStore } from '@/stores/boardStore';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useInputDialog } from '@/composables/useInputDialog';
 import { useAuth } from '@/composables/useAuth';
 import { MESSAGES } from '@/constants/messages';
 import { computed } from 'vue';
+import { eventBus } from '@/events/EventBus';
 
 // 從 Nuxt app 取得 Supabase client
 const { $supabase } = useNuxtApp();
@@ -35,7 +37,10 @@ const isEmailLoading = ref(false);
 // 處理 Magic Email Login
 const signInWithEmail = async () => {
   if (!emailInput.value.trim()) {
-    alert('請輸入電子信箱地址');
+    eventBus.emit('notification:error', {
+      title: '輸入錯誤',
+      message: '請輸入電子信箱地址'
+    });
     return;
   }
 
@@ -50,14 +55,23 @@ const signInWithEmail = async () => {
 
     if (error) {
       console.error('Magic Email 登入失敗：', error);
-      alert(`登入失敗：${error.message}`);
+      eventBus.emit('notification:error', {
+        title: '登入失敗',
+        message: `登入失敗：${error.message}`
+      });
     } else {
-      alert('已發送登入連結到您的電子信箱，請檢查您的信箱並點擊連結完成登入。');
+      eventBus.emit('notification:show', {
+        type: 'success',
+        message: '已發送登入連結到您的電子信箱，請檢查您的信箱並點擊連結完成登入。'
+      });
       emailInput.value = ''; // 清空輸入框
     }
   } catch (e) {
     console.error('Magic Email 登入流程發生錯誤：', e);
-    alert('登入流程發生錯誤，請稍後再試。');
+    eventBus.emit('notification:error', {
+      title: '系統錯誤',
+      message: '登入流程發生錯誤，請稍後再試。'
+    });
   } finally {
     isEmailLoading.value = false;
   }
@@ -95,20 +109,6 @@ if (process.client) {
           </div>
         </div>
         
-        <!-- 第二層：AI 按鈕區域 -->
-        
-        <!-- 第三層：生成狀態顯示（只在生成時顯示） -->
-        <div 
-          v-if="isGenerating"
-          class="px-4 pb-3"
-        >
-          <div class="countdown-display inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white shadow-lg">
-            <svg class="w-4 h-4 clock-icon" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
-            </svg>
-            <span>🚀 還有 {{ pendingCount }} 張卡片生成中...</span>
-          </div>
-        </div>
       </header>
       
       <!-- 主要內容區域 -->
@@ -250,6 +250,9 @@ if (process.client) {
       @confirm="handleInputConfirm"
       @cancel="handleInputCancel"
     />
+
+    <!-- 全域 Toast 通知 -->
+    <ToastNotification />
 
   </div>
 </template>
