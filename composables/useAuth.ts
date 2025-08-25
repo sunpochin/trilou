@@ -105,12 +105,8 @@ export const useAuth = () => {
         created_at: new Date().toISOString()
       } as unknown as User
       
-      // 載入看板資料
-      if (!hasLoadedBoard) {
-        console.log('📋 [DEV] 載入開發模式看板')
-        boardStore.fetchBoard()
-        hasLoadedBoard = true
-      }
+      // 開發模式不自動載入看板，由 TrelloBoard 統一負責
+      console.log('📋 [DEV] 開發模式就緒，看板資料由 TrelloBoard 組件載入')
       return // 🎯 關鍵：開發模式直接返回，不設置 Supabase 監聽器
     }
     
@@ -133,13 +129,10 @@ export const useAuth = () => {
       user.value = newUser
 
       if (user.value) {
-        // 只在用戶真的變化或首次載入時才獲取看板資料
-        if (userChanged && !hasLoadedBoard) {
-          console.log('📋 [AUTH] 真實用戶登入，開始載入看板資料')
-          await boardStore.fetchBoard()
-          hasLoadedBoard = true
-        } else {
-          console.log('📋 [AUTH] 跳過重複載入看板資料')
+        // 用戶登入時只記錄狀態，看板資料由 TrelloBoard 統一載入
+        if (userChanged) {
+          console.log('📋 [AUTH] 用戶狀態變化，看板資料將由 TrelloBoard 組件載入')
+          hasLoadedBoard = false // 重置狀態，讓 TrelloBoard 可以載入
         }
       } else {
         // 如果使用者登出，清空看板資料並重置載入狀態

@@ -95,11 +95,6 @@ export function useBoardCore() {
   const onListDelete = async (listId: string) => {
     console.log('🗑️ [CORE] 刪除列表:', listId)
     
-    // 🛡️ 重要操作：先確認
-    if (!confirm('確定要刪除這個列表嗎？列表中的所有卡片也會一併刪除！')) {
-      return
-    }
-    
     try {
       // 刪除操作需要明確反饋
       await boardStore.removeList(listId)

@@ -11,7 +11,7 @@ type Board = BoardUI
 // 匯出看板狀態管理 Store
 export const useBoardStore = defineStore('board', {
   // 定義 Store 的狀態
-  state: (): { board: Board; isLoading: boolean; openMenuId: string | null; pendingAiCards: number } => ({
+  state: (): { board: Board; isLoading: boolean; openMenuId: string | null; pendingAiCards: number; isCreatingDefaultLists: boolean } => ({
     board: {
       id: 'board-1',
       title: 'My Board',
@@ -23,7 +23,9 @@ export const useBoardStore = defineStore('board', {
     // 目前開啟的選單 ID，同時只能有一個選單開啟
     openMenuId: null,
     // 目前正在生成中的 AI 卡片數量（用於顯示 countdown）
-    pendingAiCards: 0
+    pendingAiCards: 0,
+    // 防止重複建立預設列表的標記
+    isCreatingDefaultLists: false
   }),
   // Getters: 計算派生狀態
   getters: {
@@ -70,6 +72,12 @@ export const useBoardStore = defineStore('board', {
     // 🔙 恢復穩定的分開查詢 - 簡單可靠的資料獲取
     // 使用分開的 API 調用，確保排序邏輯正確且易於除錯
     async fetchBoard() {
+      // 🔒 防止重複呼叫：如果已經在載入中，直接返回
+      if (this.isLoading) {
+        console.log('⚠️ [STORE] fetchBoard 已在執行中，跳過重複呼叫')
+        return
+      }
+      
       // 開始載入時設定 loading 狀態
       this.isLoading = true
       const startTime = Date.now()
@@ -142,7 +150,23 @@ export const useBoardStore = defineStore('board', {
           console.log(`  📋 ${listsCount} 個列表`)
           console.log(`  🎯 ${cardsCount} 張卡片`)
           console.log(`  ⚡ 總耗時: ${Date.now() - startTime}ms`)
-          console.log('✅ [STORE] 看板資料載入完成')
+          
+          // 🎯 檢測新用戶：如果沒有任何列表，自動建立預設列表
+          // 使用 isCreatingDefaultLists 標記防止重複建立
+          if (listsCount === 0 && !this.isCreatingDefaultLists) {
+            console.log('👤 [STORE] 檢測到新用戶，建立預設列表...')
+            this.isCreatingDefaultLists = true // 上鎖：防止重複建立
+            try {
+              await this.createDefaultListsForNewUser()
+            } finally {
+              // 使用 finally 確保無論成功或失敗都會解鎖
+              this.isCreatingDefaultLists = false
+            }
+          } else if (listsCount === 0 && this.isCreatingDefaultLists) {
+            console.log('⚠️ [STORE] 正在建立預設列表中，跳過重複建立')
+          } else {
+            console.log('✅ [STORE] 看板資料載入完成')
+          }
         } else {
           console.warn('⚠️ [STORE] listsResponse 為空或 undefined')
           this.board.lists = []
@@ -572,6 +596,49 @@ export const useBoardStore = defineStore('board', {
     resetPendingAiCards() {
       this.pendingAiCards = 0
       console.log('🔄 [STORE] 重置 AI 卡片生成計數器')
+    },
+
+    // 🚀 為新用戶建立預設列表
+    // 當檢測到用戶沒有任何列表時，自動建立 Todo, Doing, Done 三個預設列表
+    async createDefaultListsForNewUser() {
+      console.log('🎯 [STORE] 開始建立預設列表...')
+      
+      // 🔒 再次檢查是否真的需要建立（雙重保險）
+      if (this.board.lists.length > 0) {
+        console.log('⚠️ [STORE] 列表已存在，跳過建立預設列表')
+        return
+      }
+      
+      // 預設列表配置
+      const defaultLists = [
+        { title: 'Todo', position: 0 },
+        { title: 'Doing', position: 1 },
+        { title: 'Done', position: 2 }
+      ]
+      
+      try {
+        // 🎯 批次建立所有預設列表，避免中途被中斷
+        const createPromises = defaultLists.map(async (listConfig, index) => {
+          // 為了避免同時建立太多請求，加入延遲
+          await new Promise(resolve => setTimeout(resolve, index * 100))
+          console.log(`📝 [STORE] 建立預設列表: "${listConfig.title}"`)
+          return this.addList(listConfig.title)
+        })
+        
+        // 等待所有列表建立完成
+        await Promise.all(createPromises)
+        
+        // 更新列表位置順序
+        await this.saveListPositions()
+        
+        console.log('✅ [STORE] 預設列表建立完成')
+        console.log('📋 [STORE] 目前列表數量:', this.board.lists.length)
+        
+      } catch (error) {
+        console.error('❌ [STORE] 建立預設列表失敗:', error)
+        // 即使建立預設列表失敗，也不要影響整體應用運作
+        // 用戶仍可手動建立列表
+      }
     }
   }
 })
