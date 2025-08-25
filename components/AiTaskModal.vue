@@ -83,13 +83,16 @@ import { eventBus } from '@/events/EventBus'
 // 定義 props
 interface Props {
   show: boolean
+  targetListId?: string | null  // 目標列表 ID，用於指定卡片加入哪個列表
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 // 定義 emits
 const emit = defineEmits<{
   close: []
+  'generation-start': [listId: string]
+  'generation-complete': []
 }>()
 
 // 響應式變數
@@ -109,6 +112,11 @@ async function generateCards() {
   
   const taskDescription = userInput.value.trim()
   console.log('🤖 [AI-MODAL] 樂觀 UI：立即開始任務生成流程')
+  
+  // 🌈 觸發生成開始事件
+  if (props.targetListId) {
+    emit('generation-start', props.targetListId)
+  }
   
   // 🎯 步驟1：立即關閉模態框（樂觀 UI）
   closeModal()
@@ -168,6 +176,9 @@ async function generateCards() {
     // 🎯 步驟6：自動加入到看板
     await addGeneratedCardsToBoard(sortedCards, actualCardCount)
     
+    // 🌈 觸發生成完成事件
+    emit('generation-complete')
+    
   } catch (err: unknown) {
     console.error('❌ [AI-MODAL] 任務生成失敗:', err)
     
@@ -187,6 +198,9 @@ async function generateCards() {
     })
     
     console.log('📢 [AI-MODAL] 已發送錯誤通知事件到 EventBus')
+    
+    // 🌈 即使錯誤也要觸發完成事件，清除按鈕動畫
+    emit('generation-complete')
   }
 }
 
@@ -195,14 +209,25 @@ async function addGeneratedCardsToBoard(cards: Array<{title: string, description
   try {
     console.log('📋 [AI-MODAL] 開始將任務加入看板...')
     
-    // 🎯 使用 composable 的抽象方法，而不直接操作 store
-    const { id: targetListId } = await addListIfEmpty('AI 生成任務')
+    // 🎯 決定目標列表 ID
+    let finalTargetListId: string
+    
+    if (props.targetListId) {
+      // 如果指定了目標列表，使用指定的列表
+      finalTargetListId = props.targetListId
+      console.log('🎯 [AI-MODAL] 使用指定的列表:', finalTargetListId)
+    } else {
+      // 如果沒有指定，使用預設行為（建立新列表）
+      const { id: newListId } = await addListIfEmpty('AI 生成任務')
+      finalTargetListId = newListId
+      console.log('🎯 [AI-MODAL] 建立新的預設列表:', finalTargetListId)
+    }
     
     // 逐一加入卡片，每加入一張就減少計數器
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i]
       try {
-        await addCard(targetListId, card.title, card.status || 'todo', card.description)
+        await addCard(finalTargetListId, card.title, card.status || 'todo', card.description)
         // 每個卡片成功加入後，減少計數器
         completePendingCards(1)
         console.log(`✅ [AI-MODAL] 成功加入卡片 ${i + 1}/${cards.length}: ${card.title}`)

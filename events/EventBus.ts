@@ -55,6 +55,7 @@ export interface AppEvents {
   
   // 系統相關事件
   'notification:show': { type: 'success' | 'error' | 'info', message: string } // 顯示通知時廣播
+  'notification:error': { title: string, message: string, duration?: number } // 錯誤通知事件
   'error:occurred': { error: Error, context: string }                  // 發生錯誤時廣播
 }
 

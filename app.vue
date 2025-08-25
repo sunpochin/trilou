@@ -3,13 +3,14 @@ import TrelloBoard from '@/components/TrelloBoard.vue';
 import GoogleLoginButton from '@/components/GoogleLoginButton.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import InputDialog from '@/components/InputDialog.vue';
-import AiTaskModal from '@/components/AiTaskModal.vue';
+import ToastNotification from '@/components/ToastNotification.vue';
 import { useBoardStore } from '@/stores/boardStore';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useInputDialog } from '@/composables/useInputDialog';
 import { useAuth } from '@/composables/useAuth';
 import { MESSAGES } from '@/constants/messages';
 import { computed } from 'vue';
+import { eventBus } from '@/events/EventBus';
 
 // 從 Nuxt app 取得 Supabase client
 const { $supabase } = useNuxtApp();
@@ -19,9 +20,6 @@ const boardStore = useBoardStore();
 // 取得認證相關功能
 const { user, handleLogout, initializeAuth } = useAuth();
 
-// 計算 AI 生成狀態的響應式數據
-const pendingCount = computed(() => boardStore.pendingAiCards);
-const isGenerating = computed(() => boardStore.pendingAiCards > 0);
 
 // 取得確認對話框功能
 const { confirmState, handleConfirm, handleCancel } = useConfirmDialog();
@@ -30,8 +28,6 @@ const { confirmState, handleConfirm, handleCancel } = useConfirmDialog();
 const { inputState, handleConfirm: handleInputConfirm, handleCancel: handleInputCancel } = useInputDialog();
 
 
-// AI 生成任務模態框的顯示狀態
-const showAiModal = ref(false);
 
 // Magic email login 狀態
 const emailInput = ref('');
@@ -41,7 +37,10 @@ const isEmailLoading = ref(false);
 // 處理 Magic Email Login
 const signInWithEmail = async () => {
   if (!emailInput.value.trim()) {
-    alert('請輸入電子信箱地址');
+    eventBus.emit('notification:error', {
+      title: '輸入錯誤',
+      message: '請輸入電子信箱地址'
+    });
     return;
   }
 
@@ -50,41 +49,47 @@ const signInWithEmail = async () => {
     const { error } = await $supabase.auth.signInWithOtp({
       email: emailInput.value.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/`
+        emailRedirectTo: import.meta.client ? `${window.location.origin}/` : 'https://gogo.sunpochin.space/'
       }
     });
 
     if (error) {
       console.error('Magic Email 登入失敗：', error);
-      alert(`登入失敗：${error.message}`);
+      eventBus.emit('notification:error', {
+        title: '登入失敗',
+        message: `登入失敗：${error.message}`
+      });
     } else {
-      alert('已發送登入連結到您的電子信箱，請檢查您的信箱並點擊連結完成登入。');
+      eventBus.emit('notification:show', {
+        type: 'success',
+        message: '已發送登入連結到您的電子信箱，請檢查您的信箱並點擊連結完成登入。'
+      });
       emailInput.value = ''; // 清空輸入框
     }
   } catch (e) {
     console.error('Magic Email 登入流程發生錯誤：', e);
-    alert('登入流程發生錯誤，請稍後再試。');
+    eventBus.emit('notification:error', {
+      title: '系統錯誤',
+      message: '登入流程發生錯誤，請稍後再試。'
+    });
   } finally {
     isEmailLoading.value = false;
   }
 };
 
-// 執行認證初始化（在客戶端或掛載時）
-if (process.client) {
-  // 客戶端環境下立即執行初始化
+// 執行認證初始化（在客戶端掛載時）
+onMounted(() => {
+  // 只在客戶端掛載後執行初始化
   initializeAuth()
-} else {
-  // SSR 環境下，在元件掛載後執行
-  onMounted(() => {
-    initializeAuth()
-  });
-}
+})
 </script>
 
 <template>
   <div class="h-screen flex flex-col">
-    <!-- 如果使用者已登入，顯示 Trello 看板和使用者資訊 -->
-    <div v-if="user">
+    <!-- 使用 ClientOnly 避免 hydration mismatch -->
+    <ClientOnly>
+      <!-- 如果使用者已登入，顯示 Trello 看板和使用者資訊 -->
+      <div v-if="user">
       <!-- 🎨 重新設計的 Header - 分兩層不會擠！ -->
       <header class="bg-gray-200 border-b border-gray-300">
         <!-- 第一層：標題和使用者資訊 -->
@@ -101,45 +106,6 @@ if (process.client) {
           </div>
         </div>
         
-        <!-- 第二層：AI 按鈕區域 -->
-        <div class="px-4 pb-3 flex items-center gap-4">
-          <!-- AI 生成按鈕 -->
-          <button 
-            @click="showAiModal = true" 
-            :class="[
-              'relative px-4 py-2 text-white rounded-lg text-sm font-medium transition-all duration-500 overflow-hidden shadow-md hover:shadow-lg',
-              isGenerating ? 'ai-generating-magic' : 'ai-button-magic'
-            ]"
-          >
-            <!-- 魔法背景光效 -->
-            <div 
-              v-if="isGenerating"
-              class="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-blue-400/20 to-purple-400/20 animate-ping"
-            ></div>
-            
-            <!-- 按鈕文字 -->
-            <span class="relative z-10 flex items-center gap-2 whitespace-nowrap">
-              <svg v-if="isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>🤖 AI 生成任務</span>
-            </span>
-          </button>
-        </div>
-        
-        <!-- 第三層：生成狀態顯示（只在生成時顯示） -->
-        <div 
-          v-if="isGenerating"
-          class="px-4 pb-3"
-        >
-          <div class="countdown-display inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white shadow-lg">
-            <svg class="w-4 h-4 clock-icon" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
-            </svg>
-            <span>🚀 還有 {{ pendingCount }} 張卡片生成中...</span>
-          </div>
-        </div>
       </header>
       
       <!-- 主要內容區域 -->
@@ -282,11 +248,11 @@ if (process.client) {
       @cancel="handleInputCancel"
     />
 
-    <!-- AI 任務生成模態框 -->
-    <AiTaskModal
-      :show="showAiModal"
-      @close="showAiModal = false"
-    />
+    </ClientOnly>
+
+    <!-- 全域 Toast 通知 -->
+    <ToastNotification />
+
   </div>
 </template>
 
@@ -553,5 +519,29 @@ body.mobile-dragging {
 /* 📱 拖拽過程中防止滾動 */
 .sortable-drag-active {
   overflow: hidden !important;
+}
+
+/* 🎯 全域修正：防止任何元素出現藍色 focus 外框 */
+*:focus {
+  outline: none !important;
+}
+
+/* 🎯 特別針對可能的 sortable 庫樣式 */
+.sortable-chosen,
+.sortable-ghost,
+.sortable-drag,
+[data-sortable],
+.draggable-item {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 🎯 防止瀏覽器預設的選取高亮 */
+::selection {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+::-moz-selection {
+  background: rgba(59, 130, 246, 0.1);
 }
 </style>

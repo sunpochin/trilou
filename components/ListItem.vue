@@ -116,6 +116,35 @@
       />
     </div>
     
+    <!-- 🤖 AI 生成任務按鈕 -->
+    <div class="px-2 mb-3">
+      <button
+        @click="handleAiGenerate"
+        :class="[
+          'w-full px-3 py-2 text-sm text-white rounded-lg flex items-center justify-center gap-2 shadow-md transition-all duration-200',
+          isAiGenerating 
+            ? 'ai-rainbow-magic cursor-wait' 
+            : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 hover:shadow-lg'
+        ]"
+        :disabled="isAiGenerating"
+      >
+        <svg 
+          :class="[
+            'w-4 h-4',
+            isAiGenerating ? 'animate-spin' : ''
+          ]" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+        </svg>
+        <span>
+          {{ isAiGenerating ? '🌈 生成中...' : '🤖 AI 生成任務' }}
+        </span>
+      </button>
+    </div>
+    
     <!-- 可拖拉的卡片容器 -->
     <div class="flex-1 overflow-y-auto">
       <!-- 📱 Vue Draggable Next 卡片拖拽系統 -->
@@ -245,7 +274,8 @@ import Card from '@/components/Card.vue'
 import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 // 🎯 純渲染組件：不直接使用 composables
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, computed } from 'vue'
+import { useBoardStore } from '@/stores/boardStore'
 
 // 使用統一的型別定義
 import type { ListUI } from '@/types'
@@ -256,6 +286,7 @@ const props = defineProps<{
   list: List
   dragging: boolean  // 父組件控制的拖拽狀態
   isMobile?: boolean  // 是否為手機版
+  aiGeneratingListId?: string | null  // 正在生成 AI 任務的列表 ID
 }>()
 
 // 🎯 純渲染組件：定義事件 (父組件處理邏輯)
@@ -269,9 +300,15 @@ const emit = defineEmits<{
   'list-add-card': [listId: string, title: string]
   'list-delete': [listId: string]
   'list-update-title': [listId: string, newTitle: string]
+  'ai-generate': [listId: string]
 }>()
 
 // 🎯 純渲染組件：移除直接 composable 使用
+
+// 🌈 檢查這個特定列表是否正在生成 AI 任務
+const isAiGenerating = computed(() => 
+  props.aiGeneratingListId === props.list.id
+)
 
 // 編輯狀態
 const isEditingTitle = ref(false)
@@ -342,6 +379,12 @@ const handleDeleteList = () => {
   emit('list-delete', props.list.id)
 }
 
+// 🤖 純渲染：處理 AI 生成任務 (委派給父組件)
+const handleAiGenerate = () => {
+  console.log('🤖 [PURE-LIST] AI 生成任務事件，委派給父組件:', props.list.title)
+  emit('ai-generate', props.list.id)
+}
+
 // 開始編輯標題
 const startEditTitle = async () => {
   isEditingTitle.value = true
@@ -373,6 +416,133 @@ const cancelEdit = () => {
 </script>
 
 <style scoped>
+/* 🌈 AI 生成按鈕的彩虹魔法動畫 */
+.ai-rainbow-magic {
+  background: linear-gradient(
+    -45deg,
+    #ff0000,  /* 紅 */
+    #ff8000,  /* 橘 */
+    #ffff00,  /* 黃 */
+    #80ff00,  /* 黃綠 */
+    #00ff00,  /* 綠 */
+    #00ff80,  /* 青綠 */
+    #00ffff,  /* 青 */
+    #0080ff,  /* 藍 */
+    #0000ff,  /* 藍紫 */
+    #8000ff,  /* 紫 */
+    #ff00ff,  /* 洋紅 */
+    #ff0080,  /* 粉紅 */
+    #ff0000   /* 回到紅色 */
+  );
+  background-size: 400% 400%;
+  animation: rainbowFlow 4s ease-in-out infinite;
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+/* 🌟 彩虹光暈效果 */
+.ai-rainbow-magic::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(
+    -45deg,
+    #ff0000,  /* 紅 */
+    #ff8000,  /* 橘 */
+    #ffff00,  /* 黃 */
+    #80ff00,  /* 黃綠 */
+    #00ff00,  /* 綠 */
+    #00ff80,  /* 青綠 */
+    #00ffff,  /* 青 */
+    #0080ff,  /* 藍 */
+    #0000ff,  /* 藍紫 */
+    #8000ff,  /* 紫 */
+    #ff00ff,  /* 洋紅 */
+    #ff0080,  /* 粉紅 */
+    #ff0000   /* 回到紅色 */
+  );
+  background-size: 400% 400%;
+  border-radius: inherit;
+  z-index: -1;
+  animation: rainbowFlow 3s ease-in-out infinite;
+  opacity: 0.7;
+  filter: blur(8px);
+}
+
+/* 🌟 內部魔法光芒效果 */
+.ai-rainbow-magic::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(
+    circle,
+    rgba(255,255,255,0.3) 0%,
+    rgba(255,255,255,0.1) 50%,
+    transparent 70%
+  );
+  border-radius: inherit;
+  transform: translate(-50%, -50%);
+  animation: magicPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 🌈 彩虹流動動畫 - 慢速流暢變化 */
+@keyframes rainbowFlow {
+  0% {
+    background-position: 0% 50%;
+    filter: brightness(1) saturate(1.2);
+  }
+  20% {
+    background-position: 100% 50%;
+    filter: brightness(1.1) saturate(1.4);
+  }
+  40% {
+    background-position: 200% 50%;
+    filter: brightness(1.2) saturate(1.6);
+  }
+  60% {
+    background-position: 300% 50%;
+    filter: brightness(1.1) saturate(1.4);
+  }
+  80% {
+    background-position: 400% 50%;
+    filter: brightness(1) saturate(1.2);
+  }
+  100% {
+    background-position: 500% 50%;
+    filter: brightness(1) saturate(1.2);
+  }
+}
+
+/* ✨ 內部光芒脈動動畫 */
+@keyframes magicPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+/* 🎭 禁用狀態時的樣式調整 */
+.ai-rainbow-magic:disabled {
+  cursor: wait;
+  transform: none;
+}
+
+.ai-rainbow-magic:disabled:hover {
+  transform: none;
+}
+
 /* 📱 手機版拖拽魔法樣式系統 */
 /* 💡 十歲小朋友解釋：這些是「魔法咒語」，讓卡片在不同狀態下有不同的樣子！ */
 

@@ -68,9 +68,10 @@
 <template>
   <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
   <div 
-    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable"
+    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable focus:outline-none"
     :class="{ 'card-dragging': dragging }"
     @click="openCardModal"
+    tabindex="-1"
   >
     <!-- 顯示模式：顯示卡片標題 -->
     <div 
@@ -250,3 +251,35 @@ const deleteCard = () => {
 }
 
 </script>
+
+<style scoped>
+/* 🎯 防止卡片出現藍色外框 - 解決拖拽後的 focus 問題 */
+.card-draggable {
+  outline: none !important;
+}
+
+.card-draggable:focus {
+  outline: none !important;
+  /* 保持原有的 shadow，只移除可能的藍色邊框 */
+}
+
+/* 🎯 確保拖拽過程中不會出現藍色邊框 */
+.card-draggable.sortable-chosen,
+.card-draggable.sortable-ghost {
+  outline: none !important;
+}
+
+/* 🎯 防止瀏覽器預設的選取樣式造成藍色外框 */
+.card-draggable::selection {
+  background: transparent;
+}
+
+.card-draggable::-moz-selection {
+  background: transparent;
+}
+
+/* 🎯 針對可能的拖拽庫樣式覆蓋 */
+.card-draggable[data-sortable] {
+  outline: none !important;
+}
+</style>

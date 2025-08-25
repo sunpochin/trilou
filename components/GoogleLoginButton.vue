@@ -46,6 +46,8 @@
 </template>
 
 <script setup lang="ts">
+import { eventBus } from '@/events/EventBus';
+
 const isLoading = ref(false);
 const { $supabase } = useNuxtApp() as any;
 
@@ -61,7 +63,10 @@ const signInWithGoogle = async () => {
     });
     if (error) {
       console.error('Google 登入失敗：', error);
-      alert(error.message);
+      eventBus.emit('notification:error', {
+        title: 'Google 登入失敗',
+        message: error.message
+      });
     }
   } catch (e) {
     console.error('Google 登入流程發生錯誤：', e);

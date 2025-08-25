@@ -45,6 +45,7 @@
           :dragging="draggingState.isDragging"
           :is-mobile="true"
           :is-dragging-disabled="isDraggingDisabled"
+          :ai-generating-list-id="aiGeneratingListId"
           @card-move="onCardMove"
           @open-card-modal="openCardModal"
           @drag-start="onDragStart"
@@ -54,6 +55,7 @@
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
           @list-update-title="onListUpdateTitle"
+          @ai-generate="onAiGenerate"
           class="mobile-list-item snap-center"
         />
       </div>
@@ -119,6 +121,15 @@
       :card="selectedCard" 
       @close="closeCardModal" 
     />
+    
+    <!-- AI 生成任務模態框 -->
+    <AiTaskModal
+      :show="showAiModal"
+      :target-list-id="targetListId"
+      @close="showAiModal = false"
+      @generation-start="onAiGenerationStart"
+      @generation-complete="onAiGenerationComplete"
+    />
   </div>
 </template>
 
@@ -126,6 +137,7 @@
 import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
+import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useListActions } from '@/composables/useListActions'
 import { useBoardView } from '@/composables/useBoardView'
@@ -133,6 +145,7 @@ import { useCardActions } from '@/composables/useCardActions'
 import { useGesture } from '@vueuse/gesture'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
+import { eventBus } from '@/events/EventBus'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
@@ -552,7 +565,11 @@ const onCardDelete = async (card: Card) => {
     // 可以顯示成功提示（可選）
   } catch (error) {
     console.error('❌ [MOBILE-BOARD] 卡片刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    eventBus.emit('notification:error', {
+      title: '刪除失敗',
+      message: '刪除失敗，請稍後再試',
+      duration: 5000
+    })
   }
 }
 
@@ -581,8 +598,35 @@ const onListAddCard = async (listId: string, title: string) => {
   } catch (error) {
     console.error('❌ [MOBILE-BOARD] 新增卡片失敗:', error)
     // Store 已經回滾了，我們提供用戶友好的錯誤訊息
-    alert('新增卡片失敗，請檢查網路連線後再試')
+    eventBus.emit('notification:error', {
+      title: '新增失敗',
+      message: '新增卡片失敗，請檢查網路連線後再試',
+      duration: 5000
+    })
   }
+}
+
+// 🤖 AI 生成任務 - 開啟 AiTaskModal
+const showAiModal = ref(false)
+const targetListId = ref<string | null>(null)
+const aiGeneratingListId = ref<string | null>(null)
+
+const onAiGenerate = (listId: string) => {
+  console.log('🤖 [MOBILE-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
+  targetListId.value = listId
+  showAiModal.value = true
+}
+
+// 🌈 處理 AI 生成開始事件
+const onAiGenerationStart = (listId: string) => {
+  console.log('🌈 [MOBILE-BOARD] AI 開始生成，列表:', listId)
+  aiGeneratingListId.value = listId
+}
+
+// 🌈 處理 AI 生成完成事件
+const onAiGenerationComplete = () => {
+  console.log('✅ [MOBILE-BOARD] AI 生成完成，清除狀態')
+  aiGeneratingListId.value = null
 }
 
 // 🗑️ 列表刪除 - 需要確認的重要操作
@@ -596,7 +640,11 @@ const onListDelete = async (listId: string) => {
     // 可以顯示成功提示
   } catch (error) {
     console.error('❌ [MOBILE-BOARD] 列表刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    eventBus.emit('notification:error', {
+      title: '刪除失敗',
+      message: '刪除失敗，請稍後再試',
+      duration: 5000
+    })
   }
 }
 

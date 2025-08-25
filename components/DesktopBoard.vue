@@ -48,6 +48,7 @@
           :key="list.id"
           :list="list"
           :dragging="draggingState.isDragging"
+          :ai-generating-list-id="aiGeneratingListId"
           @card-move="onCardMove"
           @open-card-modal="openCardModal"
           @card-delete="onCardDelete"
@@ -55,11 +56,43 @@
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
           @list-update-title="onListUpdateTitle"
+          @ai-generate="onAiGenerate"
         />
       </draggable>
 
       <!-- 新增列表區域 - 桌面版固定寬度 -->
-      <div class="w-80 p-2 flex-shrink-0">
+      <div class="w-80 p-2 flex-shrink-0 space-y-2">
+        <!-- 測試 Toast 按鈕 -->
+        <!-- <div class="bg-purple-100 rounded p-2 border border-purple-200">
+          <p class="text-xs text-purple-600 mb-1">🧪 測試 Toast 通知</p>
+          <div class="grid grid-cols-2 gap-1 text-xs">
+            <button 
+              @click="testToast('success')"
+              class="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              成功
+            </button>
+            <button 
+              @click="testToast('error')"
+              class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              錯誤
+            </button>
+            <button 
+              @click="testToast('info')"
+              class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              資訊
+            </button>
+            <button 
+              @click="testToast('warning')"
+              class="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+            >
+              警告
+            </button>
+          </div>
+        </div> -->
+
         <!-- 顯示按鈕模式 -->
         <Transition name="fade" mode="out-in">
           <div 
@@ -119,6 +152,15 @@
       :card="selectedCard" 
       @close="closeCardModal" 
     />
+    
+    <!-- AI 生成任務模態框 -->
+    <AiTaskModal
+      :show="showAiModal"
+      :target-list-id="targetListId"
+      @close="showAiModal = false"
+      @generation-start="onAiGenerationStart"
+      @generation-complete="onAiGenerationComplete"
+    />
   </div>
 </template>
 
@@ -126,6 +168,7 @@
 import { ref, nextTick, onMounted } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
+import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useListActions } from '@/composables/useListActions'
 import { useBoardView } from '@/composables/useBoardView'
@@ -133,6 +176,7 @@ import { useCardActions } from '@/composables/useCardActions'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
+import { eventBus } from '@/events/EventBus'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
@@ -237,7 +281,11 @@ const onCardDelete = async (card: CardUI) => {
     console.log('✅ [DESKTOP-BOARD] 卡片刪除成功')
   } catch (error) {
     console.error('❌ [DESKTOP-BOARD] 卡片刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    eventBus.emit('notification:error', {
+      title: '刪除失敗',
+      message: '刪除失敗，請稍後再試',
+      duration: 5000
+    })
   }
 }
 
@@ -264,8 +312,35 @@ const onListAddCard = async (listId: string, title: string) => {
     console.log('✅ [DESKTOP-BOARD] 卡片新增完成')
   } catch (error) {
     console.error('❌ [DESKTOP-BOARD] 新增卡片失敗:', error)
-    alert('新增卡片失敗，請檢查網路連線後再試')
+    eventBus.emit('notification:error', {
+      title: '新增失敗',
+      message: '新增卡片失敗，請檢查網路連線後再試',
+      duration: 5000
+    })
   }
+}
+
+// 🤖 AI 生成任務 - 開啟 AiTaskModal
+const showAiModal = ref(false)
+const targetListId = ref<string | null>(null)
+const aiGeneratingListId = ref<string | null>(null)
+
+const onAiGenerate = (listId: string) => {
+  console.log('🤖 [DESKTOP-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
+  targetListId.value = listId
+  showAiModal.value = true
+}
+
+// 🌈 處理 AI 生成開始事件
+const onAiGenerationStart = (listId: string) => {
+  console.log('🌈 [DESKTOP-BOARD] AI 開始生成，列表:', listId)
+  aiGeneratingListId.value = listId
+}
+
+// 🌈 處理 AI 生成完成事件
+const onAiGenerationComplete = () => {
+  console.log('✅ [DESKTOP-BOARD] AI 生成完成，清除狀態')
+  aiGeneratingListId.value = null
 }
 
 // 🗑️ 列表刪除 - 需要確認的重要操作
@@ -278,7 +353,11 @@ const onListDelete = async (listId: string) => {
     console.log('✅ [DESKTOP-BOARD] 列表刪除成功')
   } catch (error) {
     console.error('❌ [DESKTOP-BOARD] 列表刪除失敗:', error)
-    alert('刪除失敗，請稍後再試')
+    eventBus.emit('notification:error', {
+      title: '刪除失敗',
+      message: '刪除失敗，請稍後再試',
+      duration: 5000
+    })
   }
 }
 
@@ -342,6 +421,33 @@ const saveNewList = async () => {
 const cancelAddList = () => {
   isAddingList.value = false
   newListTitle.value = ''
+}
+
+// 🧪 測試 Toast 通知功能
+const testToast = (type: 'success' | 'error' | 'info' | 'warning') => {
+  const testMessages = {
+    success: { title: '操作成功', message: '這是一個成功的 Toast 通知' },
+    error: { title: '發生錯誤', message: '這是一個錯誤的 Toast 通知' },
+    info: { title: '資訊通知', message: '這是一個資訊類型的 Toast 通知' },
+    warning: { title: '警告提醒', message: '這是一個警告類型的 Toast 通知' }
+  }
+
+  const message = testMessages[type]
+  
+  if (type === 'success') {
+    eventBus.emit('notification:show', {
+      type: 'success',
+      message: message.message
+    })
+  } else {
+    eventBus.emit('notification:error', {
+      title: message.title,
+      message: message.message,
+      duration: type === 'error' ? 5000 : 3000
+    })
+  }
+  
+  console.log(`🧪 [TEST-TOAST] 測試 ${type} 通知:`, message)
 }
 
 // 開啟卡片模態框

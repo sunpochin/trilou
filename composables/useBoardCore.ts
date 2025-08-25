@@ -15,6 +15,7 @@
 
 import { ref, computed } from 'vue'
 import { useBoardStore } from '@/stores/boardStore'
+import { eventBus } from '@/events/EventBus'
 import type { ListUI, CardUI } from '@/types'
 
 export function useBoardCore() {
@@ -87,7 +88,10 @@ export function useBoardCore() {
     } catch (error) {
       console.error('❌ [CORE] 新增卡片失敗:', error)
       // 用戶友好的錯誤處理
-      alert('新增卡片失敗，請檢查網路連線後再試')
+      eventBus.emit('notification:error', {
+        title: '新增失敗',
+        message: '新增卡片失敗，請檢查網路連線後再試'
+      })
     }
   }
   
@@ -101,7 +105,10 @@ export function useBoardCore() {
       console.log('✅ [CORE] 列表刪除成功')
     } catch (error) {
       console.error('❌ [CORE] 列表刪除失敗:', error)
-      alert('刪除失敗，請稍後再試')
+      eventBus.emit('notification:error', {
+        title: '刪除失敗',
+        message: '刪除失敗，請稍後再試'
+      })
     }
   }
   
@@ -132,7 +139,10 @@ export function useBoardCore() {
       console.log('✅ [CORE] 卡片刪除成功')
     } catch (error) {
       console.error('❌ [CORE] 卡片刪除失敗:', error)
-      alert('刪除失敗，請稍後再試')
+      eventBus.emit('notification:error', {
+        title: '刪除失敗',
+        message: '刪除失敗，請稍後再試'
+      })
     }
   }
   

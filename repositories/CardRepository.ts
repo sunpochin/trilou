@@ -66,7 +66,10 @@ export class CardRepository {
    *   const cards = await cardRepo.getAllCards()
    *   console.log('取得卡片:', cards.length, '張')
    * } catch (error) {
-   *   alert('載入失敗: ' + error.message)
+   *   eventBus.emit('notification:error', {
+   *     title: '載入失敗',
+   *     message: error.message
+   *   })
    * }
    * 
    * 🔄 處理流程：
@@ -121,7 +124,10 @@ export class CardRepository {
    *   const newCard = await cardRepo.createCard('實作登入功能', 'list_123')
    *   console.log('新卡片 ID:', newCard.id)
    * } catch (error) {
-   *   alert('新增失敗: ' + error.message)
+   *   eventBus.emit('notification:error', {
+   *     title: '新增失敗',
+   *     message: error.message
+   *   })
    * }
    * 
    * 🔄 處理流程：
@@ -178,7 +184,10 @@ export class CardRepository {
    *   await cardRepo.deleteCard('card_123')
    *   console.log('卡片已刪除')
    * } catch (error) {
-   *   alert('刪除失敗: ' + error.message)
+   *   eventBus.emit('notification:error', {
+   *     title: '刪除失敗',
+   *     message: error.message
+   *   })
    * }
    * 
    * 🔄 處理流程：
