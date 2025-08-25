@@ -49,7 +49,7 @@ const signInWithEmail = async () => {
     const { error } = await $supabase.auth.signInWithOtp({
       email: emailInput.value.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/`
+        emailRedirectTo: import.meta.client ? `${window.location.origin}/` : 'https://gogo.sunpochin.space/'
       }
     });
 
@@ -77,22 +77,19 @@ const signInWithEmail = async () => {
   }
 };
 
-// 執行認證初始化（在客戶端或掛載時）
-if (process.client) {
-  // 客戶端環境下立即執行初始化
+// 執行認證初始化（在客戶端掛載時）
+onMounted(() => {
+  // 只在客戶端掛載後執行初始化
   initializeAuth()
-} else {
-  // SSR 環境下，在元件掛載後執行
-  onMounted(() => {
-    initializeAuth()
-  });
-}
+})
 </script>
 
 <template>
   <div class="h-screen flex flex-col">
-    <!-- 如果使用者已登入，顯示 Trello 看板和使用者資訊 -->
-    <div v-if="user">
+    <!-- 使用 ClientOnly 避免 hydration mismatch -->
+    <ClientOnly>
+      <!-- 如果使用者已登入，顯示 Trello 看板和使用者資訊 -->
+      <div v-if="user">
       <!-- 🎨 重新設計的 Header - 分兩層不會擠！ -->
       <header class="bg-gray-200 border-b border-gray-300">
         <!-- 第一層：標題和使用者資訊 -->
@@ -250,6 +247,8 @@ if (process.client) {
       @confirm="handleInputConfirm"
       @cancel="handleInputCancel"
     />
+
+    </ClientOnly>
 
     <!-- 全域 Toast 通知 -->
     <ToastNotification />
@@ -520,5 +519,29 @@ body.mobile-dragging {
 /* 📱 拖拽過程中防止滾動 */
 .sortable-drag-active {
   overflow: hidden !important;
+}
+
+/* 🎯 全域修正：防止任何元素出現藍色 focus 外框 */
+*:focus {
+  outline: none !important;
+}
+
+/* 🎯 特別針對可能的 sortable 庫樣式 */
+.sortable-chosen,
+.sortable-ghost,
+.sortable-drag,
+[data-sortable],
+.draggable-item {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 🎯 防止瀏覽器預設的選取高亮 */
+::selection {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+::-moz-selection {
+  background: rgba(59, 130, 246, 0.1);
 }
 </style>

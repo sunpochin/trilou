@@ -23,7 +23,7 @@ export const useAuth = () => {
     const config = useRuntimeConfig()
     const skipAuth = config.public.devSkipAuth || 
                      route.query.skipAuth === 'true' ||
-                     window.location.search.includes('skipAuth=true')
+                     route.fullPath.includes('skipAuth=true')
     
     if (skipAuth) {
       console.log('🚪 [DEV] 開發模式登出，清除本地資料')
@@ -67,9 +67,9 @@ export const useAuth = () => {
     const config = useRuntimeConfig()
     console.log('🔍 [AUTH] route 和 config 取得完成')
     
-    // 📱 URL 參數優先檢查
+    // 📱 URL 參數優先檢查 - 使用 SSR 安全的方式
     const urlSkipAuth = route.query.skipAuth
-    const hasSkipAuthInUrl = window.location.search.includes('skipAuth=true')
+    const hasSkipAuthInUrl = route.fullPath.includes('skipAuth=true')
     
     // 🎯 決定是否跳過認證的邏輯：
     // 1. 如果 URL 明確指定 skipAuth=true → 開發模式
@@ -83,7 +83,7 @@ export const useAuth = () => {
       devSkipAuth: config.public.devSkipAuth,
       urlSkipAuth: urlSkipAuth,
       hasSkipAuthInUrl: hasSkipAuthInUrl,
-      windowSearch: window.location.search,
+      fullPath: route.fullPath,
       route: route.fullPath,
       skipAuth: skipAuth,
       '🚨 決定因素': urlSkipAuth === 'true' ? 'URL=true' : 
