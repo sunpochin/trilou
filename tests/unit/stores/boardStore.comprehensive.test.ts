@@ -275,10 +275,10 @@ describe('boardStore 完整測試', () => {
 
     it('應該處理空白標題（實際會 trim 後進行 API 調用）', async () => {
       await boardStore.addList('   ')
-      // 實際實現會 trim 標題，但仍會調用 API
+      // 實際實現會 trim 標題後再調用 API
       expect(mockFetch).toHaveBeenCalledWith('/api/lists', {
         method: 'POST',
-        body: { title: '   ' }
+        body: { title: '' }
       })
     })
 
