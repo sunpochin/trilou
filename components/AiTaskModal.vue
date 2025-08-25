@@ -83,9 +83,10 @@ import { eventBus } from '@/events/EventBus'
 // 定義 props
 interface Props {
   show: boolean
+  targetListId?: string | null  // 目標列表 ID，用於指定卡片加入哪個列表
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 // 定義 emits
 const emit = defineEmits<{
@@ -195,14 +196,25 @@ async function addGeneratedCardsToBoard(cards: Array<{title: string, description
   try {
     console.log('📋 [AI-MODAL] 開始將任務加入看板...')
     
-    // 🎯 使用 composable 的抽象方法，而不直接操作 store
-    const { id: targetListId } = await addListIfEmpty('AI 生成任務')
+    // 🎯 決定目標列表 ID
+    let finalTargetListId: string
+    
+    if (props.targetListId) {
+      // 如果指定了目標列表，使用指定的列表
+      finalTargetListId = props.targetListId
+      console.log('🎯 [AI-MODAL] 使用指定的列表:', finalTargetListId)
+    } else {
+      // 如果沒有指定，使用預設行為（建立新列表）
+      const { id: newListId } = await addListIfEmpty('AI 生成任務')
+      finalTargetListId = newListId
+      console.log('🎯 [AI-MODAL] 建立新的預設列表:', finalTargetListId)
+    }
     
     // 逐一加入卡片，每加入一張就減少計數器
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i]
       try {
-        await addCard(targetListId, card.title, card.status || 'todo', card.description)
+        await addCard(finalTargetListId, card.title, card.status || 'todo', card.description)
         // 每個卡片成功加入後，減少計數器
         completePendingCards(1)
         console.log(`✅ [AI-MODAL] 成功加入卡片 ${i + 1}/${cards.length}: ${card.title}`)

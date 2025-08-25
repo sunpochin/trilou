@@ -3,7 +3,6 @@ import TrelloBoard from '@/components/TrelloBoard.vue';
 import GoogleLoginButton from '@/components/GoogleLoginButton.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import InputDialog from '@/components/InputDialog.vue';
-import AiTaskModal from '@/components/AiTaskModal.vue';
 import { useBoardStore } from '@/stores/boardStore';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import { useInputDialog } from '@/composables/useInputDialog';
@@ -19,9 +18,6 @@ const boardStore = useBoardStore();
 // 取得認證相關功能
 const { user, handleLogout, initializeAuth } = useAuth();
 
-// 計算 AI 生成狀態的響應式數據
-const pendingCount = computed(() => boardStore.pendingAiCards);
-const isGenerating = computed(() => boardStore.pendingAiCards > 0);
 
 // 取得確認對話框功能
 const { confirmState, handleConfirm, handleCancel } = useConfirmDialog();
@@ -30,8 +26,6 @@ const { confirmState, handleConfirm, handleCancel } = useConfirmDialog();
 const { inputState, handleConfirm: handleInputConfirm, handleCancel: handleInputCancel } = useInputDialog();
 
 
-// AI 生成任務模態框的顯示狀態
-const showAiModal = ref(false);
 
 // Magic email login 狀態
 const emailInput = ref('');
@@ -102,31 +96,6 @@ if (process.client) {
         </div>
         
         <!-- 第二層：AI 按鈕區域 -->
-        <div class="px-4 pb-3 flex items-center gap-4">
-          <!-- AI 生成按鈕 -->
-          <button 
-            @click="showAiModal = true" 
-            :class="[
-              'relative px-4 py-2 text-white rounded-lg text-sm font-medium transition-all duration-500 overflow-hidden shadow-md hover:shadow-lg',
-              isGenerating ? 'ai-generating-magic' : 'ai-button-magic'
-            ]"
-          >
-            <!-- 魔法背景光效 -->
-            <div 
-              v-if="isGenerating"
-              class="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-blue-400/20 to-purple-400/20 animate-ping"
-            ></div>
-            
-            <!-- 按鈕文字 -->
-            <span class="relative z-10 flex items-center gap-2 whitespace-nowrap">
-              <svg v-if="isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>🤖 AI 生成任務</span>
-            </span>
-          </button>
-        </div>
         
         <!-- 第三層：生成狀態顯示（只在生成時顯示） -->
         <div 
@@ -282,11 +251,6 @@ if (process.client) {
       @cancel="handleInputCancel"
     />
 
-    <!-- AI 任務生成模態框 -->
-    <AiTaskModal
-      :show="showAiModal"
-      @close="showAiModal = false"
-    />
   </div>
 </template>
 

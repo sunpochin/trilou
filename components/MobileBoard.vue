@@ -54,6 +54,7 @@
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
           @list-update-title="onListUpdateTitle"
+          @ai-generate="onAiGenerate"
           class="mobile-list-item snap-center"
         />
       </div>
@@ -119,6 +120,13 @@
       :card="selectedCard" 
       @close="closeCardModal" 
     />
+    
+    <!-- AI 生成任務模態框 -->
+    <AiTaskModal
+      :show="showAiModal"
+      :target-list-id="targetListId"
+      @close="showAiModal = false"
+    />
   </div>
 </template>
 
@@ -126,6 +134,7 @@
 import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
+import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useListActions } from '@/composables/useListActions'
 import { useBoardView } from '@/composables/useBoardView'
@@ -583,6 +592,16 @@ const onListAddCard = async (listId: string, title: string) => {
     // Store 已經回滾了，我們提供用戶友好的錯誤訊息
     alert('新增卡片失敗，請檢查網路連線後再試')
   }
+}
+
+// 🤖 AI 生成任務 - 開啟 AiTaskModal
+const showAiModal = ref(false)
+const targetListId = ref<string | null>(null)
+
+const onAiGenerate = (listId: string) => {
+  console.log('🤖 [MOBILE-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
+  targetListId.value = listId
+  showAiModal.value = true
 }
 
 // 🗑️ 列表刪除 - 需要確認的重要操作
