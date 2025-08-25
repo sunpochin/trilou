@@ -589,11 +589,6 @@ const onListAddCard = async (listId: string, title: string) => {
 const onListDelete = async (listId: string) => {
   console.log('🗑️ [MOBILE-BOARD] 刪除列表:', listId)
   
-  // 🛡️ 重要操作：先確認，這是不可逆的操作
-  if (!confirm('確定要刪除這個列表嗎？列表中的所有卡片也會一併刪除！')) {
-    return
-  }
-  
   try {
     // 刪除操作用戶需要明確的結果反饋
     await deleteListAction(listId)
