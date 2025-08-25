@@ -1,307 +1,983 @@
 /**
- * 🧪 boardStore 單元測試
+ * 🧪 BoardStore 完整單元測試
  * 
- * 專注測試最核心的 moveCardAndReorder 方法：
- * - 單一列表內重新排序
- * - 多列表間重新排序
- * - API 失敗處理
- * - 邊界條件處理
+ * 📝 測試策略：
+ * - State 初始化測試
+ * - Getters 計算屬性測試
+ * - Actions 方法測試（包含樂觀更新與回滾）
+ * - API 呼叫與錯誤處理
+ * - Mock Repository 層依賴
+ * - 邊界情況與並行操作
  */
 
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
+import { useBoardStore } from '@/stores/boardStore'
 import type { CardUI, ListUI } from '@/types'
 
-// Mock $fetch
-const mockFetch = vi.fn()
-global.$fetch = mockFetch
-
-// 創建模擬的 store 實例
-const createMockStore = () => {
-  const { lists } = createTestData()
-  
-  return {
-    board: {
-      id: 'board-1',
-      title: 'Test Board', 
-      lists: lists
-    },
-    
-    // 實際的 moveCardAndReorder 邏輯（從真實 store 複製）
-    async moveCardAndReorder(affectedListIds: string[]) {
-      console.log(`🚀 [STORE] 開始重新整理受影響列表的 position:`, affectedListIds)
-      
-      try {
-        const updatePromises: Promise<any>[] = []
-        
-        // 🎯 重新整理所有受影響列表的卡片 position
-        for (const listId of affectedListIds) {
-          const list = this.board.lists.find((l: any) => l.id === listId)
-          if (!list) {
-            console.warn(`⚠️ [STORE] 找不到列表 ${listId}`)
-            continue
-          }
-          
-          console.log(`📝 [STORE] 重新整理列表 "${list.title}" 的 ${list.cards.length} 張卡片`)
-          
-          // 為每張卡片重新分配連續的 position 值 (0, 1, 2, 3...)
-          list.cards.forEach((card: any, index: number) => {
-            const newPosition = index
-            console.log(`  📌 [STORE] 卡片 "${card.title}" 新位置: ${newPosition}`)
-            
-            // 批次收集所有需要更新的 API 請求
-            updatePromises.push(
-              $fetch(`/api/cards/${card.id}`, {
-                method: 'PUT',
-                body: {
-                  listId: listId,  // 確保卡片屬於正確的列表
-                  position: newPosition
-                }
-              }).then(() => {
-                console.log(`✅ [STORE] 已更新卡片 ${card.id} 位置為 ${newPosition}`)
-              }).catch((error) => {
-                console.error(`❌ [STORE] 更新卡片 ${card.id} 失敗:`, error)
-                throw error
-              })
-            )
-          })
-        }
-        
-        console.log(`📤 [STORE] 準備批次更新 ${updatePromises.length} 張卡片的位置...`)
-        
-        // 批次執行所有 API 更新請求
-        await Promise.all(updatePromises)
-        
-        console.log(`✅ [STORE] 成功重新整理所有受影響列表的位置`)
-        
-      } catch (error) {
-        console.error('❌ [STORE] 重新整理卡片位置失敗:', error)
-        console.error('🔄 [STORE] 建議重新載入看板資料以確保一致性')
-        throw error
-      }
-    }
+// Mock Repository 模組
+vi.mock('@/repositories/CardRepository', () => ({
+  cardRepository: {
+    getAllCards: vi.fn(),
+    createCard: vi.fn(),
+    deleteCard: vi.fn(),
+    batchUpdateCards: vi.fn()
   }
-}
+}))
 
-// 測試資料工廠
-const createTestData = () => {
-  const cards1: CardUI[] = [
-    { id: 'card-1', title: '卡片1', description: '', position: 0 },
-    { id: 'card-2', title: '卡片2', description: '', position: 1 },
-    { id: 'card-3', title: '卡片3', description: '', position: 2 }
-  ]
-  
-  const cards2: CardUI[] = [
-    { id: 'card-4', title: '卡片4', description: '', position: 0 },
-    { id: 'card-5', title: '卡片5', description: '', position: 1 }
-  ]
-  
-  const lists: ListUI[] = [
-    { id: 'list-1', title: '列表1', cards: [...cards1] },
-    { id: 'list-2', title: '列表2', cards: [...cards2] },
-    { id: 'list-3', title: '空列表', cards: [] }
-  ]
-  
-  return { cards1, cards2, lists }
-}
+vi.mock('@/repositories/ListRepository', () => ({
+  listRepository: {
+    getAllLists: vi.fn(),
+    updateListTitle: vi.fn(),
+    batchUpdateListPositions: vi.fn()
+  }
+}))
 
-describe('boardStore', () => {
-  let store: any
+// 引入 Mock 的 Repository
+import { cardRepository } from '@/repositories/CardRepository'
+import { listRepository } from '@/repositories/ListRepository'
 
+describe('BoardStore', () => {
+  let store: ReturnType<typeof useBoardStore>
+  
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockFetch.mockResolvedValue({}) // 預設 API 成功
+    // 為每個測試建立新的 Pinia 實例
+    setActivePinia(createPinia())
+    store = useBoardStore()
     
-    // 重新建立 store
-    store = createMockStore()
+    // 清除所有 Mock
+    vi.clearAllMocks()
+    
+    // Mock $fetch 全域函數
+    global.$fetch = vi.fn()
+    
+    // Mock console 方法避免測試輸出
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+  
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  describe('moveCardAndReorder', () => {
-    it('應該重新排序單一列表內的所有卡片', async () => {
-      // Arrange: 模擬用戶拖拉後的狀態（position 亂了）
-      const list1 = store.board.lists[0]
-      list1.cards = [
-        { id: 'card-2', title: '卡片2', description: '', position: 1 }, // 原本 position 1
-        { id: 'card-1', title: '卡片1', description: '', position: 0 }, // 原本 position 0  
-        { id: 'card-3', title: '卡片3', description: '', position: 2 }  // 原本 position 2
+  describe('State 初始化', () => {
+    it('應該正確初始化預設狀態', () => {
+      expect(store.board).toEqual({
+        id: 'board-1',
+        title: 'My Board',
+        lists: []
+      })
+      expect(store.isLoading).toBe(false)
+      expect(store.openMenuId).toBe(null)
+      expect(store.pendingAiCards).toBe(0)
+    })
+  })
+
+  describe('Getters 計算屬性', () => {
+    describe('nextCardId', () => {
+      it('當沒有卡片時應該返回 1', () => {
+        expect(store.nextCardId).toBe(1)
+      })
+
+      it('應該返回最大卡片 ID + 1', () => {
+        store.board.lists = [
+          {
+            id: 'list-1',
+            title: '列表1',
+            position: 0,
+            cards: [
+              { id: 'card-5', title: '卡片5', listId: 'list-1', position: 0 },
+              { id: 'card-3', title: '卡片3', listId: 'list-1', position: 1 }
+            ]
+          },
+          {
+            id: 'list-2',
+            title: '列表2',
+            position: 1,
+            cards: [
+              { id: 'card-10', title: '卡片10', listId: 'list-2', position: 0 }
+            ]
+          }
+        ]
+        
+        expect(store.nextCardId).toBe(11)
+      })
+
+      it('應該忽略非標準格式的卡片 ID', () => {
+        store.board.lists = [
+          {
+            id: 'list-1',
+            title: '列表1',
+            position: 0,
+            cards: [
+              { id: 'temp-card-123', title: '暫時卡片', listId: 'list-1', position: 0 },
+              { id: 'card-7', title: '卡片7', listId: 'list-1', position: 1 },
+              { id: 'custom-id', title: '自訂ID', listId: 'list-1', position: 2 }
+            ]
+          }
+        ]
+        
+        expect(store.nextCardId).toBe(8)
+      })
+    })
+
+    describe('nextListId', () => {
+      it('當沒有列表時應該返回 1', () => {
+        expect(store.nextListId).toBe(1)
+      })
+
+      it('應該返回最大列表 ID + 1', () => {
+        store.board.lists = [
+          { id: 'list-3', title: '列表3', position: 0, cards: [] },
+          { id: 'list-8', title: '列表8', position: 1, cards: [] },
+          { id: 'list-2', title: '列表2', position: 2, cards: [] }
+        ]
+        
+        expect(store.nextListId).toBe(9)
+      })
+
+      it('應該忽略非標準格式的列表 ID', () => {
+        store.board.lists = [
+          { id: 'temp-list-123', title: '暫時列表', position: 0, cards: [] },
+          { id: 'list-5', title: '列表5', position: 1, cards: [] }
+        ]
+        
+        expect(store.nextListId).toBe(6)
+      })
+    })
+  })
+
+  describe('Actions 動作方法', () => {
+    describe('fetchBoard - 獲取看板資料', () => {
+      it('應該成功獲取並組合列表和卡片資料', async () => {
+        const mockLists = [
+          { id: 'list-1', title: '待辦', position: 0 },
+          { id: 'list-2', title: '進行中', position: 1 }
+        ]
+        
+        const mockCards = [
+          { id: 'card-1', title: '任務1', listId: 'list-1', position: 0 },
+          { id: 'card-2', title: '任務2', listId: 'list-1', position: 1 },
+          { id: 'card-3', title: '任務3', listId: 'list-2', position: 0 }
+        ]
+        
+        vi.mocked(listRepository.getAllLists).mockResolvedValue(mockLists)
+        vi.mocked(cardRepository.getAllCards).mockResolvedValue(mockCards)
+        
+        await store.fetchBoard()
+        
+        expect(store.isLoading).toBe(false)
+        expect(store.board.lists).toHaveLength(2)
+        
+        // 驗證列表1包含正確的卡片
+        expect(store.board.lists[0].title).toBe('待辦')
+        expect(store.board.lists[0].cards).toHaveLength(2)
+        expect(store.board.lists[0].cards[0].title).toBe('任務1')
+        
+        // 驗證列表2包含正確的卡片
+        expect(store.board.lists[1].title).toBe('進行中')
+        expect(store.board.lists[1].cards).toHaveLength(1)
+        expect(store.board.lists[1].cards[0].title).toBe('任務3')
+      })
+
+      it('應該按 position 排序列表和卡片', async () => {
+        const mockLists = [
+          { id: 'list-2', title: '列表2', position: 2 },
+          { id: 'list-1', title: '列表1', position: 0 },
+          { id: 'list-3', title: '列表3', position: 1 }
+        ]
+        
+        const mockCards = [
+          { id: 'card-3', title: '卡片3', listId: 'list-1', position: 2 },
+          { id: 'card-1', title: '卡片1', listId: 'list-1', position: 0 },
+          { id: 'card-2', title: '卡片2', listId: 'list-1', position: 1 }
+        ]
+        
+        vi.mocked(listRepository.getAllLists).mockResolvedValue(mockLists)
+        vi.mocked(cardRepository.getAllCards).mockResolvedValue(mockCards)
+        
+        await store.fetchBoard()
+        
+        // 驗證列表按 position 排序
+        expect(store.board.lists[0].title).toBe('列表1')
+        expect(store.board.lists[1].title).toBe('列表3')
+        expect(store.board.lists[2].title).toBe('列表2')
+        
+        // 驗證卡片按 position 排序
+        const list1Cards = store.board.lists[0].cards
+        expect(list1Cards[0].title).toBe('卡片1')
+        expect(list1Cards[1].title).toBe('卡片2')
+        expect(list1Cards[2].title).toBe('卡片3')
+      })
+
+      it('應該處理空列表（沒有卡片）', async () => {
+        const mockLists = [
+          { id: 'list-1', title: '空列表', position: 0 }
+        ]
+        
+        vi.mocked(listRepository.getAllLists).mockResolvedValue(mockLists)
+        vi.mocked(cardRepository.getAllCards).mockResolvedValue([])
+        
+        await store.fetchBoard()
+        
+        expect(store.board.lists[0].cards).toEqual([])
+      })
+
+      it('應該處理 API 錯誤並設定空看板', async () => {
+        vi.mocked(listRepository.getAllLists).mockRejectedValue(new Error('Network error'))
+        
+        await store.fetchBoard()
+        
+        expect(store.board.lists).toEqual([])
+        expect(store.isLoading).toBe(false)
+      })
+
+      it('應該正確設定 loading 狀態', async () => {
+        vi.mocked(listRepository.getAllLists).mockResolvedValue([])
+        vi.mocked(cardRepository.getAllCards).mockResolvedValue([])
+        
+        const promise = store.fetchBoard()
+        
+        // 初始應該設定為 loading
+        expect(store.isLoading).toBe(true)
+        
+        await promise
+        
+        // 完成後應該關閉 loading
+        expect(store.isLoading).toBe(false)
+      })
+    })
+
+    describe('addList - 新增列表（樂觀更新）', () => {
+      it('應該使用樂觀更新立即新增列表', async () => {
+        global.$fetch = vi.fn().mockResolvedValue({
+          id: 'list-real-1',
+          title: '新列表',
+          position: 0
+        })
+        
+        const promise = store.addList('新列表')
+        
+        // 驗證樂觀更新（立即新增暫時列表）
+        expect(store.board.lists).toHaveLength(1)
+        expect(store.board.lists[0].title).toBe('新列表')
+        expect(store.board.lists[0].id).toMatch(/^temp-list-/)
+        
+        await promise
+        
+        // 驗證替換為真實列表
+        expect(store.board.lists[0].id).toBe('list-real-1')
+      })
+
+      it('應該在 API 失敗時回滾樂觀更新', async () => {
+        global.$fetch = vi.fn().mockRejectedValue(new Error('Server error'))
+        
+        await expect(store.addList('失敗的列表')).rejects.toThrow()
+        
+        // 驗證回滾（列表應該被移除）
+        expect(store.board.lists).toHaveLength(0)
+      })
+
+      it('應該修剪列表標題的空白', async () => {
+        global.$fetch = vi.fn().mockResolvedValue({
+          id: 'list-1',
+          title: '修剪後的標題',
+          position: 0
+        })
+        
+        await store.addList('  修剪後的標題  ')
+        
+        expect(global.$fetch).toHaveBeenCalledWith('/api/lists', {
+          method: 'POST',
+          body: { title: '修剪後的標題' }
+        })
+      })
+    })
+
+    describe('removeList - 刪除列表（樂觀更新）', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          { id: 'list-1', title: '列表1', position: 0, cards: [] },
+          { id: 'list-2', title: '列表2', position: 1, cards: [] },
+          { id: 'list-3', title: '列表3', position: 2, cards: [] }
+        ]
+      })
+
+      it('應該使用樂觀更新立即移除列表', async () => {
+        global.$fetch = vi.fn().mockResolvedValue(undefined)
+        
+        const promise = store.removeList('list-2')
+        
+        // 驗證樂觀更新（立即移除）
+        expect(store.board.lists).toHaveLength(2)
+        expect(store.board.lists.find(l => l.id === 'list-2')).toBeUndefined()
+        
+        await promise
+        
+        // 驗證 API 呼叫
+        expect(global.$fetch).toHaveBeenCalledWith('/api/lists/list-2', {
+          method: 'DELETE'
+        })
+      })
+
+      it('應該在 API 失敗時回滾並恢復列表到原始位置', async () => {
+        global.$fetch = vi.fn().mockRejectedValue(new Error('Delete failed'))
+        
+        await expect(store.removeList('list-2')).rejects.toThrow()
+        
+        // 驗證回滾（列表應該被恢復）
+        expect(store.board.lists).toHaveLength(3)
+        expect(store.board.lists[1].id).toBe('list-2')
+        expect(store.board.lists[1].title).toBe('列表2')
+      })
+
+      it('應該處理不存在的列表 ID', async () => {
+        await store.removeList('non-existent')
+        
+        // 不應該呼叫 API
+        expect(global.$fetch).not.toHaveBeenCalled()
+        expect(store.board.lists).toHaveLength(3)
+      })
+    })
+
+    describe('addCard - 新增卡片（樂觀更新）', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          { id: 'list-1', title: '列表1', position: 0, cards: [] }
+        ]
+      })
+
+      it('應該使用樂觀更新立即新增卡片', async () => {
+        const mockCard: CardUI = {
+          id: 'card-real-1',
+          title: '新卡片',
+          description: '描述',
+          listId: 'list-1',
+          position: 0
+        }
+        
+        vi.mocked(cardRepository.createCard).mockResolvedValue(mockCard)
+        
+        const promise = store.addCard('list-1', '新卡片', 'pending', '描述')
+        
+        // 驗證樂觀更新
+        expect(store.board.lists[0].cards).toHaveLength(1)
+        expect(store.board.lists[0].cards[0].title).toBe('新卡片')
+        expect(store.board.lists[0].cards[0].status).toBe('pending')
+        expect(store.board.lists[0].cards[0].id).toMatch(/^temp-/)
+        
+        await promise
+        
+        // 驗證替換為真實卡片
+        expect(store.board.lists[0].cards[0].id).toBe('card-real-1')
+      })
+
+      it('應該在 API 失敗時回滾樂觀更新', async () => {
+        vi.mocked(cardRepository.createCard).mockRejectedValue(new Error('Create failed'))
+        
+        await expect(store.addCard('list-1', '失敗的卡片')).rejects.toThrow()
+        
+        // 驗證回滾
+        expect(store.board.lists[0].cards).toHaveLength(0)
+      })
+
+      it('應該拒絕新增到不存在的列表', async () => {
+        await expect(store.addCard('non-existent', '卡片')).rejects.toThrow('找不到指定的列表')
+        
+        expect(cardRepository.createCard).not.toHaveBeenCalled()
+      })
+
+      it('應該正確處理選擇性參數', async () => {
+        const mockCard: CardUI = {
+          id: 'card-1',
+          title: '簡單卡片',
+          listId: 'list-1',
+          position: 0
+        }
+        
+        vi.mocked(cardRepository.createCard).mockResolvedValue(mockCard)
+        
+        await store.addCard('list-1', '簡單卡片')
+        
+        expect(cardRepository.createCard).toHaveBeenCalledWith(
+          '簡單卡片',
+          'list-1',
+          undefined,
+          undefined
+        )
+      })
+    })
+
+    describe('removeCard - 刪除卡片', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          {
+            id: 'list-1',
+            title: '列表1',
+            position: 0,
+            cards: [
+              { id: 'card-1', title: '卡片1', listId: 'list-1', position: 0 },
+              { id: 'card-2', title: '卡片2', listId: 'list-1', position: 1 }
+            ]
+          }
+        ]
+      })
+
+      it('應該成功刪除卡片', async () => {
+        global.$fetch = vi.fn().mockResolvedValue(undefined)
+        
+        await store.removeCard('list-1', 'card-1')
+        
+        expect(global.$fetch).toHaveBeenCalledWith('/api/cards/card-1', {
+          method: 'DELETE'
+        })
+        
+        expect(store.board.lists[0].cards).toHaveLength(1)
+        expect(store.board.lists[0].cards[0].id).toBe('card-2')
+      })
+
+      it('應該處理刪除錯誤', async () => {
+        global.$fetch = vi.fn().mockRejectedValue(new Error('Delete failed'))
+        
+        await store.removeCard('list-1', 'card-1')
+        
+        // 卡片應該仍然存在（沒有樂觀更新）
+        expect(store.board.lists[0].cards).toHaveLength(2)
+      })
+    })
+
+    describe('moveCardAndReorder - 移動卡片並重新排序', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          {
+            id: 'list-1',
+            title: '列表1',
+            position: 0,
+            cards: [
+              { id: 'card-1', title: '卡片1', listId: 'list-1', position: 0 },
+              { id: 'card-2', title: '卡片2', listId: 'list-1', position: 1 }
+            ]
+          },
+          {
+            id: 'list-2',
+            title: '列表2',
+            position: 1,
+            cards: [
+              { id: 'card-3', title: '卡片3', listId: 'list-2', position: 0 }
+            ]
+          }
+        ]
+      })
+
+      it('應該重新整理受影響列表的卡片位置', async () => {
+        vi.mocked(cardRepository.batchUpdateCards).mockResolvedValue(undefined)
+        
+        // 模擬拖放：將 card-3 移到 list-1
+        store.board.lists[0].cards.push(
+          { id: 'card-3', title: '卡片3', listId: 'list-1', position: 2 }
+        )
+        store.board.lists[1].cards = []
+        
+        await store.moveCardAndReorder(['list-1', 'list-2'])
+        
+        // 驗證批次更新呼叫
+        expect(cardRepository.batchUpdateCards).toHaveBeenCalledWith([
+          { id: 'card-1', listId: 'list-1', position: 0 },
+          { id: 'card-2', listId: 'list-1', position: 1 },
+          { id: 'card-3', listId: 'list-1', position: 2 }
+        ])
+      })
+
+      it('應該處理不存在的列表 ID', async () => {
+        vi.mocked(cardRepository.batchUpdateCards).mockResolvedValue(undefined)
+        
+        await store.moveCardAndReorder(['list-1', 'non-existent'])
+        
+        // 應該只更新存在的列表
+        expect(cardRepository.batchUpdateCards).toHaveBeenCalledWith([
+          { id: 'card-1', listId: 'list-1', position: 0 },
+          { id: 'card-2', listId: 'list-1', position: 1 }
+        ])
+      })
+
+      it('應該處理 API 錯誤', async () => {
+        vi.mocked(cardRepository.batchUpdateCards).mockRejectedValue(new Error('Update failed'))
+        
+        await expect(store.moveCardAndReorder(['list-1'])).rejects.toThrow('Update failed')
+      })
+
+      it('應該處理空列表陣列', async () => {
+        await store.moveCardAndReorder([])
+        
+        expect(cardRepository.batchUpdateCards).toHaveBeenCalledWith([])
+      })
+    })
+
+    describe('saveListPositions - 儲存列表位置', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          { id: 'list-1', title: '列表1', position: 2, cards: [] },
+          { id: 'list-2', title: '列表2', position: 0, cards: [] },
+          { id: 'list-3', title: '列表3', position: 1, cards: [] }
+        ]
+      })
+
+      it('應該保存並同步列表位置', async () => {
+        vi.mocked(listRepository.batchUpdateListPositions).mockResolvedValue(undefined)
+        
+        await store.saveListPositions()
+        
+        expect(listRepository.batchUpdateListPositions).toHaveBeenCalledWith([
+          { id: 'list-1', position: 0 },
+          { id: 'list-2', position: 1 },
+          { id: 'list-3', position: 2 }
+        ])
+        
+        // 驗證本地同步
+        expect(store.board.lists[0].position).toBe(0)
+        expect(store.board.lists[1].position).toBe(1)
+        expect(store.board.lists[2].position).toBe(2)
+      })
+
+      it('應該處理 API 錯誤', async () => {
+        vi.mocked(listRepository.batchUpdateListPositions).mockRejectedValue(new Error('Save failed'))
+        
+        await expect(store.saveListPositions()).rejects.toThrow('Save failed')
+      })
+    })
+
+    describe('updateCardTitle - 更新卡片標題', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          {
+            id: 'list-1',
+            title: '列表1',
+            position: 0,
+            cards: [
+              { id: 'card-1', title: '舊標題', listId: 'list-1', position: 0 }
+            ]
+          },
+          {
+            id: 'list-2',
+            title: '列表2',
+            position: 1,
+            cards: [
+              { id: 'card-2', title: '卡片2', listId: 'list-2', position: 0 }
+            ]
+          }
+        ]
+      })
+
+      it('應該更新卡片標題', () => {
+        store.updateCardTitle('card-1', '新標題')
+        
+        expect(store.board.lists[0].cards[0].title).toBe('新標題')
+      })
+
+      it('應該找到並更新不同列表中的卡片', () => {
+        store.updateCardTitle('card-2', '更新的卡片2')
+        
+        expect(store.board.lists[1].cards[0].title).toBe('更新的卡片2')
+      })
+
+      it('應該處理不存在的卡片', () => {
+        store.updateCardTitle('non-existent', '新標題')
+        
+        // 不應該有任何變化
+        expect(store.board.lists[0].cards[0].title).toBe('舊標題')
+      })
+    })
+
+    describe('updateCardDescription - 更新卡片描述', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          {
+            id: 'list-1',
+            title: '列表1',
+            position: 0,
+            cards: [
+              { id: 'card-1', title: '卡片', description: '舊描述', listId: 'list-1', position: 0 }
+            ]
+          }
+        ]
+      })
+
+      it('應該更新卡片描述', () => {
+        store.updateCardDescription('card-1', '新描述')
+        
+        expect(store.board.lists[0].cards[0].description).toBe('新描述')
+      })
+
+      it('應該處理不存在的卡片', () => {
+        store.updateCardDescription('non-existent', '新描述')
+        
+        expect(store.board.lists[0].cards[0].description).toBe('舊描述')
+      })
+    })
+
+    describe('updateListTitle - 更新列表標題', () => {
+      beforeEach(() => {
+        store.board.lists = [
+          { id: 'list-1', title: '舊標題', position: 0, cards: [] }
+        ]
+      })
+
+      it('應該成功更新列表標題', async () => {
+        vi.mocked(listRepository.updateListTitle).mockResolvedValue(undefined)
+        
+        await store.updateListTitle('list-1', '新標題')
+        
+        expect(store.board.lists[0].title).toBe('新標題')
+        expect(listRepository.updateListTitle).toHaveBeenCalledWith('list-1', '新標題')
+      })
+
+      it('應該在 API 失敗時回滾', async () => {
+        vi.mocked(listRepository.updateListTitle).mockRejectedValue(new Error('Update failed'))
+        
+        await expect(store.updateListTitle('list-1', '新標題')).rejects.toThrow()
+        
+        // 驗證回滾
+        expect(store.board.lists[0].title).toBe('舊標題')
+      })
+
+      it('應該忽略空白標題', async () => {
+        await store.updateListTitle('list-1', '   ')
+        
+        expect(listRepository.updateListTitle).not.toHaveBeenCalled()
+        expect(store.board.lists[0].title).toBe('舊標題')
+      })
+
+      it('應該處理不存在的列表', async () => {
+        await store.updateListTitle('non-existent', '新標題')
+        
+        expect(listRepository.updateListTitle).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('選單管理', () => {
+      describe('setOpenMenu', () => {
+        it('應該設定開啟的選單 ID', () => {
+          store.setOpenMenu('list-1')
+          expect(store.openMenuId).toBe('list-1')
+        })
+
+        it('應該可以關閉所有選單', () => {
+          store.openMenuId = 'list-1'
+          store.setOpenMenu(null)
+          expect(store.openMenuId).toBe(null)
+        })
+      })
+
+      describe('toggleMenu', () => {
+        it('應該開啟關閉的選單', () => {
+          store.toggleMenu('list-1')
+          expect(store.openMenuId).toBe('list-1')
+        })
+
+        it('應該關閉已開啟的選單', () => {
+          store.openMenuId = 'list-1'
+          store.toggleMenu('list-1')
+          expect(store.openMenuId).toBe(null)
+        })
+
+        it('應該切換到不同的選單', () => {
+          store.openMenuId = 'list-1'
+          store.toggleMenu('list-2')
+          expect(store.openMenuId).toBe('list-2')
+        })
+      })
+
+      describe('closeAllMenus', () => {
+        it('應該關閉所有選單', () => {
+          store.openMenuId = 'list-1'
+          store.closeAllMenus()
+          expect(store.openMenuId).toBe(null)
+        })
+      })
+    })
+
+    describe('AI 卡片計數管理', () => {
+      describe('incrementPendingAiCards', () => {
+        it('應該增加待處理的 AI 卡片數量', () => {
+          store.incrementPendingAiCards()
+          expect(store.pendingAiCards).toBe(1)
+          
+          store.incrementPendingAiCards(3)
+          expect(store.pendingAiCards).toBe(4)
+        })
+
+        it('應該支援預設參數', () => {
+          store.incrementPendingAiCards()
+          expect(store.pendingAiCards).toBe(1)
+        })
+      })
+
+      describe('decrementPendingAiCards', () => {
+        it('應該減少待處理的 AI 卡片數量', () => {
+          store.pendingAiCards = 5
+          
+          store.decrementPendingAiCards()
+          expect(store.pendingAiCards).toBe(4)
+          
+          store.decrementPendingAiCards(2)
+          expect(store.pendingAiCards).toBe(2)
+        })
+
+        it('不應該讓計數變成負數', () => {
+          store.pendingAiCards = 1
+          
+          store.decrementPendingAiCards(5)
+          expect(store.pendingAiCards).toBe(0)
+        })
+
+        it('應該支援預設參數', () => {
+          store.pendingAiCards = 3
+          store.decrementPendingAiCards()
+          expect(store.pendingAiCards).toBe(2)
+        })
+      })
+
+      describe('resetPendingAiCards', () => {
+        it('應該重置 AI 卡片計數', () => {
+          store.pendingAiCards = 10
+          
+          store.resetPendingAiCards()
+          expect(store.pendingAiCards).toBe(0)
+        })
+      })
+    })
+  })
+
+  describe('邊界情況與錯誤處理', () => {
+    it('應該處理並行的樂觀更新', async () => {
+      global.$fetch = vi.fn()
+        .mockResolvedValueOnce({ id: 'list-1', title: '列表1', position: 0 })
+        .mockResolvedValueOnce({ id: 'list-2', title: '列表2', position: 1 })
+      
+      // 同時新增兩個列表
+      const promises = [
+        store.addList('列表1'),
+        store.addList('列表2')
       ]
       
-      // Act: 重新排序
-      await store.moveCardAndReorder(['list-1'])
+      // 應該立即看到兩個暫時列表
+      expect(store.board.lists).toHaveLength(2)
+      expect(store.board.lists[0].id).toMatch(/^temp-list-/)
+      expect(store.board.lists[1].id).toMatch(/^temp-list-/)
       
-      // Assert: 驗證 API 呼叫
-      expect(mockFetch).toHaveBeenCalledTimes(3) // 3 張卡片
+      await Promise.all(promises)
       
-      // 驗證每張卡片都被更新為正確的連續位置
-      expect(mockFetch).toHaveBeenNthCalledWith(1, '/api/cards/card-2', {
-        method: 'PUT',
-        body: { listId: 'list-1', position: 0 }
-      })
-      expect(mockFetch).toHaveBeenNthCalledWith(2, '/api/cards/card-1', {
-        method: 'PUT', 
-        body: { listId: 'list-1', position: 1 }
-      })
-      expect(mockFetch).toHaveBeenNthCalledWith(3, '/api/cards/card-3', {
-        method: 'PUT',
-        body: { listId: 'list-1', position: 2 }
-      })
+      // 應該都被替換為真實列表
+      expect(store.board.lists[0].id).toBe('list-1')
+      expect(store.board.lists[1].id).toBe('list-2')
     })
 
-    it('應該重新排序多個列表的卡片', async () => {
-      // Arrange: 模擬跨列表移動後的狀態
-      const list1 = store.board.lists[0]
-      const list2 = store.board.lists[1]
+    it('應該處理深層嵌套的資料更新', () => {
+      store.board.lists = [
+        {
+          id: 'list-1',
+          title: '列表1',
+          position: 0,
+          cards: [
+            {
+              id: 'card-1',
+              title: '卡片1',
+              description: '描述',
+              listId: 'list-1',
+              position: 0,
+              tags: ['tag1', 'tag2']
+            }
+          ]
+        }
+      ]
       
-      // 移動一張卡片從 list1 到 list2
-      const movedCard = list1.cards.pop() // 移除最後一張
-      list2.cards.unshift(movedCard) // 加到 list2 開頭
+      // 更新深層屬性
+      store.updateCardDescription('card-1', '新的描述')
       
-      // Act: 重新排序兩個受影響的列表
+      expect(store.board.lists[0].cards[0].description).toBe('新的描述')
+      // 其他屬性不應該受影響
+      expect(store.board.lists[0].cards[0].tags).toEqual(['tag1', 'tag2'])
+    })
+
+    it('應該處理大量資料的效能', async () => {
+      // 建立大量測試資料
+      const mockLists = Array.from({ length: 100 }, (_, i) => ({
+        id: `list-${i}`,
+        title: `列表${i}`,
+        position: i
+      }))
+      
+      const mockCards = Array.from({ length: 1000 }, (_, i) => ({
+        id: `card-${i}`,
+        title: `卡片${i}`,
+        listId: `list-${i % 100}`,
+        position: Math.floor(i / 100)
+      }))
+      
+      vi.mocked(listRepository.getAllLists).mockResolvedValue(mockLists)
+      vi.mocked(cardRepository.getAllCards).mockResolvedValue(mockCards)
+      
+      const startTime = performance.now()
+      await store.fetchBoard()
+      const endTime = performance.now()
+      
+      // 驗證資料正確載入
+      expect(store.board.lists).toHaveLength(100)
+      expect(store.board.lists[0].cards).toHaveLength(10)
+      
+      // 效能應該在合理範圍內（< 1秒）
+      expect(endTime - startTime).toBeLessThan(1000)
+    })
+
+    it('應該處理部分失敗的並行操作', async () => {
+      global.$fetch = vi.fn()
+        .mockResolvedValueOnce({ id: 'list-1', title: '列表1', position: 0 })
+        .mockRejectedValueOnce(new Error('Server error'))
+      
+      const promises = [
+        store.addList('列表1'),
+        store.addList('列表2')
+      ]
+      
+      // 第一個應該成功，第二個應該失敗
+      const results = await Promise.allSettled(promises)
+      
+      expect(results[0].status).toBe('fulfilled')
+      expect(results[1].status).toBe('rejected')
+      
+      // 只有成功的列表應該存在
+      expect(store.board.lists).toHaveLength(1)
+      expect(store.board.lists[0].id).toBe('list-1')
+    })
+
+    it('應該處理 Repository 返回 null 或 undefined', async () => {
+      vi.mocked(listRepository.getAllLists).mockResolvedValue(null as any)
+      vi.mocked(cardRepository.getAllCards).mockResolvedValue(undefined as any)
+      
+      await store.fetchBoard()
+      
+      // 應該設定為空陣列而不是崩潰
+      expect(store.board.lists).toEqual([])
+    })
+  })
+
+  describe('整合場景測試', () => {
+    it('應該處理完整的看板操作流程', async () => {
+      // 1. 載入初始資料
+      vi.mocked(listRepository.getAllLists).mockResolvedValue([
+        { id: 'list-1', title: '待辦', position: 0 }
+      ])
+      vi.mocked(cardRepository.getAllCards).mockResolvedValue([])
+      
+      await store.fetchBoard()
+      expect(store.board.lists).toHaveLength(1)
+      
+      // 2. 新增卡片
+      vi.mocked(cardRepository.createCard).mockResolvedValue({
+        id: 'card-1',
+        title: '任務1',
+        listId: 'list-1',
+        position: 0
+      })
+      
+      await store.addCard('list-1', '任務1')
+      expect(store.board.lists[0].cards).toHaveLength(1)
+      
+      // 3. 新增第二個列表
+      global.$fetch = vi.fn().mockResolvedValue({
+        id: 'list-2',
+        title: '進行中',
+        position: 1
+      })
+      
+      await store.addList('進行中')
+      expect(store.board.lists).toHaveLength(2)
+      
+      // 4. 移動卡片到新列表
+      store.board.lists[0].cards = []
+      store.board.lists[1].cards = [{
+        id: 'card-1',
+        title: '任務1',
+        listId: 'list-2',
+        position: 0
+      }]
+      
+      vi.mocked(cardRepository.batchUpdateCards).mockResolvedValue(undefined)
       await store.moveCardAndReorder(['list-1', 'list-2'])
       
-      // Assert: 驗證 API 呼叫總數 (list1: 2張, list2: 3張)
-      expect(mockFetch).toHaveBeenCalledTimes(5)
+      // 5. 更新列表標題
+      vi.mocked(listRepository.updateListTitle).mockResolvedValue(undefined)
+      await store.updateListTitle('list-2', '已完成')
       
-      // 驗證 list1 的卡片位置 (應該是 0, 1)
-      expect(mockFetch).toHaveBeenCalledWith('/api/cards/card-1', {
-        method: 'PUT',
-        body: { listId: 'list-1', position: 0 }
-      })
-      expect(mockFetch).toHaveBeenCalledWith('/api/cards/card-2', {
-        method: 'PUT',
-        body: { listId: 'list-1', position: 1 }
-      })
-      
-      // 驗證 list2 的卡片位置 (應該是 0, 1, 2)  
-      expect(mockFetch).toHaveBeenCalledWith('/api/cards/card-3', {
-        method: 'PUT',
-        body: { listId: 'list-2', position: 0 }
-      })
-      expect(mockFetch).toHaveBeenCalledWith('/api/cards/card-4', {
-        method: 'PUT', 
-        body: { listId: 'list-2', position: 1 }
-      })
-      expect(mockFetch).toHaveBeenCalledWith('/api/cards/card-5', {
-        method: 'PUT',
-        body: { listId: 'list-2', position: 2 }
-      })
+      expect(store.board.lists[1].title).toBe('已完成')
     })
 
-    it('應該跳過空的列表', async () => {
-      // Act: 包含空列表的重新排序
-      await store.moveCardAndReorder(['list-3'])
+    it('應該處理複雜的拖放操作', async () => {
+      // 設定初始狀態：3個列表，每個有2張卡片
+      store.board.lists = [
+        {
+          id: 'list-1',
+          title: '列表1',
+          position: 0,
+          cards: [
+            { id: 'card-1', title: '卡片1', listId: 'list-1', position: 0 },
+            { id: 'card-2', title: '卡片2', listId: 'list-1', position: 1 }
+          ]
+        },
+        {
+          id: 'list-2',
+          title: '列表2',
+          position: 1,
+          cards: [
+            { id: 'card-3', title: '卡片3', listId: 'list-2', position: 0 },
+            { id: 'card-4', title: '卡片4', listId: 'list-2', position: 1 }
+          ]
+        },
+        {
+          id: 'list-3',
+          title: '列表3',
+          position: 2,
+          cards: [
+            { id: 'card-5', title: '卡片5', listId: 'list-3', position: 0 },
+            { id: 'card-6', title: '卡片6', listId: 'list-3', position: 1 }
+          ]
+        }
+      ]
       
-      // Assert: 空列表不應該有任何 API 呼叫
-      expect(mockFetch).not.toHaveBeenCalled()
-    })
-
-    it('應該跳過不存在的列表', async () => {
-      // Act: 嘗試重新排序不存在的列表
-      await store.moveCardAndReorder(['non-existent-list'])
+      // 模擬複雜拖放：
+      // - card-2 從 list-1 移到 list-3 的開頭
+      // - card-4 從 list-2 移到 list-1 的結尾
+      // - card-5 從 list-3 移到 list-2 的中間
       
-      // Assert: 不存在的列表不應該有任何 API 呼叫
-      expect(mockFetch).not.toHaveBeenCalled()
-    })
-
-    it('當部分 API 失敗時應該拋出錯誤', async () => {
-      // Arrange: 設定第二個 API 呼叫失敗
-      mockFetch
-        .mockResolvedValueOnce({}) // 第一次成功
-        .mockRejectedValueOnce(new Error('API 錯誤')) // 第二次失敗
-        .mockResolvedValueOnce({}) // 第三次成功
-      
-      // Act & Assert: 應該拋出錯誤
-      await expect(store.moveCardAndReorder(['list-1'])).rejects.toThrow()
-      
-      // 驗證仍然嘗試了所有 API 呼叫
-      expect(mockFetch).toHaveBeenCalledTimes(3)
-    })
-
-    it('當所有 API 都失敗時應該拋出錯誤', async () => {
-      // Arrange: 設定所有 API 都失敗
-      mockFetch.mockRejectedValue(new Error('網路錯誤'))
-      
-      // Act & Assert: 應該拋出錯誤
-      await expect(store.moveCardAndReorder(['list-1'])).rejects.toThrow()
-      
-      // 驗證嘗試了所有卡片的 API 呼叫
-      expect(mockFetch).toHaveBeenCalledTimes(3)
-    })
-
-    it('應該處理複雜的多列表重新排序', async () => {
-      // Arrange: 設定更複雜的場景
-      const { lists } = createTestData()
-      store.board.lists = lists
-      
-      // 模擬複雜的拖拉結果：多張卡片在多個列表間移動
       store.board.lists[0].cards = [
-        { id: 'card-5', title: '卡片5', description: '', position: 1 }, // 從 list2 移來
-        { id: 'card-1', title: '卡片1', description: '', position: 0 }  // 原本就在這裡
+        { id: 'card-1', title: '卡片1', listId: 'list-1', position: 0 },
+        { id: 'card-4', title: '卡片4', listId: 'list-1', position: 1 }
       ]
       
       store.board.lists[1].cards = [
-        { id: 'card-2', title: '卡片2', description: '', position: 1 }, // 從 list1 移來
-        { id: 'card-4', title: '卡片4', description: '', position: 0 }  // 原本就在這裡
+        { id: 'card-3', title: '卡片3', listId: 'list-2', position: 0 },
+        { id: 'card-5', title: '卡片5', listId: 'list-2', position: 1 }
       ]
       
       store.board.lists[2].cards = [
-        { id: 'card-3', title: '卡片3', description: '', position: 2 }  // 從 list1 移來
+        { id: 'card-2', title: '卡片2', listId: 'list-3', position: 0 },
+        { id: 'card-6', title: '卡片6', listId: 'list-3', position: 1 }
       ]
       
-      // Act: 重新排序所有受影響的列表
+      vi.mocked(cardRepository.batchUpdateCards).mockResolvedValue(undefined)
+      
       await store.moveCardAndReorder(['list-1', 'list-2', 'list-3'])
       
-      // Assert: 驗證總共 5 個 API 呼叫 (2+2+1)
-      expect(mockFetch).toHaveBeenCalledTimes(5)
-      
-      // 驗證每個列表都得到正確的連續位置
-      const calls = mockFetch.mock.calls
-      
-      // 找出每個列表的呼叫並驗證位置
-      const list1Calls = calls.filter(call => call[1].body.listId === 'list-1')
-      const list2Calls = calls.filter(call => call[1].body.listId === 'list-2')  
-      const list3Calls = calls.filter(call => call[1].body.listId === 'list-3')
-      
-      expect(list1Calls).toHaveLength(2)
-      expect(list2Calls).toHaveLength(2)
-      expect(list3Calls).toHaveLength(1)
-      
-      // 驗證每個列表內的位置都是連續的
-      list1Calls.forEach((call, index) => {
-        expect(call[1].body.position).toBe(index)
-      })
-      list2Calls.forEach((call, index) => {  
-        expect(call[1].body.position).toBe(index)
-      })
-      list3Calls.forEach((call, index) => {
-        expect(call[1].body.position).toBe(index)
-      })
-    })
-  })
-
-  describe('邊界條件測試', () => {
-    it('應該處理空的列表 ID 陣列', async () => {
-      // Act
-      await store.moveCardAndReorder([])
-      
-      // Assert: 不應該有任何 API 呼叫
-      expect(mockFetch).not.toHaveBeenCalled()
-    })
-
-    it('應該處理重複的列表 ID（目前會重複處理）', async () => {
-      // Act: 傳入重複的列表 ID
-      await store.moveCardAndReorder(['list-1', 'list-1'])
-      
-      // Assert: 目前實現會重複處理，所以是 6 個 API 呼叫
-      // 這個測試揭示了一個潛在的性能問題 - 應該去重列表 ID
-      expect(mockFetch).toHaveBeenCalledTimes(6)
-      
-      // 驗證每張卡片都被更新了兩次（雖然這不是理想的行為）
-      expect(mockFetch).toHaveBeenCalledWith('/api/cards/card-1', {
-        method: 'PUT',
-        body: { listId: 'list-1', position: 0 }
-      })
-      // card-1 被呼叫了兩次
-      expect(mockFetch.mock.calls.filter(call => call[0] === '/api/cards/card-1')).toHaveLength(2)
+      // 驗證批次更新被呼叫且包含所有卡片的新位置
+      expect(cardRepository.batchUpdateCards).toHaveBeenCalledWith([
+        { id: 'card-1', listId: 'list-1', position: 0 },
+        { id: 'card-4', listId: 'list-1', position: 1 },
+        { id: 'card-3', listId: 'list-2', position: 0 },
+        { id: 'card-5', listId: 'list-2', position: 1 },
+        { id: 'card-2', listId: 'list-3', position: 0 },
+        { id: 'card-6', listId: 'list-3', position: 1 }
+      ])
     })
   })
 })

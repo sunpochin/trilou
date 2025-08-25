@@ -196,7 +196,7 @@ export const useBoardStore = defineStore('board', {
         console.log('📤 [STORE] 背景呼叫 API 建立真實列表...')
         const response = await $fetch('/api/lists', {
           method: 'POST',
-          body: { title }
+          body: { title: title.trim() }
         })
         
         console.log('📥 [STORE] API 回應:', response)

@@ -39,7 +39,7 @@
       </div>
 
       <!-- 按鈕區域 - 有任何欄位編輯時都顯示 -->
-      <div v-if="isAnyFieldEditing" class="flex justify-end gap-2">
+      <div class="flex justify-end gap-2">
         <button
           @click="cancelEdit"
           class="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
@@ -88,7 +88,7 @@ const isDescriptionEditing = ref(false)
 const isTitleEditing = ref(false)
 
 // 計算是否有任何欄位正在編輯（決定是否顯示按鈕）
-const isAnyFieldEditing = computed(() => isTitleEditing.value || isDescriptionEditing.value)
+// const isAnyFieldEditing = computed(() => isTitleEditing.value || isDescriptionEditing.value)
 
 // 監聽卡片變化，更新本地狀態
 watch(() => props.card, (newCard) => {

@@ -671,7 +671,6 @@ onMounted(async () => {
   console.log('📱 [MOBILE-BOARD] 組件初始化')
   
   // 🚫 不重複載入資料，由上層 TrelloBoard 負責
-  // await loadBoard() 
   
   // 🎯 只初始化基本手勢系統（長按、contextmenu 等）
   // 列表手勢由 watcher 負責，避免重複初始化
