@@ -394,17 +394,18 @@ const boardStore = useBoardStore()
 
 // 處理卡片狀態更新
 const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
-  console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status })
+  console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status, statusType: typeof status })
   
   // 立即更新本地狀態（樂觀更新）
   boardStore.updateCardStatus(cardId, status)
   
   try {
     // 背景更新到資料庫
-    await $fetch(`/api/cards/${cardId}`, {
+    const response = await $fetch(`/api/cards/${cardId}`, {
       method: 'PUT',
       body: { status }
     })
+    console.log('✅ [LIST-ITEM] 狀態更新成功:', response)
   } catch (error) {
     console.error('❌ 更新卡片狀態失敗:', error)
     // 如果失敗了，重新載入整個 board 以同步狀態
@@ -414,17 +415,18 @@ const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
 
 // 處理卡片優先順序更新
 const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) => {
-  console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority })
+  console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority, priorityType: typeof priority })
   
   // 立即更新本地狀態（樂觀更新）
   boardStore.updateCardPriority(cardId, priority)
   
   try {
     // 背景更新到資料庫
-    await $fetch(`/api/cards/${cardId}`, {
+    const response = await $fetch(`/api/cards/${cardId}`, {
       method: 'PUT',
       body: { priority }
     })
+    console.log('✅ [LIST-ITEM] 優先順序更新成功:', response)
   } catch (error) {
     console.error('❌ 更新卡片優先順序失敗:', error)
     // 如果失敗了，重新載入整個 board 以同步狀態

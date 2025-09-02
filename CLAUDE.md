@@ -135,6 +135,19 @@ yarn build
 - 高內聚 = 相關的東西放一起
 - 低耦合 = 不相關的東西分開住
 
+## 專案文件
+
+### 技術文件
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - 技術架構詳細說明
+  - defineEventHandler vs Event Bus Pattern 的差異
+  - 資料流向和最佳實務
+  - 樂觀更新策略
+  - 錯誤處理指南
+
+### 開發文件
+- **[README.md](./README.md)** - 專案基本說明和快速開始
+- **[CLAUDE.md](./CLAUDE.md)** - 本檔案，開發規範和專案結構
+
 ## 注意事項
 - Do not access boardStore directly from components, use composables instead.
 - 使用繁體中文台灣用語。專有名詞可以用英文，例如，不要使用「克隆」，使用 clone 比較好。
