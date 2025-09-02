@@ -183,7 +183,7 @@ type Card = CardUI
 
 // 🖥️ 桌面版：使用 vue-draggable-next 處理所有拖拽
 const { addList, deleteList: deleteListAction, updateListTitle: updateListTitleAction } = useListActions()
-const { viewData, handleCardMove, handleListMove, loadBoard } = useBoardView()
+const { viewData, handleCardMove, handleListMove } = useBoardView()
 const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction, addCard: addCardAction } = useCardActions()
 
 // 模態框狀態管理

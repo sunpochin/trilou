@@ -69,6 +69,16 @@ Demo: https://trilou.vercel.app/
 - **豐富元資料**：支援描述、到期日和狀態
 - **使用者隔離**：多租戶支援的行級安全性
 
+## 📚 技術文件
+
+完整的技術文件請參考：**[docs/](./docs/)** 資料夾
+
+### 快速導覽
+- **[架構說明](./docs/ARCHITECTURE.md)** - Repository Pattern、Event Bus 等核心概念
+- **[Firefox 相容性](./docs/firefox-compatibility.md)** - 跨瀏覽器寬度計算問題解決方案
+- **[測試指南](./docs/testing.md)** - 測試策略和設定
+- **[AI 整合](./docs/mcp-server-prompt-example.md)** - MCP Server 設定範例
+
 ## 🔧 開發指南
 
 ### 程式碼風格
@@ -77,6 +87,19 @@ Demo: https://trilou.vercel.app/
 - **中文註解**：業務邏輯註解使用中文，便於團隊理解
 - **路徑別名**：使用 `@/` 進行乾淨的匯入
 - **Composition API**：所有元件使用 Vue 3 composition API
+
+### 快速開始
+
+```bash
+# 安裝依賴
+yarn install
+
+# 開發模式
+yarn dev
+
+# 建置專案
+yarn build
+```
 
 ---
 

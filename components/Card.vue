@@ -53,6 +53,8 @@
   - open-modal: 開啟卡片詳細編輯
   - delete: 刪除卡片
   - update-title: 更新卡片標題（inline 編輯）
+  - updateStatus: 更新卡片狀態（Todo/Doing/Done）
+  - updatePriority: 更新卡片優先順序（High/Medium/Low）
   
   ======================== 使用範例 ========================
   在 ListItem.vue 中被這樣使用：
@@ -62,13 +64,45 @@
     :is-mobile="isMobile"
     @open-modal="$emit('open-card-modal', card)"
     @delete="$emit('card-delete', card)"
+    @updateStatus="handleCardStatusUpdate"
+    @updatePriority="handleCardPriorityUpdate"
   />
+
+  ======================== 📱 跨裝置顯示問題解決 ========================
+  
+  🧒 十歲小朋友解釋：為什麼同樣的卡片在不同手機上看起來不一樣？
+  
+  🎨 想像你在不同的紙上畫同一張圖：
+  - 有些紙比較厚，字會看起來粗一點（不同手機的螢幕密度）
+  - 有些筆寫出來的字比較大（不同手機的預設字體）
+  - 有些紙比較小，圖可能會擠在一起（不同螢幕尺寸）
+  
+  💡 解決方法就像準備一個「萬能工具箱」：
+  - 🔧 max-w-full: 告訴卡片「不可以比容器還寬」（像給圖片設邊界）
+  - 📝 break-words: 如果文字太長，就自動換行（像寫字寫到邊緣就換下一行）
+  - 🎯 whitespace-nowrap: 按鈕文字不准換行（保持按鈕整齊）
+  - ✨ font-smoothing: 讓所有手機的字體都變得一樣漂亮（統一字體顯示效果）
+  - 📏 響應式設計: 小螢幕自動使用小一點的字體和按鈕（像衣服有 S/M/L 不同尺寸）
+  
+  🔍 常見問題：
+  - Redmi 10C + Chrome: 顯示正常 ✅
+  - Redmi 10C + Firefox: 卡片太寬 → 用 min-width: 0 和 flex-shrink: 1 修正
+  - Galaxy S53: 顯示正常 → 確保修改不會影響正常顯示
+  - Chrome DevTools: 開發工具正常 → 保持桌面版的相容性
+  
+  🦊 Firefox 特殊處理：
+  - Firefox 對 flexbox 寬度計算比 Chrome 更嚴格
+  - 需要明確告訴 Firefox「這個元素可以收縮」(flex-shrink: 1)
+  - 需要明確告訴 Firefox「最小寬度是 0」(min-width: 0)
+  - 加上 overflow-hidden 防止內容溢出
+  
+  💭 記住：好的設計就像魔術一樣，在任何裝置和任何瀏覽器上都能完美顯示！
 -->
 
 <template>
   <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
   <div 
-    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable focus:outline-none"
+    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable focus:outline-none max-w-full overflow-hidden"
     :class="{ 'card-dragging': dragging }"
     @click="openCardModal"
     tabindex="-1"
@@ -101,7 +135,7 @@
       
       <!-- 卡片標題 - 酷炫的位移效果：未 hover 時佔滿寬度，hover 時往右讓出空間 -->
       <div 
-        class="transition-all duration-200"
+        class="transition-all duration-200 break-words overflow-hidden"
         :class="{ 
           'text-gray-500': isChecked,
           'ml-0 group-hover:ml-6': !isChecked,
@@ -124,14 +158,25 @@
       </div>
       <div v-else></div>
       
-      <!-- 右下角：標籤區域 -->
-      <div class="flex gap-1">
-        <span 
-          class="text-xs px-2 py-1 rounded-sm font-medium"
-          :class="getStatusTagClass(card.status || 'medium')"
+      <!-- 右下角：狀態和優先順序按鈕 -->
+      <div class="flex gap-2 flex-shrink-0">
+        <!-- 狀態按鈕 -->
+        <button
+          @click.stop="toggleStatus"
+          class="text-xs px-2 py-1 rounded-sm font-medium transition-colors whitespace-nowrap"
+          :class="getStatusClass(card.status || CardStatus.TODO)"
         >
-          {{ formatStatus(card.status || 'medium') }}
-        </span>
+          {{ getStatusLabel(card.status || CardStatus.TODO) }}
+        </button>
+        
+        <!-- 優先順序按鈕 -->
+        <button
+          @click.stop="togglePriority"
+          class="flex items-center gap-1 text-xs px-2 py-1 rounded-sm font-medium transition-colors hover:bg-gray-100 whitespace-nowrap"
+        >
+          <span>{{ getPriorityEmoji(card.priority || CardPriority.MEDIUM) }}</span>
+          <span>{{ getPriorityLabel(card.priority || CardPriority.MEDIUM) }}</span>
+        </button>
       </div>
     </div>
     
@@ -170,6 +215,7 @@
 import { ref } from 'vue'
 import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 import type { CardUI } from '@/types'
+import { CardStatus, CardPriority } from '@/types/api'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
@@ -188,6 +234,8 @@ const emit = defineEmits<{
   updateTitle: [cardId: string, newTitle: string]
   dragStart: [card: Card, type: 'card']
   dragEnd: []
+  updateStatus: [cardId: string, status: CardStatus]
+  updatePriority: [cardId: string, priority: CardPriority]
 }>()
 
 
@@ -250,12 +298,125 @@ const deleteCard = () => {
   emit('delete', props.card)
 }
 
+// 狀態標籤樣式
+const getStatusClass = (status: CardStatus) => {
+  switch (status) {
+    case CardStatus.TODO:
+      return 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+    case CardStatus.DOING:
+      return 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+    case CardStatus.DONE:
+      return 'bg-green-100 text-green-700 hover:bg-green-200'
+    default:
+      return 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+  }
+}
+
+// 狀態標籤文字
+const getStatusLabel = (status: CardStatus) => {
+  switch (status) {
+    case CardStatus.TODO:
+      return 'Todo'
+    case CardStatus.DOING:
+      return 'Doing'
+    case CardStatus.DONE:
+      return 'Done'
+    default:
+      return 'Todo'
+  }
+}
+
+// 優先順序 emoji
+const getPriorityEmoji = (priority: CardPriority) => {
+  switch (priority) {
+    case CardPriority.HIGH:
+      return '🔴'
+    case CardPriority.MEDIUM:
+      return '🟡'
+    case CardPriority.LOW:
+      return '🟢'
+    default:
+      return '🟡'
+  }
+}
+
+// 優先順序標籤
+const getPriorityLabel = (priority: CardPriority) => {
+  switch (priority) {
+    case CardPriority.HIGH:
+      return 'High'
+    case CardPriority.MEDIUM:
+      return 'Medium'
+    case CardPriority.LOW:
+      return 'Low'
+    default:
+      return 'Medium'
+  }
+}
+
+// 切換狀態（循環：Todo → Doing → Done → Todo）
+const toggleStatus = () => {
+  const currentStatus = props.card.status || CardStatus.TODO
+  let newStatus: CardStatus
+  
+  switch (currentStatus) {
+    case CardStatus.TODO:
+      newStatus = CardStatus.DOING
+      break
+    case CardStatus.DOING:
+      newStatus = CardStatus.DONE
+      break
+    case CardStatus.DONE:
+      newStatus = CardStatus.TODO
+      break
+    default:
+      newStatus = CardStatus.TODO
+  }
+  
+  emit('updateStatus', props.card.id, newStatus)
+}
+
+// 切換優先順序（循環：High → Medium → Low → High）
+const togglePriority = () => {
+  const currentPriority = props.card.priority || CardPriority.MEDIUM
+  let newPriority: CardPriority
+  
+  switch (currentPriority) {
+    case CardPriority.HIGH:
+      newPriority = CardPriority.MEDIUM
+      break
+    case CardPriority.MEDIUM:
+      newPriority = CardPriority.LOW
+      break
+    case CardPriority.LOW:
+      newPriority = CardPriority.HIGH
+      break
+    default:
+      newPriority = CardPriority.MEDIUM
+  }
+  
+  emit('updatePriority', props.card.id, newPriority)
+}
+
 </script>
 
 <style scoped>
 /* 🎯 防止卡片出現藍色外框 - 解決拖拽後的 focus 問題 */
 .card-draggable {
   outline: none !important;
+  /* 確保卡片不會超出容器寬度 */
+  box-sizing: border-box;
+  word-wrap: break-word;
+  /* 針對不同裝置的字體渲染一致性 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* 🦊 Firefox 專用修正：強制容器寬度限制 */
+  min-width: 0;
+  flex-shrink: 1;
+  /* 🦊 Firefox 對 flexbox 計算方式不同，需要明確指定 */
+  width: 100%;
+  max-width: 100%;
 }
 
 .card-draggable:focus {
@@ -282,4 +443,59 @@ const deleteCard = () => {
 .card-draggable[data-sortable] {
   outline: none !important;
 }
+
+/* 
+🎯 針對不同裝置的響應式字體調整 
+🧒 十歲小朋友解釋：就像衣服有不同尺寸，網頁在小螢幕上也要用小一點的字體和按鈕
+*/
+@media screen and (max-width: 768px) {
+  .card-draggable {
+    font-size: 14px;        /* 📱 手機用稍微小一點的字體 */
+    min-width: 0;           /* 🔧 允許卡片收縮到最小寬度 */
+    width: 100%;            /* 📏 確保卡片佔滿容器寬度 */
+  }
+  
+  /* 🔘 確保按鈕在小螢幕上不會太擠 */
+  .card-draggable button {
+    font-size: 11px;        /* 📱 按鈕文字更小一點 */
+    padding: 4px 8px;       /* 📏 按鈕內距縮小，避免擠在一起 */
+  }
+}
+
+/* 🦊 Firefox 專用強制性修正 - 針對 Redmi 10C 的寬度問題 */
+@-moz-document url-prefix() {
+  .card-draggable {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+  
+  .card-draggable * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/*
+🎨 跨裝置和跨瀏覽器相容性說明：
+- 這些樣式確保卡片在 Redmi 10C、Galaxy S53、iPhone 等不同裝置上都能正常顯示
+- font-smoothing 讓字體在不同 Android 版本上看起來一致
+- break-words 防止長文字撐破卡片
+- 響應式設計讓小螢幕自動調整元素大小
+
+🦊 Firefox vs 🌟 Chrome 差異處理：
+- Firefox 對 flexbox 的寬度計算更嚴格，需要明確設定 min-width: 0
+- Chrome 比較寬鬆，會自動處理容器溢出問題
+- 加上 overflow-hidden 確保兩個瀏覽器都能正確裁切內容
+- flex-shrink: 1 讓 Firefox 知道這個元素可以收縮
+- @-moz-document 是 Firefox 專用的強制性修正，確保在 Redmi 10C 上正常顯示
+
+🧒 十歲小朋友解釋：
+就像不同品牌的尺子可能有細微差異，Firefox 和 Chrome 測量寬度的方式也稍微不同
+我們要給兩種尺子都能理解的明確指示！
+現在還加上了「Firefox 專用說明書」，確保它一定聽得懂！
+*/
 </style>

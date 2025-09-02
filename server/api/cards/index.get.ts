@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
         position,
         list_id,
         status,
+        priority,
         lists!inner(user_id)
       `)
       .eq('lists.user_id', user.id)

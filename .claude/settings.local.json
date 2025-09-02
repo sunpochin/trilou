@@ -33,7 +33,9 @@
       "Bash(open \"http://localhost:3000\")",
       "Bash(open \"http://localhost:3001\")",
       "Bash(echo:*)",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(node:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "defaultMode": "acceptEdits"
   }

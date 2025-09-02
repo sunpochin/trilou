@@ -115,10 +115,10 @@ export const useBoardStore = defineStore('board', {
           // 🎯 確保每個列表的卡片都按 position 排序
           Object.keys(cardsByListId).forEach(listId => {
             cardsByListId[listId].sort((a, b) => (a.position || 0) - (b.position || 0))
-            console.log(`📝 [STORE] 列表 ${listId} 的卡片排序:`)
-            cardsByListId[listId].forEach((card, index) => {
-              console.log(`  ${index}: "${card.title}" (position: ${card.position})`)
-            })
+            // console.log(`📝 [STORE] 列表 ${listId} 的卡片排序:`)
+            // cardsByListId[listId].forEach((card, index) => {
+            //   console.log(`  ${index}: "${card.title}" (position: ${card.position})`)
+            // })
           })
         }
 
@@ -137,10 +137,10 @@ export const useBoardStore = defineStore('board', {
           // 雖然 Repository 已經排序，但為了絕對確保一致性，我們再次排序
           this.board.lists = listsWithCards.sort((a, b) => (a.position || 0) - (b.position || 0))
           
-          console.log('📋 [STORE] 列表已按 position 排序:')
-          this.board.lists.forEach((list, index) => {
-            console.log(`  ${index}: "${list.title}" (position: ${list.position})`)
-          })
+          // console.log('📋 [STORE] 列表已按 position 排序:')
+          // this.board.lists.forEach((list, index) => {
+          //   console.log(`  ${index}: "${list.title}" (position: ${list.position})`)
+          // })
           
           // 統計載入的資料
           const listsCount = this.board.lists.length
@@ -516,6 +516,32 @@ export const useBoardStore = defineStore('board', {
         if (card) {
           card.description = newDescription
           break // 找到後立即停止搜尋
+        }
+      }
+    },
+
+    // 更新指定卡片的狀態（status）
+    // 只更新本地狀態，不觸發整個 board 重新載入
+    updateCardStatus(cardId: string, newStatus: string) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          card.status = newStatus
+          console.log(`📝 [STORE] 更新卡片狀態: ${cardId} -> ${newStatus}`)
+          break
+        }
+      }
+    },
+
+    // 更新指定卡片的優先順序（priority）
+    // 只更新本地狀態，不觸發整個 board 重新載入
+    updateCardPriority(cardId: string, newPriority: string) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          card.priority = newPriority
+          console.log(`📝 [STORE] 更新卡片優先順序: ${cardId} -> ${newPriority}`)
+          break
         }
       }
     },
