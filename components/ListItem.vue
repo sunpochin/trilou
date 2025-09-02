@@ -278,11 +278,22 @@ import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 // 🎯 純渲染組件：不直接使用 composables
 import { ref, nextTick, computed } from 'vue'
-import { useBoardStore } from '@/stores/boardStore'
+import { useCardActions } from '@/composables/useCardActions'
 
 // 使用統一的型別定義
-import type { ListUI } from '@/types'
+import type { ListUI, CardUI } from '@/types'
 type List = ListUI
+
+// 拖拽事件型別定義
+interface DragEvent {
+  moved?: { element: CardUI }
+  removed?: { element: CardUI }
+}
+
+interface DragItem {
+  id: string
+  [key: string]: unknown
+}
 
 // 🎯 純渲染組件：接收父組件傳入的資料和狀態
 const props = defineProps<{
@@ -294,11 +305,11 @@ const props = defineProps<{
 
 // 🎯 純渲染組件：定義事件 (父組件處理邏輯)
 const emit = defineEmits<{
-  'card-move': [event: any]
-  'open-card-modal': [card: any]
-  'drag-start': [item: any, type: 'card' | 'list']
+  'card-move': [event: DragEvent]
+  'open-card-modal': [card: CardUI]
+  'drag-start': [item: DragItem, type: 'card' | 'list']
   'drag-end': []
-  'card-delete': [card: any]
+  'card-delete': [card: CardUI]
   'card-update-title': [cardId: string, newTitle: string]
   'card-updated': []
   'list-add-card': [listId: string, title: string]
@@ -389,25 +400,18 @@ const handleAiGenerate = () => {
   emit('ai-generate', props.list.id)
 }
 
-// 取得 boardStore 實例
-const boardStore = useBoardStore()
+// 🎯 使用 Composable 處理卡片操作，遵循依賴反轉原則
+const { updateCardStatus, updateCardPriority } = useCardActions()
 
 // 處理卡片狀態更新
 const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
   console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status, statusType: typeof status })
   
-  // 立即更新本地狀態（樂觀更新）
-  boardStore.updateCardStatus(cardId, status)
-  
   try {
-    // 背景更新到資料庫
-    const response = await $fetch(`/api/cards/${cardId}`, {
-      method: 'PUT',
-      body: { status }
-    })
-    console.log('✅ [LIST-ITEM] 狀態更新成功:', response)
+    await updateCardStatus(cardId, status)
+    console.log('✅ [LIST-ITEM] 狀態更新成功')
   } catch (error) {
-    console.error('❌ 更新卡片狀態失敗:', error)
+    console.error('❌ [LIST-ITEM] 更新卡片狀態失敗:', error)
     // 如果失敗了，重新載入整個 board 以同步狀態
     emit('card-updated')
   }
@@ -417,18 +421,11 @@ const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
 const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) => {
   console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority, priorityType: typeof priority })
   
-  // 立即更新本地狀態（樂觀更新）
-  boardStore.updateCardPriority(cardId, priority)
-  
   try {
-    // 背景更新到資料庫
-    const response = await $fetch(`/api/cards/${cardId}`, {
-      method: 'PUT',
-      body: { priority }
-    })
-    console.log('✅ [LIST-ITEM] 優先順序更新成功:', response)
+    await updateCardPriority(cardId, priority)
+    console.log('✅ [LIST-ITEM] 優先順序更新成功')
   } catch (error) {
-    console.error('❌ 更新卡片優先順序失敗:', error)
+    console.error('❌ [LIST-ITEM] 更新優先順序失敗:', error)
     // 如果失敗了，重新載入整個 board 以同步狀態
     emit('card-updated')
   }
