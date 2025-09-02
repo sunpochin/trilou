@@ -13,7 +13,8 @@
   <!-- 手機版看板容器 -->
   <div 
     ref="boardContainerRef"
-    class="block overflow-y-auto mobile-container gap-4 p-4 h-[85vh] bg-gray-100 font-sans"
+    style="margin: 0; padding: 0; width: 100vw; box-sizing: border-box; position: relative;"
+    class="block overflow-y-auto mobile-container gap-4 h-[85vh] bg-gray-100 font-sans"
     @contextmenu.prevent
     @selectstart.prevent
   >
@@ -32,9 +33,10 @@
 
     <!-- 載入完成：顯示實際看板內容 -->
     <template v-else>
+      <!-- 🎯 簡化後移除 Debug 資訊 -->
       <!-- 📱 手機版列表容器 - 支援彈性滾動 -->
       <div 
-        class="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory" 
+        class="flex overflow-x-auto scroll-smooth snap-x snap-mandatory mobile-lists-container gap-2 p-1" 
         ref="mobileListsContainer"
         style="scroll-snap-type: x mandatory;"
       >
@@ -57,11 +59,15 @@
           @list-update-title="onListUpdateTitle"
           @ai-generate="onAiGenerate"
           class="mobile-list-item snap-center"
+style="width: calc(100vw - 2rem); max-width: 400px;"
         />
       </div>
 
       <!-- 新增列表區域 - 手機版全寬度 -->
-      <div class="w-[calc(100vw-3rem)] mx-6 max-w-none p-2 flex-shrink-0">
+      <div 
+        class="mx-2 p-2 flex-shrink-0 mobile-add-list-item"
+style="width: calc(100vw - 2rem); max-width: 420px;"
+      >
         <!-- 顯示按鈕模式 -->
         <Transition name="fade" mode="out-in">
           <div 
@@ -158,6 +164,9 @@ const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction, ad
 // 看板容器的 DOM 引用
 const boardContainerRef = ref<HTMLElement | null>(null)
 const mobileListsContainer = ref<HTMLElement | null>(null)
+
+// 🎯 簡化方案：移除複雜的字體縮放和瀏覽器偵測
+// 接受合理限制，提供穩定的使用者體驗
 
 // 拖拽狀態管理
 const draggingState = ref({
@@ -263,138 +272,46 @@ const setupMobileGestures = () => {
   console.log('📱 [MOBILE-BOARD] 手勢系統已初始化')
 }
 
-/**
- * 🎮 手機版列表智慧對齊函式 - Trello 風格的彈性滾動
- * 
- * 📖 十歲小朋友也能懂的解釋：
- * 想像你有一排書架（列表），每個書架都一樣寬。
- * 當你用手指滑動看不同書架時，手指離開後：
- * - 系統會自動幫你「對齊」到最近的那個書架中間
- * - 就像磁鐵一樣，會吸到最近的書架！
- * - 這樣你就不會看到「半個書架」，總是看到完整的書架
- * 
- * 🔬 技術原理（程式設計師版本）：
- * 1. 【測量階段】計算每個列表的寬度和位置
- * 2. 【分析階段】找出螢幕中心最接近哪個列表的中心
- * 3. 【動作階段】使用 scrollTo() 平滑滑動到目標位置
- * 4. 【回饋階段】提供震動回饋讓使用者知道已對齊
- * 
- * 🎯 核心算法：
- * - screenCenter = currentScroll + containerWidth / 2  (螢幕中心位置)
- * - targetScroll = listIndex * listWidth + (listWidth - containerWidth) / 2  (目標滑動位置)
- * - 使用歐幾里得距離找最近的列表：Math.abs(listCenter - screenCenter)
- */
+// 🎯 手機版列表智慧對齊 - 滑動後自動對齊到最近的列表中心
 const handleMobileListSnapBack = () => {
   if (!mobileListsContainer.value || isListSnapping.value) return
   
   isListSnapping.value = true
   const container = mobileListsContainer.value
   
-  // 🔍 尋找第一個列表元素（使用正確的選擇器）
+  // 取得第一個列表元素計算寬度
   const firstList = container.querySelector('.mobile-list-item') as HTMLElement
-  console.log('🔍 [尋找列表] 第一個列表元素:', firstList)
+  const listWidth = firstList ? firstList.offsetWidth + 16 : 320
   
-  // 🔍 如果找不到，嘗試其他可能的選擇器
-  const actualList = firstList || container.querySelector('.bg-gray-200, [data-list-id]') as HTMLElement
-  if (!firstList && actualList) {
-    console.log('🔍 [備用尋找] 使用備用選擇器找到:', actualList)
-  }
+  // 計算滾動位置
   
-  // 📏 計算列表寬度（如果找不到就估算）
-  const listWidth = actualList ? actualList.offsetWidth + 16 : 320 // 實際寬度 + gap 或預設 320px
-  
-  // 📊 詳細寬度資訊
-  console.log('📏 [寬度計算]', {
-    找到的元素: !!actualList,
-    元素寬度: actualList?.offsetWidth,
-    gap間距: 16,
-    最終寬度: listWidth
-  })
-  
-  console.log('🎯 [MOBILE-GESTURE] 列表彈性滾動開始 (基於當前位置)')
-  console.log('🔍 [DEBUG] 容器檢查:', {
-    hasContainer: !!container,
-    containerWidth: container.clientWidth,
-    containerScrollWidth: container.scrollWidth,
-    foundFirstList: !!firstList,
-    firstListWidth: firstList?.offsetWidth,
-    calculatedListWidth: listWidth
-  })
-  
-  // 🧒 真正的 Trello 邏輯：檢查當前滾動位置
+  // 找出最接近螢幕中心的列表
   const currentScroll = container.scrollLeft
   const containerWidth = container.clientWidth
-  
-  // 🎯 步驟1：計算每個列表的邊界位置
-  const listPositions = viewData.value.lists.map((_, index) => ({
-    index,
-    startX: index * listWidth,
-    centerX: index * listWidth + listWidth / 2,
-    endX: (index + 1) * listWidth
-  }))
-  
-  // 🎯 步驟2：找出最接近螢幕中心的列表
   const screenCenter = currentScroll + containerWidth / 2
+  
   let closestListIndex = 0
   let minDistance = Infinity
   
-  listPositions.forEach(pos => {
-    const distance = Math.abs(pos.centerX - screenCenter)
+  viewData.value.lists.forEach((_, index) => {
+    const listCenterX = index * listWidth + listWidth / 2
+    const distance = Math.abs(listCenterX - screenCenter)
     if (distance < minDistance) {
       minDistance = distance
-      closestListIndex = pos.index
+      closestListIndex = index
     }
   })
   
-  console.log('🧒 [真正邏輯] 位置判斷:', {
-    '當前滾動位置': currentScroll,
-    '螢幕中心在': screenCenter,
-    '最近的列表': closestListIndex,
-    '列表中心位置': listPositions[closestListIndex]?.centerX,
-    '距離': minDistance
-  })
+  // 計算目標滾動位置
+  const targetScroll = closestListIndex * listWidth + (listWidth - containerWidth) / 2
   
-  // 🎯 步驟3：目標就是最近的列表
-  const targetListIndex = closestListIndex
-  
-  // 🎯 步驟4：讓列表置中 - 像拼圖對齊格子中間
-  const targetScroll = targetListIndex * listWidth + (listWidth - containerWidth) / 2
-  
-  // 🔍 滾動前詳細檢查
-  console.log('🔍 [DEBUG] 滾動前狀態檢查:', {
-    containerScrollLeft: container.scrollLeft,
-    containerOffsetWidth: container.offsetWidth,
-    containerScrollWidth: container.scrollWidth,
-    listCount: viewData.value.lists.length,
-    targetScroll: targetScroll,
-    targetListIndex: targetListIndex,
-    canScroll: container.scrollWidth > container.clientWidth
-  })
-
-  // 🎊 超順滑的 Trello 風格滾動
-  console.log('📜 [SCROLL] 開始滾動到位置:', targetScroll)
+  // 滾動到目標位置
   container.scrollTo({
     left: targetScroll,
     behavior: 'smooth'
   })
   
-  // 🔍 滾動後立即檢查（可能不會馬上變化，因為是 smooth 滾動）
-  setTimeout(() => {
-    console.log('📜 [SCROLL] 滾動後狀態:', {
-      newScrollLeft: container.scrollLeft,
-      expectedScroll: targetScroll,
-      scrollSuccess: Math.abs(container.scrollLeft - targetScroll) < 10
-    })
-  }, 100)
-  
-  // 🎉 添加視覺回饋與震動回饋
-  console.log('🎯 [MOBILE-GESTURE] 列表跳轉詳情:')
-  console.log('  📊 目標列表:', targetListIndex)
-  console.log('  🎯 目標滾動位置:', targetScroll)
-  console.log('  📐 當前滾動位置:', currentScroll)
-  console.log('  📏 將滑動:', Math.abs(targetScroll - currentScroll), '像素')
-  
-  // 如果有明顯滑動，添加震動回饋
+  // 震動回饋
   if (Math.abs(targetScroll - currentScroll) > 10 && navigator.vibrate) {
     navigator.vibrate(30)
   }
@@ -450,7 +367,7 @@ const setupAdvancedGestures = () => {
     
     onDrag: ({ movement, velocity }) => {
       const [mx, my] = movement as [number, number]
-      const [vx] = (velocity as [number, number] | undefined) || [0, 0]
+      const vx = (Array.isArray(velocity) ? velocity[0] : 0) ?? 0
       
       // 卡片拖拽模式
       if (cardLongPressMode.value) {
@@ -545,14 +462,7 @@ const onCardMove = async (event: any) => {
   }
 }
 
-/**
- * 🎯 超強樂觀更新系統 - 既快又安全！
- * 
- * 🧒 十歲小朋友解釋：
- * - 🚀 快：你一按按鈕，畫面立刻變化（不用等網路）
- * - 🛡️ 安全：如果網路有問題，會恢復原狀並告訴你
- * - 💡 聰明：不同操作用不同策略，給你最好的體驗
- */
+// 🎯 樂觀更新系統 - 立即更新 UI，失敗時回滾
 
 // 🗑️ 卡片刪除 - 需要確認的重要操作
 const onCardDelete = async (card: Card) => {
@@ -715,6 +625,8 @@ onMounted(async () => {
   
   // 🚫 不重複載入資料，由上層 TrelloBoard 負責
   
+  // 🎯 簡化初始化：移除字體偵測
+  
   // 🎯 只初始化基本手勢系統（長按、contextmenu 等）
   // 列表手勢由 watcher 負責，避免重複初始化
   setupAdvancedGestures()
@@ -775,12 +687,16 @@ onUnmounted(() => {
 }
 
 .mobile-list-item {
-  width: calc(100vw - 6rem); /* 手機版每個列表佔滿寬度，留更多邊距 */
-  min-width: 280px; /* 最小寬度保證 */
-  max-width: 400px; /* 最大寬度限制 */
+  /* 🎯 簡化 CSS 寬度計算，支援到「大一級」字體 */
+  width: calc(100vw - 2rem);
+  min-width: 280px; /* 確保小螢幕可讀性 */
+  max-width: 380px; /* 限制最大寬度，支援到「大一級」字體 */
   flex-shrink: 0;
-  scroll-snap-align: center; /* CSS scroll-snap 對齊 */
+  scroll-snap-align: center;
+  box-sizing: border-box;
 }
+
+/* 🎯 使用者友善提示：建議使用「標準」或「大一級」字體大小以獲得最佳體驗 */
 
 /* 📱 手機版卡片拖拽樣式 - 簡化版 */
 

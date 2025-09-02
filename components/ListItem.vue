@@ -210,7 +210,7 @@
         :chosen-class="props.isMobile ? 'mobile-chosen' : 'desktop-chosen'"
         @change="$emit('card-move', $event)"
       >
-        <div v-for="card in list.cards" :key="card.id">
+        <div v-for="card in list.cards" :key="card.id" class="w-full min-w-0">
           <Card 
             :card="card" 
             :dragging="dragging"

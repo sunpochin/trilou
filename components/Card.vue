@@ -85,17 +85,24 @@
   - 📏 響應式設計: 小螢幕自動使用小一點的字體和按鈕（像衣服有 S/M/L 不同尺寸）
   
   🔍 常見問題：
-  - Redmi 10C: 卡片太寬 → 用 max-w-full 和 break-words 修正
+  - Redmi 10C + Chrome: 顯示正常 ✅
+  - Redmi 10C + Firefox: 卡片太寬 → 用 min-width: 0 和 flex-shrink: 1 修正
   - Galaxy S53: 顯示正常 → 確保修改不會影響正常顯示
   - Chrome DevTools: 開發工具正常 → 保持桌面版的相容性
   
-  💭 記住：好的設計就像魔術一樣，在任何裝置上都能完美顯示！
+  🦊 Firefox 特殊處理：
+  - Firefox 對 flexbox 寬度計算比 Chrome 更嚴格
+  - 需要明確告訴 Firefox「這個元素可以收縮」(flex-shrink: 1)
+  - 需要明確告訴 Firefox「最小寬度是 0」(min-width: 0)
+  - 加上 overflow-hidden 防止內容溢出
+  
+  💭 記住：好的設計就像魔術一樣，在任何裝置和任何瀏覽器上都能完美顯示！
 -->
 
 <template>
   <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
   <div 
-    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable focus:outline-none max-w-full"
+    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable focus:outline-none max-w-full overflow-hidden"
     :class="{ 'card-dragging': dragging }"
     @click="openCardModal"
     tabindex="-1"
@@ -403,6 +410,13 @@ const togglePriority = () => {
   /* 針對不同裝置的字體渲染一致性 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  /* 🦊 Firefox 專用修正：強制容器寬度限制 */
+  min-width: 0;
+  flex-shrink: 1;
+  /* 🦊 Firefox 對 flexbox 計算方式不同，需要明確指定 */
+  width: 100%;
+  max-width: 100%;
 }
 
 .card-draggable:focus {
@@ -448,11 +462,40 @@ const togglePriority = () => {
   }
 }
 
+/* 🦊 Firefox 專用強制性修正 - 針對 Redmi 10C 的寬度問題 */
+@-moz-document url-prefix() {
+  .card-draggable {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+  
+  .card-draggable * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
 /*
-🎨 跨裝置相容性說明：
+🎨 跨裝置和跨瀏覽器相容性說明：
 - 這些樣式確保卡片在 Redmi 10C、Galaxy S53、iPhone 等不同裝置上都能正常顯示
 - font-smoothing 讓字體在不同 Android 版本上看起來一致
 - break-words 防止長文字撐破卡片
 - 響應式設計讓小螢幕自動調整元素大小
+
+🦊 Firefox vs 🌟 Chrome 差異處理：
+- Firefox 對 flexbox 的寬度計算更嚴格，需要明確設定 min-width: 0
+- Chrome 比較寬鬆，會自動處理容器溢出問題
+- 加上 overflow-hidden 確保兩個瀏覽器都能正確裁切內容
+- flex-shrink: 1 讓 Firefox 知道這個元素可以收縮
+- @-moz-document 是 Firefox 專用的強制性修正，確保在 Redmi 10C 上正常顯示
+
+🧒 十歲小朋友解釋：
+就像不同品牌的尺子可能有細微差異，Firefox 和 Chrome 測量寬度的方式也稍微不同
+我們要給兩種尺子都能理解的明確指示！
+現在還加上了「Firefox 專用說明書」，確保它一定聽得懂！
 */
 </style>

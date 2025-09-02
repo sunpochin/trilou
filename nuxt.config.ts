@@ -2,6 +2,17 @@
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineNuxtConfig({
+  app: {
+    head: {
+      meta: [
+        { charset: 'utf-8' },
+        { 
+          name: 'viewport', 
+          content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover' 
+        }
+      ]
+    }
+  },
   devServer: {
     host: '0.0.0.0', // 讓外部可連進來
     port: 3000,
