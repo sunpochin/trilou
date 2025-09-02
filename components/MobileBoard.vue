@@ -156,6 +156,17 @@ import { eventBus } from '@/events/EventBus'
 // 使用統一的卡片型別定義
 type Card = CardUI
 
+// 拖拽事件型別定義
+interface DragEvent {
+  moved?: { element: Card }
+  removed?: { element: Card }
+}
+
+interface DragItem {
+  id: string
+  [key: string]: unknown
+}
+
 // 📱 手機版：使用 composables
 const { addList, deleteList: deleteListAction, updateListTitle: updateListTitleAction } = useListActions()
 const { viewData, handleCardMove } = useBoardView()
@@ -171,7 +182,7 @@ const mobileListsContainer = ref<HTMLElement | null>(null)
 // 拖拽狀態管理
 const draggingState = ref({
   isDragging: false,
-  draggedItem: null as any,
+  draggedItem: null as DragItem | null,
   dragType: null as 'card' | 'list' | null
 })
 
@@ -411,7 +422,7 @@ const setupAdvancedGestures = () => {
 }
 
 // 拖拽事件處理
-const onDragStart = (item: any, type: 'card' | 'list') => {
+const onDragStart = (item: DragItem, type: 'card' | 'list') => {
   console.log('📱 [MOBILE-BOARD] 拖拽開始:', { item, type })
   draggingState.value.isDragging = true
   draggingState.value.draggedItem = item
@@ -426,14 +437,14 @@ const onDragEnd = () => {
 }
 
 // 處理卡片拖拽移動事件
-const onCardMove = async (event: any) => {
+const onCardMove = async (event: DragEvent) => {
   console.log('📱 [MOBILE-BOARD] Card move event:', event)
   
   if (event.moved) {
     const { element: card } = event.moved
     let currentListId = null
     for (const list of viewData.value.lists) {
-      if (list.cards.find((c: any) => c.id === card.id)) {
+      if (list.cards.find(c => c.id === card.id)) {
         currentListId = list.id
         break
       }
@@ -449,7 +460,7 @@ const onCardMove = async (event: any) => {
     const { element: card } = event.removed
     let targetListId = null
     for (const list of viewData.value.lists) {
-      if (list.cards.find((c: any) => c.id === card.id)) {
+      if (list.cards.find(c => c.id === card.id)) {
         targetListId = list.id
         break
       }

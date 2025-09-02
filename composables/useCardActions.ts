@@ -12,6 +12,7 @@ import { useBoardStore } from '@/stores/boardStore'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { MESSAGES } from '@/constants/messages'
 import type { CardUI } from '@/types'
+import { CardStatus, CardPriority } from '@/types/api'
 import { eventBus } from '@/events/EventBus'
 
 export const useCardActions = () => {
@@ -193,10 +194,86 @@ export const useCardActions = () => {
     }
   }
 
+  /**
+   * 🔄 更新卡片狀態
+   * 
+   * 提供樂觀更新與錯誤處理，遵循依賴反轉原則
+   * 
+   * @param cardId 卡片 ID
+   * @param status 新狀態
+   * @returns Promise<void>
+   */
+  const updateCardStatus = async (cardId: string, status: CardStatus) => {
+    console.log('🔄 [CARD-ACTION] 更新卡片狀態:', { cardId, status })
+    
+    try {
+      // 樂觀更新本地狀態
+      boardStore.updateCardStatus(cardId, status)
+      
+      // 背景同步到資料庫
+      await $fetch(`/api/cards/${cardId}`, {
+        method: 'PUT',
+        body: { status }
+      })
+      
+      console.log('✅ [CARD-ACTION] 狀態更新成功')
+    } catch (error) {
+      console.error('❌ [CARD-ACTION] 更新狀態失敗:', error)
+      
+      // 顯示錯誤通知
+      eventBus.emit('notification:error', {
+        title: '狀態更新失敗',
+        message: '無法更新卡片狀態，請稍後再試',
+        duration: 5000
+      })
+      
+      throw error
+    }
+  }
+
+  /**
+   * ⭐ 更新卡片優先順序
+   * 
+   * 提供樂觀更新與錯誤處理，遵循依賴反轉原則
+   * 
+   * @param cardId 卡片 ID
+   * @param priority 新優先順序
+   * @returns Promise<void>
+   */
+  const updateCardPriority = async (cardId: string, priority: CardPriority) => {
+    console.log('⭐ [CARD-ACTION] 更新卡片優先順序:', { cardId, priority })
+    
+    try {
+      // 樂觀更新本地狀態
+      boardStore.updateCardPriority(cardId, priority)
+      
+      // 背景同步到資料庫
+      await $fetch(`/api/cards/${cardId}`, {
+        method: 'PUT',
+        body: { priority }
+      })
+      
+      console.log('✅ [CARD-ACTION] 優先順序更新成功')
+    } catch (error) {
+      console.error('❌ [CARD-ACTION] 更新優先順序失敗:', error)
+      
+      // 顯示錯誤通知
+      eventBus.emit('notification:error', {
+        title: '優先順序更新失敗',
+        message: '無法更新卡片優先順序，請稍後再試',
+        duration: 5000
+      })
+      
+      throw error
+    }
+  }
+
   return {
     deleteCard,
     updateCardTitle,
     updateCardDescription,
+    updateCardStatus,
+    updateCardPriority,
     addCard
   }
 }
