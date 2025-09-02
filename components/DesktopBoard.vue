@@ -53,6 +53,7 @@
           @open-card-modal="openCardModal"
           @card-delete="onCardDelete"
           @card-update-title="onCardUpdateTitle"
+          @card-updated="loadBoard"
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
           @list-update-title="onListUpdateTitle"

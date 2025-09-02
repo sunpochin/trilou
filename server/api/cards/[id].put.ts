@@ -24,7 +24,8 @@
  * - position: 排序位置
  * - list_id: 所屬列表（可跨列表移動）
  * - due_date: 到期日
- * - status: AI 任務狀態
+ * - status: 卡片狀態（todo/doing/done）
+ * - priority: 優先順序（high/medium/low）
  * 
  * 📊 回應格式：
  * - 成功：200 + 更新後的完整卡片資料
@@ -83,7 +84,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 驗證至少有一個欄位要更新
-    if (!body.title && !body.description && typeof body.position !== 'number' && !body.list_id && !body.due_date && !body.status) {
+    if (!body.title && !body.description && typeof body.position !== 'number' && !body.list_id && !body.due_date && !body.status && !body.priority) {
       throw createError({
         statusCode: 400,
         message: '至少需要提供一個要更新的欄位'
@@ -168,6 +169,7 @@ export default defineEventHandler(async (event) => {
     if (body.list_id) updateData.list_id = body.list_id
     if (body.due_date !== undefined) updateData.due_date = body.due_date
     if (body.status !== undefined) updateData.status = body.status  // 支援更新 AI 任務狀態
+    if (body.priority !== undefined) updateData.priority = body.priority  // 支援更新優先順序
 
     console.log('📝 [API] 準備更新的資料:', JSON.stringify(updateData, null, 2))
 

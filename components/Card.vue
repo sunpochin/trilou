@@ -124,14 +124,25 @@
       </div>
       <div v-else></div>
       
-      <!-- 右下角：標籤區域 -->
-      <div class="flex gap-1">
-        <span 
-          class="text-xs px-2 py-1 rounded-sm font-medium"
-          :class="getStatusTagClass(card.status || 'medium')"
+      <!-- 右下角：狀態和優先順序按鈕 -->
+      <div class="flex gap-2">
+        <!-- 狀態按鈕 -->
+        <button
+          @click.stop="toggleStatus"
+          class="text-xs px-2 py-1 rounded-sm font-medium transition-colors"
+          :class="getStatusClass(card.status || CardStatus.TODO)"
         >
-          {{ formatStatus(card.status || 'medium') }}
-        </span>
+          {{ getStatusLabel(card.status || CardStatus.TODO) }}
+        </button>
+        
+        <!-- 優先順序按鈕 -->
+        <button
+          @click.stop="togglePriority"
+          class="flex items-center gap-1 text-xs px-2 py-1 rounded-sm font-medium transition-colors hover:bg-gray-100"
+        >
+          <span>{{ getPriorityEmoji(card.priority || CardPriority.MEDIUM) }}</span>
+          <span>{{ getPriorityLabel(card.priority || CardPriority.MEDIUM) }}</span>
+        </button>
       </div>
     </div>
     
@@ -170,6 +181,7 @@
 import { ref } from 'vue'
 import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 import type { CardUI } from '@/types'
+import { CardStatus, CardPriority } from '@/types/api'
 
 // 使用統一的卡片型別定義
 type Card = CardUI
@@ -188,6 +200,8 @@ const emit = defineEmits<{
   updateTitle: [cardId: string, newTitle: string]
   dragStart: [card: Card, type: 'card']
   dragEnd: []
+  updateStatus: [cardId: string, status: CardStatus]
+  updatePriority: [cardId: string, priority: CardPriority]
 }>()
 
 
@@ -248,6 +262,106 @@ const openCardModal = () => {
 const deleteCard = () => {
   console.log('🗑️ [PURE-CARD] 刪除事件，委派給父組件:', props.card.title)
   emit('delete', props.card)
+}
+
+// 狀態標籤樣式
+const getStatusClass = (status: CardStatus) => {
+  switch (status) {
+    case CardStatus.TODO:
+      return 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+    case CardStatus.DOING:
+      return 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+    case CardStatus.DONE:
+      return 'bg-green-100 text-green-700 hover:bg-green-200'
+    default:
+      return 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+  }
+}
+
+// 狀態標籤文字
+const getStatusLabel = (status: CardStatus) => {
+  switch (status) {
+    case CardStatus.TODO:
+      return 'Todo'
+    case CardStatus.DOING:
+      return 'Doing'
+    case CardStatus.DONE:
+      return 'Done'
+    default:
+      return 'Todo'
+  }
+}
+
+// 優先順序 emoji
+const getPriorityEmoji = (priority: CardPriority) => {
+  switch (priority) {
+    case CardPriority.HIGH:
+      return '🔴'
+    case CardPriority.MEDIUM:
+      return '🟡'
+    case CardPriority.LOW:
+      return '🟢'
+    default:
+      return '🟡'
+  }
+}
+
+// 優先順序標籤
+const getPriorityLabel = (priority: CardPriority) => {
+  switch (priority) {
+    case CardPriority.HIGH:
+      return 'High'
+    case CardPriority.MEDIUM:
+      return 'Medium'
+    case CardPriority.LOW:
+      return 'Low'
+    default:
+      return 'Medium'
+  }
+}
+
+// 切換狀態（循環：Todo → Doing → Done → Todo）
+const toggleStatus = () => {
+  const currentStatus = props.card.status || CardStatus.TODO
+  let newStatus: CardStatus
+  
+  switch (currentStatus) {
+    case CardStatus.TODO:
+      newStatus = CardStatus.DOING
+      break
+    case CardStatus.DOING:
+      newStatus = CardStatus.DONE
+      break
+    case CardStatus.DONE:
+      newStatus = CardStatus.TODO
+      break
+    default:
+      newStatus = CardStatus.TODO
+  }
+  
+  emit('updateStatus', props.card.id, newStatus)
+}
+
+// 切換優先順序（循環：High → Medium → Low → High）
+const togglePriority = () => {
+  const currentPriority = props.card.priority || CardPriority.MEDIUM
+  let newPriority: CardPriority
+  
+  switch (currentPriority) {
+    case CardPriority.HIGH:
+      newPriority = CardPriority.MEDIUM
+      break
+    case CardPriority.MEDIUM:
+      newPriority = CardPriority.LOW
+      break
+    case CardPriority.LOW:
+      newPriority = CardPriority.HIGH
+      break
+    default:
+      newPriority = CardPriority.MEDIUM
+  }
+  
+  emit('updatePriority', props.card.id, newPriority)
 }
 
 </script>

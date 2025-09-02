@@ -218,6 +218,8 @@
             @open-modal="$emit('open-card-modal', card)"
             @delete="$emit('card-delete', card)"
             @update-title="(cardId, newTitle) => $emit('card-update-title', cardId, newTitle)"
+            @update-status="(cardId, status) => handleCardStatusUpdate(cardId, status)"
+            @update-priority="(cardId, priority) => handleCardPriorityUpdate(cardId, priority)"
           />
         </div>
       </draggable>
@@ -271,6 +273,7 @@
 
 <script setup lang="ts">
 import Card from '@/components/Card.vue'
+import { CardStatus, CardPriority } from '@/types/api'
 import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 // 🎯 純渲染組件：不直接使用 composables
@@ -297,6 +300,7 @@ const emit = defineEmits<{
   'drag-end': []
   'card-delete': [card: any]
   'card-update-title': [cardId: string, newTitle: string]
+  'card-updated': []
   'list-add-card': [listId: string, title: string]
   'list-delete': [listId: string]
   'list-update-title': [listId: string, newTitle: string]
@@ -383,6 +387,36 @@ const handleDeleteList = () => {
 const handleAiGenerate = () => {
   console.log('🤖 [PURE-LIST] AI 生成任務事件，委派給父組件:', props.list.title)
   emit('ai-generate', props.list.id)
+}
+
+// 處理卡片狀態更新
+const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
+  console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status })
+  try {
+    await $fetch(`/api/cards/${cardId}`, {
+      method: 'PUT',
+      body: { status }
+    })
+    // 通知父組件重新載入資料
+    emit('card-updated')
+  } catch (error) {
+    console.error('❌ 更新卡片狀態失敗:', error)
+  }
+}
+
+// 處理卡片優先順序更新
+const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) => {
+  console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority })
+  try {
+    await $fetch(`/api/cards/${cardId}`, {
+      method: 'PUT',
+      body: { priority }
+    })
+    // 通知父組件重新載入資料
+    emit('card-updated')
+  } catch (error) {
+    console.error('❌ 更新卡片優先順序失敗:', error)
+  }
 }
 
 // 開始編輯標題
