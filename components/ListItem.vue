@@ -389,33 +389,46 @@ const handleAiGenerate = () => {
   emit('ai-generate', props.list.id)
 }
 
+// 取得 boardStore 實例
+const boardStore = useBoardStore()
+
 // 處理卡片狀態更新
 const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
   console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status })
+  
+  // 立即更新本地狀態（樂觀更新）
+  boardStore.updateCardStatus(cardId, status)
+  
   try {
+    // 背景更新到資料庫
     await $fetch(`/api/cards/${cardId}`, {
       method: 'PUT',
       body: { status }
     })
-    // 通知父組件重新載入資料
-    emit('card-updated')
   } catch (error) {
     console.error('❌ 更新卡片狀態失敗:', error)
+    // 如果失敗了，重新載入整個 board 以同步狀態
+    emit('card-updated')
   }
 }
 
 // 處理卡片優先順序更新
 const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) => {
   console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority })
+  
+  // 立即更新本地狀態（樂觀更新）
+  boardStore.updateCardPriority(cardId, priority)
+  
   try {
+    // 背景更新到資料庫
     await $fetch(`/api/cards/${cardId}`, {
       method: 'PUT',
       body: { priority }
     })
-    // 通知父組件重新載入資料
-    emit('card-updated')
   } catch (error) {
     console.error('❌ 更新卡片優先順序失敗:', error)
+    // 如果失敗了，重新載入整個 board 以同步狀態
+    emit('card-updated')
   }
 }
 

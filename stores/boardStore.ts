@@ -520,6 +520,32 @@ export const useBoardStore = defineStore('board', {
       }
     },
 
+    // 更新指定卡片的狀態（status）
+    // 只更新本地狀態，不觸發整個 board 重新載入
+    updateCardStatus(cardId: string, newStatus: string) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          card.status = newStatus
+          console.log(`📝 [STORE] 更新卡片狀態: ${cardId} -> ${newStatus}`)
+          break
+        }
+      }
+    },
+
+    // 更新指定卡片的優先順序（priority）
+    // 只更新本地狀態，不觸發整個 board 重新載入
+    updateCardPriority(cardId: string, newPriority: string) {
+      for (const list of this.board.lists) {
+        const card = list.cards.find(card => card.id === cardId)
+        if (card) {
+          card.priority = newPriority
+          console.log(`📝 [STORE] 更新卡片優先順序: ${cardId} -> ${newPriority}`)
+          break
+        }
+      }
+    },
+
     // 更新指定列表的標題（帶回滾，避免後端失敗時前端狀態髒掉）
     // 1) 先做輸入清理與存在性檢查  2) 樂觀更新  3) 失敗回滾
     async updateListTitle(listId: string, newTitle: string) {
