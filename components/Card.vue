@@ -102,7 +102,7 @@
 <template>
   <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
   <div 
-    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-pointer card-draggable focus:outline-none max-w-full overflow-hidden"
+    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-move card-draggable max-w-full overflow-hidden"
     :class="{ 'card-dragging': dragging }"
     @click="openCardModal"
     tabindex="-1"
@@ -404,6 +404,9 @@ const togglePriority = () => {
 /* 🎯 防止卡片出現藍色外框 - 解決拖拽後的 focus 問題 */
 .card-draggable {
   outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
   /* 確保卡片不會超出容器寬度 */
   box-sizing: border-box;
   word-wrap: break-word;
@@ -428,6 +431,28 @@ const togglePriority = () => {
 .card-draggable.sortable-chosen,
 .card-draggable.sortable-ghost {
   outline: none !important;
+  box-shadow: none !important;
+  border: 2px solid #10b981 !important; /* 綠色邊框表示正在拖拽 */
+}
+
+/* 🎯 移除瀏覽器預設的 focus 樣式，避免藍色邊框 */
+.card-draggable:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 🎯 拖拽時的視覺回饋 - 綠色表示可以移動 */
+.card-draggable.sortable-drag {
+  opacity: 0.9;
+  transform: rotate(2deg);
+  border: 2px solid #10b981 !important;
+}
+
+/* 🎯 占位符樣式 - 顯示卡片將要放置的位置 */
+.card-draggable.sortable-ghost {
+  opacity: 0.4;
+  background: #e5e7eb;
+  border: 2px dashed #10b981 !important;
 }
 
 /* 🎯 防止瀏覽器預設的選取樣式造成藍色外框 */

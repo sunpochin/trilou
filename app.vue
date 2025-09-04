@@ -526,15 +526,8 @@ body.mobile-dragging {
   outline: none !important;
 }
 
-/* 🎯 特別針對可能的 sortable 庫樣式 */
-.sortable-chosen,
-.sortable-ghost,
-.sortable-drag,
-[data-sortable],
-.draggable-item {
-  outline: none !important;
-  box-shadow: none !important;
-}
+
+
 
 /* 🎯 防止瀏覽器預設的選取高亮 */
 ::selection {

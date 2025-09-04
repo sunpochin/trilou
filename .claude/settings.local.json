@@ -36,7 +36,8 @@
       "Bash(env)",
       "Bash(node:*)",
       "mcp__ide__getDiagnostics",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(grep:*)"
     ],
     "defaultMode": "acceptEdits"
   }
