@@ -102,7 +102,7 @@
 <template>
   <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
   <div 
-    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-move card-draggable max-w-full overflow-hidden"
+    class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-grab card-draggable max-w-full overflow-hidden"
     :class="{ 'card-dragging': dragging }"
     @click="openCardModal"
     tabindex="-1"

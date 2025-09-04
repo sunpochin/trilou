@@ -528,10 +528,13 @@ const handleDragEnd = (evt: any) => {
   min-width: 0;
 }
 
-/* 🎯 拖拽時的視覺回饋 - 保留自然的樣式 */
+/* 🎯 拖拽時的視覺回饋 - 可以保留藍色邊框 */
 .sortable-chosen .card-draggable {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transform: scale(1.02);
+  cursor: grabbing;
+  /* 如果喜歡藍色邊框，可以加上： */
+  border: 2px solid #3b82f6;
 }
 
 .sortable-ghost .card-draggable {
@@ -539,8 +542,18 @@ const handleDragEnd = (evt: any) => {
 }
 
 .sortable-drag .card-draggable {
-  cursor: grabbing;
+  cursor: grabbing; /* 拖拽中 */
   transform: rotate(2deg);
+}
+
+/* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */
+.card-draggable:hover {
+  cursor: grab;
+}
+
+.card-draggable:active,
+.card-draggable.dragging {
+  cursor: grabbing;
 }
 
 /* 🌈 AI 生成按鈕的彩虹魔法動畫 */
