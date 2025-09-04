@@ -528,22 +528,34 @@ const handleDragEnd = (evt: any) => {
   min-width: 0;
 }
 
-/* 🎯 拖拽時的視覺回饋 - 可以保留藍色邊框 */
-.sortable-chosen .card-draggable {
+/* 🎯 拖拽時的視覺回饋 - 選中狀態 */
+.sortable-chosen .card-draggable,
+.mobile-chosen .card-draggable,
+.desktop-chosen .card-draggable {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transform: scale(1.02);
   cursor: grabbing;
-  /* 如果喜歡藍色邊框，可以加上： */
-  border: 2px solid #3b82f6;
+  border: 2px solid #3b82f6; /* 藍色邊框 */
 }
 
-.sortable-ghost .card-draggable {
+/* 🎯 拖拽時的占位符樣式 */
+.sortable-ghost .card-draggable,
+.mobile-ghost .card-draggable,
+.desktop-ghost .card-draggable {
   opacity: 0.4;
+  background: #f3f4f6;
+  border: 2px dashed #9ca3af;
 }
 
-.sortable-drag .card-draggable {
-  cursor: grabbing; /* 拖拽中 */
-  transform: rotate(2deg);
+/* 🎯 正在拖拽中的樣式 */
+.sortable-drag .card-draggable,
+.mobile-drag .card-draggable,
+.desktop-drag .card-draggable {
+  cursor: grabbing;
+  transform: rotate(3deg) scale(1.05); /* 更明顯的旋轉和縮放 */
+  opacity: 0.9;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border: 2px solid #10b981; /* 拖拽中顯示綠色邊框 */
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */
