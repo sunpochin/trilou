@@ -1,12 +1,31 @@
 <!--
   📱 手機版看板組件 - 專為行動裝置優化
   
-  功能特色：
-  - 使用 vue-draggable-next 處理卡片拖拽
-  - 支援列表左右滑動切換（snap-scroll）
-  - 長按 0.75 秒啟動卡片拖拽模式
-  - 整合 @vueuse/gesture 手勢控制
-  - 完整的 CRUD 功能
+  🎯 核心功能：
+  ✅ 雙模式切換系統
+     - 滑動模式（預設）：左右滑動瀏覽列表
+     - 排序模式：拖曳列表交換位置
+  
+  ✅ 列表拖曳功能
+     - 拖曳把手設計：長按 0.3 秒啟動
+     - 視覺提示：灰色把手區域 + 文字說明
+     - 流暢動畫：200ms 過渡效果
+  
+  ✅ 卡片拖曳功能  
+     - 長按 0.75 秒啟動卡片拖拽
+     - 支援跨列表移動
+     - Fallback 模式確保手機相容性
+  
+  📱 使用方式：
+  1. 點右下角藍色按鈕 → 進入排序模式
+  2. 長按列表上方灰色把手 → 拖動列表
+  3. 點綠色按鈕 → 回到滑動模式
+  
+  🔧 技術實作：
+  - vue-draggable-next：處理拖拽
+  - snap-scroll：列表滑動對齊
+  - @vueuse/gesture：手勢控制
+  - 完整 CRUD 功能
 -->
 
 <template>
@@ -34,8 +53,64 @@
     <!-- 載入完成：顯示實際看板內容 -->
     <template v-else>
       <!-- 🎯 簡化後移除 Debug 資訊 -->
-      <!-- 📱 手機版列表容器 - 支援彈性滾動 -->
+      <!-- 📱 手機版列表容器 - 支援拖曳重排與彈性滾動 -->
+      <!-- 💡 十歲小朋友解釋：這個容器讓你可以「拖曳整個列表」換位置！ -->
+      <draggable
+        v-if="isListDragMode"
+        class="flex overflow-x-auto scroll-smooth mobile-lists-container gap-2 p-1"
+        :list="viewData.lists"
+        @change="onListMove"
+        tag="div"
+        :disabled="false"
+        :force-fallback="true"
+        :fallback-on-body="true"
+        :delay="300"
+        :delay-on-touch-only="true"
+        :touch-start-threshold="10"
+        :animation="200"
+        ghost-class="mobile-list-ghost"
+        chosen-class="mobile-list-chosen"
+        drag-class="mobile-list-drag"
+        handle=".list-drag-handle"
+      >
+        <div v-for="list in viewData.lists" :key="list.id" class="mobile-list-wrapper">
+          <!-- 🎯 列表拖曳把手 - 長按這裡可以拖動整個列表 -->
+          <div class="list-drag-handle bg-gray-300 hover:bg-gray-400 rounded-t-lg p-2 flex items-center justify-center cursor-move">
+            <div class="flex items-center gap-2 text-gray-600">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+              </svg>
+              <span class="text-xs font-medium">長按拖動列表</span>
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+              </svg>
+            </div>
+          </div>
+          <ListItem
+            :list="list"
+            :dragging="draggingState.isDragging"
+            :is-mobile="true"
+            :is-dragging-disabled="isDraggingDisabled"
+            :ai-generating-list-id="aiGeneratingListId"
+            @card-move="onCardMove"
+            @open-card-modal="openCardModal"
+            @drag-start="onDragStart"
+            @drag-end="onDragEnd"
+            @card-delete="onCardDelete"
+            @card-update-title="onCardUpdateTitle"
+            @list-add-card="onListAddCard"
+            @list-delete="onListDelete"
+            @list-update-title="onListUpdateTitle"
+            @ai-generate="onAiGenerate"
+            class="mobile-list-item"
+            style="width: calc(100vw - 2rem); max-width: 400px;"
+          />
+        </div>
+      </draggable>
+      
+      <!-- 原本的滑動模式 (預設) -->
       <div 
+        v-else
         class="flex overflow-x-auto scroll-smooth snap-x snap-mandatory mobile-lists-container gap-2 p-1" 
         ref="mobileListsContainer"
         style="scroll-snap-type: x mandatory;"
@@ -59,8 +134,33 @@
           @list-update-title="onListUpdateTitle"
           @ai-generate="onAiGenerate"
           class="mobile-list-item snap-center"
-style="width: calc(100vw - 2rem); max-width: 400px;"
+          style="width: calc(100vw - 2rem); max-width: 400px;"
         />
+      </div>
+      
+      <!-- 🔄 切換拖曳模式按鈕 -->
+      <div class="fixed bottom-20 right-4 z-50">
+        <button
+          @click="toggleListDragMode"
+          :class="[
+            'px-4 py-2 rounded-full shadow-lg text-white transition-all duration-300',
+            isListDragMode 
+              ? 'bg-green-500 hover:bg-green-600' 
+              : 'bg-blue-500 hover:bg-blue-600'
+          ]"
+        >
+          <div class="flex items-center gap-2">
+            <svg v-if="!isListDragMode" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"></path>
+            </svg>
+            <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            <span class="text-sm font-medium">
+              {{ isListDragMode ? '滑動模式' : '排序模式' }}
+            </span>
+          </div>
+        </button>
       </div>
 
       <!-- 新增列表區域 - 手機版全寬度 -->
@@ -145,6 +245,7 @@ import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
+import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useListActions } from '@/composables/useListActions'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardActions } from '@/composables/useCardActions'
@@ -169,7 +270,7 @@ interface DragItem {
 
 // 📱 手機版：使用 composables
 const { addList, deleteList: deleteListAction, updateListTitle: updateListTitleAction } = useListActions()
-const { viewData, handleCardMove } = useBoardView()
+const { viewData, handleCardMove, handleListMove } = useBoardView()
 const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction, addCard: addCardAction } = useCardActions()
 
 // 看板容器的 DOM 引用
@@ -195,6 +296,30 @@ const isAddingList = ref(false)
 const newListTitle = ref('')
 const newListInput = ref<HTMLInputElement | null>(null)
 const isSavingList = ref(false)
+
+// 🔄 列表拖曳模式狀態
+// 💡 十歲小朋友解釋：這個開關決定你是「滑動看列表」還是「拖動換位置」
+const isListDragMode = ref(false)
+
+// 🔄 切換列表拖曳模式
+const toggleListDragMode = () => {
+  isListDragMode.value = !isListDragMode.value
+  console.log(`📱 [MOBILE] 切換到${isListDragMode.value ? '排序' : '滑動'}模式`)
+}
+
+// 🎯 處理列表移動事件
+const onListMove = async (event: any) => {
+  console.log('📱 [MOBILE-DRAG] 列表移動事件:', event)
+  
+  if (event.moved) {
+    try {
+      await handleListMove()
+      console.log('✅ [MOBILE-DRAG] 列表順序更新成功')
+    } catch (error) {
+      console.error('❌ [MOBILE-DRAG] 列表順序更新失敗:', error)
+    }
+  }
+}
 
 // 📱 手機版長按 + 拖拽系統
 const longPressTimer = ref<number | null>(null)
@@ -669,6 +794,44 @@ onUnmounted(() => {
   cleanupFunctions.value = []
 })
 </script>
+
+<style scoped>
+/* 📱 手機版列表拖曳樣式 */
+/* 💡 十歲小朋友解釋：這些是列表拖曳時的魔法效果！ */
+
+/* 🎭 正在被拖曳的列表 */
+.mobile-list-drag {
+  opacity: 0.8;
+  transform: scale(0.95);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* 👻 列表的幽靈位置 */  
+.mobile-list-ghost {
+  opacity: 0.3;
+  background: #e5e7eb;
+  border: 2px dashed #9ca3af;
+}
+
+/* ✨ 被選中的列表 */
+.mobile-list-chosen {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  transform: scale(1.02);
+}
+
+/* 🎯 拖曳把手樣式 */
+.list-drag-handle {
+  touch-action: none; /* 防止瀏覽器處理觸控 */
+  user-select: none; /* 防止選取文字 */
+}
+
+/* 📱 列表包裝器 */
+.mobile-list-wrapper {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+</style>
 
 <style scoped>
 /* 新增列表過渡動畫 */

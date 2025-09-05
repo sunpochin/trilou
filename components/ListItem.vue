@@ -120,10 +120,11 @@
 
 <template>
   <!-- 單個列表容器 -->
+  <!-- 💡 十歲小朋友解釋：如果有拖曳把手，就不要上面的圓角，因為把手已經有圓角了 -->
   <div 
     :class="[
-      'bg-gray-200 rounded p-2 flex-shrink-0 flex flex-col',
-      props.isMobile ? 'mobile-list-item' : 'w-80'
+      'bg-gray-200 p-2 flex-shrink-0 flex flex-col',
+      props.isMobile ? 'mobile-list-item rounded-b-lg' : 'w-80 rounded'
     ]" 
     :data-list-id="list.id"
   >
