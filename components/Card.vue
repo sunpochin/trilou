@@ -399,29 +399,13 @@ const togglePriority = () => {
   /* 保持原有的 shadow，只移除可能的藍色邊框 */
 }
 
-/* 🎯 確保拖拽過程中不會出現藍色邊框 */
-.card-draggable.sortable-chosen,
-.card-draggable.sortable-ghost {
-  outline: none !important;
-  box-shadow: none !important;
-  border: 2px solid #10b981 !important; /* 綠色邊框表示正在拖拽 */
+/* 🎯 極簡拖曳樣式 - 測試版本 */
+.card-draggable.sortable-chosen {
+  border: 2px solid #10b981 !important;
 }
 
-/* 🎯 移除瀏覽器預設的 focus 樣式，避免藍色邊框 */
-.card-draggable:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* 🎯 拖拽時的視覺回饋 - 移除導致卡住的 rotate */
 .card-draggable.sortable-drag {
   opacity: 0.9;
-  border: 2px solid #10b981 !important;
-  /* 強制限制拖曳時的寬度 */
-  width: 100% !important;
-  max-width: 272px !important; /* 約等於列表寬度 - padding */
-  min-width: 0 !important;
-  box-sizing: border-box !important;
 }
 
 /* 🎯 占位符樣式 - 顯示卡片將要放置的位置 */

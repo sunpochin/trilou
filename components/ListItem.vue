@@ -230,13 +230,15 @@
         <!-- 💡 十歲小朋友解釋：卡片被「點名」時會發光 -->
         
       <draggable
-        v-model="list.cards"
-        item-key="id"
-        tag="div"
         class="min-h-5"
+        :list="list.cards"
+        @change="handleCardChange"
+        tag="div"
         :disabled="false"
         :animation="200"
-        @end="handleDragEnd"
+        ghostClass="card-ghost"
+        chosenClass="card-chosen"
+        dragClass="card-dragging"
       >
         <div v-for="card in list.cards" :key="card.id" class="draggable-card-wrapper">
           <Card 
@@ -488,55 +490,35 @@ const cancelEdit = () => {
   isEditingTitle.value = false
 }
 
-// 移除所有事件處理器，使用最簡配置測試
+// 🎯 使用跟 List 一樣的 @change 事件處理
+const handleCardChange = (event: any) => {
+  console.log('🎯 [CARD-CHANGE] 卡片變更事件:', event)
+  // 直接轉發給父組件，跟 List 一樣的處理方式
+  emit('card-move', event)
+}
 </script>
 
 <style scoped>
-/* 🎯 外層 wrapper 基本樣式 */
+/* 🎯 使用自定義 class 名稱，避免全域 CSS 衝突 */
 .draggable-card-wrapper {
   width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
 }
 
-/* 🎯 拖拽時的視覺回饋 - 選中狀態 */
-.sortable-chosen .card-draggable,
-.mobile-chosen .card-draggable,
-.desktop-chosen .card-draggable {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  cursor: grabbing;
-  /* 移除 transform: scale 避免與拖曳衝突 */
-  /* 移除藍色邊框，讓 Card.vue 的綠色邊框生效 */
+/* 使用跟 List 一樣的模式，避免 sortable- 前綴 */
+.card-chosen .card-draggable {
+  opacity: 0.8;
+  border: 2px solid #10b981;
 }
 
-/* 🎯 拖拽時的占位符樣式 */
-.sortable-ghost .card-draggable,
-.mobile-ghost .card-draggable,
-.desktop-ghost .card-draggable {
-  opacity: 0.4;
-  background: #f3f4f6;
+.card-ghost .card-draggable {
+  opacity: 0.5;
+  background: #f0f0f0;
   border: 2px dashed #9ca3af;
 }
 
-/* 🎯 正在拖拽中的樣式 - 移除導致卡住的 transform */
-.sortable-drag .card-draggable,
-.mobile-drag .card-draggable,
-.desktop-drag .card-draggable {
-  cursor: grabbing;
+.card-dragging .card-draggable {
   opacity: 0.9;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  border: 2px solid #10b981; /* 拖拽中顯示綠色邊框 */
-}
-
-/* 🎯 限制拖曳時的 wrapper 寬度 */
-.sortable-drag,
-.mobile-drag,
-.desktop-drag {
-  max-width: 272px !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box !important;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */
