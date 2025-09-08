@@ -235,25 +235,7 @@
         group="cards"
         tag="div"
         :disabled="false"
-        :force-fallback="props.isMobile"
-        :fallback-on-body="true"
-        :fallback-tolerance="0"
-        :delay="props.isMobile ? 750 : 0"
-        :delay-on-touch-only="props.isMobile"
-        :touch-start-threshold="props.isMobile ? 10 : 0"
         :animation="200"
-        :easing="'cubic-bezier(0.25, 0.46, 0.45, 0.94)'"
-        :scroll-sensitivity="30"
-        :swap-threshold="0.65"
-        :bubble-scroll="true"
-        :prevent-on-filter="false"
-        :drag-class="props.isMobile ? 'mobile-drag' : 'desktop-drag'"
-        :ghost-class="props.isMobile ? 'mobile-ghost' : 'desktop-ghost'"
-        :chosen-class="props.isMobile ? 'mobile-chosen' : 'desktop-chosen'"
-        @start="handleDragStart"
-        @end="handleDragEnd"
-        @choose="handleChoose"
-        @unchoose="handleUnchoose"
         @change="$emit('card-move', $event)"
       >
         <div v-for="card in list.cards" :key="card.id" class="draggable-card-wrapper">
@@ -506,60 +488,7 @@ const cancelEdit = () => {
   isEditingTitle.value = false
 }
 
-// 🎯 選中卡片時（mousedown）- 防止 focus 干擾
-const handleChoose = (evt: any) => {
-  console.log('🎯 [LIST] 選中卡片')
-  const chosenElement = evt.item
-  if (chosenElement) {
-    // 移除 focus 狀態，防止卡住
-    chosenElement.blur()
-  }
-}
-
-// 🎯 取消選中時
-const handleUnchoose = (evt: any) => {
-  console.log('🎯 [LIST] 取消選中')
-  // 清理狀態
-  if (evt.item) {
-    evt.item.blur()
-  }
-}
-
-// 🎯 拖拽開始處理 - 防止卡住
-const handleDragStart = (evt: any) => {
-  console.log('🎯 [LIST] 拖拽開始')
-  const draggedElement = evt.item
-  
-  if (draggedElement) {
-    // 關鍵：移除 focus 狀態，防止卡住
-    draggedElement.blur()
-    
-    // 也處理內部的卡片
-    const innerCard = draggedElement.querySelector('.card-draggable')
-    if (innerCard) {
-      innerCard.blur()
-    }
-  }
-  
-  // 防止文字選取干擾拖拽
-  document.body.style.userSelect = 'none'
-  document.body.style.webkitUserSelect = 'none'
-}
-
-// 🎯 拖拽結束處理 - 簡化清理，避免卡住
-const handleDragEnd = (evt: any) => {
-  console.log('🎯 [LIST] 拖拽結束')
-  // 恢復文字選取
-  document.body.style.userSelect = ''
-  document.body.style.webkitUserSelect = ''
-  
-  // 只做最基本的清理，讓 SortableJS 處理其餘部分
-  setTimeout(() => {
-    if (evt.item) {
-      evt.item.blur()
-    }
-  }, 50)
-}
+// 移除所有事件處理器，使用最簡配置測試
 </script>
 
 <style scoped>

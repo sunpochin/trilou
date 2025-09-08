@@ -37,7 +37,8 @@
       "Bash(node:*)",
       "mcp__ide__getDiagnostics",
       "WebFetch(domain:github.com)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(open \"http://localhost:3002\")"
     ],
     "defaultMode": "acceptEdits"
   }
