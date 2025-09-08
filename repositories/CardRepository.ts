@@ -143,9 +143,9 @@ export class CardRepository {
    * @returns Promise<Card> - 新建立的卡片（前端格式）
    * @throws Error - 如果新增失敗或驗證失敗
    */
-  async createCard(title: string, listId: string, description?: string, status?: string): Promise<Card> {
+  async createCard(title: string, listId: string, description?: string, status?: string, priority?: string): Promise<Card> {
     try {
-      console.log('📞 [REPO] 呼叫 API 新增卡片:', { title, listId, description, status })
+      console.log('📞 [REPO] 呼叫 API 新增卡片:', { title, listId, description, status, priority })
       
       // 📞 呼叫 API 新增卡片
       // 注意：這裡要把 listId 轉換成 list_id
@@ -155,7 +155,8 @@ export class CardRepository {
           title,                // 標題保持不變
           list_id: listId,      // 🔄 駝峰轉蛇形：listId → list_id
           description,          // 描述欄位，可能為空
-          status: status        // AI 生成任務的狀態標籤
+          status,               // 卡片狀態（todo, doing, done）
+          priority              // 卡片優先級（high, medium, low）
         }
       })
       

@@ -179,13 +179,14 @@ export const useCardActions = () => {
    * @param title 卡片標題
    * @param status 卡片狀態 (可選)
    * @param description 卡片描述 (可選)
+   * @param priority 卡片優先級 (可選)
    * @returns Promise<void>
    */
-  const addCard = async (listId: string, title: string, status?: string, description?: string) => {
+  const addCard = async (listId: string, title: string, status?: string, description?: string, priority?: string) => {
     try {
-      console.log('➕ [CARD-ACTION] 新增卡片:', { listId, title, status, description })
+      console.log('➕ [CARD-ACTION] 新增卡片:', { listId, title, status, description, priority })
       
-      await boardStore.addCard(listId, title, status, description)
+      await boardStore.addCard(listId, title, status, description, priority)
       
       console.log('✅ [CARD-ACTION] 卡片新增成功')
     } catch (error) {
