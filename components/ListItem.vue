@@ -237,9 +237,13 @@
         tag="div"
         :disabled="false"
         :animation="200"
+        :force-fallback="true"
+        :fallback-on-body="true"
+        :fallback-tolerance="0"
         ghostClass="card-ghost"
         chosenClass="card-chosen"
         dragClass="card-dragging"
+        fallbackClass="card-fallback"
       >
         <div v-for="card in list.cards" :key="card.id" class="draggable-card-wrapper">
           <Card 
@@ -525,6 +529,17 @@ const handleCardChange = (event: any) => {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
   background: rgba(255, 255, 255, 0.95);
   /* 跟著滑鼠的半透明效果 */
+}
+
+/* 🎯 跟著滑鼠的透明卡片效果 - 安全版本 */
+.card-fallback {
+  opacity: 0.8 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid #10b981 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3) !important;
+  /* 移除會導致問題的樣式 */
+  /* 不設定 position: fixed, transform: rotate, pointer-events */
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */
