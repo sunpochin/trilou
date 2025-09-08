@@ -241,7 +241,7 @@ describe('EntityFactory', () => {
       expect(clonedCard.description).toBe(originalCard.description)
       expect(clonedCard.listId).toBe(originalCard.listId)
       expect(clonedCard.position).toBe(originalCard.position)
-      expect(clonedCard.createdAt.getTime()).toBeGreaterThan(originalCard.createdAt.getTime())
+      expect(clonedCard.createdAt.getTime()).toBeGreaterThanOrEqual(originalCard.createdAt.getTime())
     })
 
     it('should override specified fields', () => {

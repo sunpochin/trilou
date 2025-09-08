@@ -233,28 +233,17 @@
         class="min-h-5"
         :list="list.cards"
         group="cards"
+        @change="handleCardChange"
         tag="div"
         :disabled="false"
-        :force-fallback="props.isMobile"
+        :animation="200"
+        :force-fallback="true"
         :fallback-on-body="true"
         :fallback-tolerance="0"
-        :delay="props.isMobile ? 750 : 0"
-        :delay-on-touch-only="props.isMobile"
-        :touch-start-threshold="props.isMobile ? 10 : 0"
-        :animation="200"
-        :easing="'cubic-bezier(0.25, 0.46, 0.45, 0.94)'"
-        :scroll-sensitivity="30"
-        :swap-threshold="0.65"
-        :bubble-scroll="true"
-        :prevent-on-filter="false"
-        :drag-class="props.isMobile ? 'mobile-drag' : 'desktop-drag'"
-        :ghost-class="props.isMobile ? 'mobile-ghost' : 'desktop-ghost'"
-        :chosen-class="props.isMobile ? 'mobile-chosen' : 'desktop-chosen'"
-        @start="handleDragStart"
-        @end="handleDragEnd"
-        @choose="handleChoose"
-        @unchoose="handleUnchoose"
-        @change="$emit('card-move', $event)"
+        ghostClass="card-ghost"
+        chosenClass="card-chosen"
+        dragClass="card-dragging"
+        fallbackClass="card-fallback"
       >
         <div v-for="card in list.cards" :key="card.id" class="draggable-card-wrapper">
           <Card 
@@ -506,112 +495,51 @@ const cancelEdit = () => {
   isEditingTitle.value = false
 }
 
-// 🎯 選中卡片時（mousedown）- 防止 focus 干擾
-const handleChoose = (evt: any) => {
-  console.log('🎯 [LIST] 選中卡片')
-  const chosenElement = evt.item
-  if (chosenElement) {
-    // 移除 focus 狀態，防止卡住
-    chosenElement.blur()
-  }
-}
-
-// 🎯 取消選中時
-const handleUnchoose = (evt: any) => {
-  console.log('🎯 [LIST] 取消選中')
-  // 清理狀態
-  if (evt.item) {
-    evt.item.blur()
-  }
-}
-
-// 🎯 拖拽開始處理 - 防止卡住
-const handleDragStart = (evt: any) => {
-  console.log('🎯 [LIST] 拖拽開始')
-  const draggedElement = evt.item
-  
-  if (draggedElement) {
-    // 關鍵：移除 focus 狀態，防止卡住
-    draggedElement.blur()
-    
-    // 也處理內部的卡片
-    const innerCard = draggedElement.querySelector('.card-draggable')
-    if (innerCard) {
-      innerCard.blur()
-    }
-  }
-  
-  // 防止文字選取干擾拖拽
-  document.body.style.userSelect = 'none'
-  document.body.style.webkitUserSelect = 'none'
-}
-
-// 🎯 拖拽結束處理 - 清理狀態
-const handleDragEnd = (evt: any) => {
-  console.log('🎯 [LIST] 拖拽結束')
-  // 恢復文字選取
-  document.body.style.userSelect = ''
-  document.body.style.webkitUserSelect = ''
-  
-  // 清理拖拽元素的狀態
-  const draggedElement = evt.item
-  if (draggedElement) {
-    draggedElement.blur() // 確保移除 focus
-    // 移除可能殘留的拖拽類別，防止下次拖拽衝突
-    draggedElement.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
-    draggedElement.classList.remove('mobile-chosen', 'mobile-ghost', 'mobile-drag')
-    draggedElement.classList.remove('desktop-chosen', 'desktop-ghost', 'desktop-drag')
-    
-    // 也清理內部的卡片元素
-    const innerCard = draggedElement.querySelector('.card-draggable')
-    if (innerCard) {
-      innerCard.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
-      innerCard.blur()
-    }
-  }
-  
-  // 全域清理：移除所有可能殘留的拖曳類別
-  document.querySelectorAll('.sortable-chosen, .sortable-ghost, .sortable-drag').forEach(el => {
-    el.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
-  })
+// 🎯 使用跟 List 一樣的 @change 事件處理
+const handleCardChange = (event: any) => {
+  console.log('🎯 [CARD-CHANGE] 卡片變更事件:', event)
+  // 直接轉發給父組件，跟 List 一樣的處理方式
+  emit('card-move', event)
 }
 </script>
 
 <style scoped>
-/* 🎯 外層 wrapper 基本樣式 */
+/* 🎯 使用自定義 class 名稱，避免全域 CSS 衝突 */
 .draggable-card-wrapper {
   width: 100%;
-  min-width: 0;
 }
 
-/* 🎯 拖拽時的視覺回饋 - 選中狀態 */
-.sortable-chosen .card-draggable,
-.mobile-chosen .card-draggable,
-.desktop-chosen .card-draggable {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transform: scale(1.02);
-  cursor: grabbing;
-  /* 移除藍色邊框，讓 Card.vue 的綠色邊框生效 */
+/* 🎨 拖曳視覺效果 - 安全版本，不會卡住 */
+.card-chosen .card-draggable {
+  opacity: 0.8;
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
 }
 
-/* 🎯 拖拽時的占位符樣式 */
-.sortable-ghost .card-draggable,
-.mobile-ghost .card-draggable,
-.desktop-ghost .card-draggable {
+.card-ghost .card-draggable {
   opacity: 0.4;
   background: #f3f4f6;
-  border: 2px dashed #9ca3af;
+  border: 2px dashed #9ca3af !important;
+  /* 占位符效果 */
 }
 
-/* 🎯 正在拖拽中的樣式 */
-.sortable-drag .card-draggable,
-.mobile-drag .card-draggable,
-.desktop-drag .card-draggable {
-  cursor: grabbing;
-  transform: rotate(3deg) scale(1.05); /* 更明顯的旋轉和縮放 */
+.card-dragging .card-draggable {
   opacity: 0.9;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  border: 2px solid #10b981; /* 拖拽中顯示綠色邊框 */
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.95);
+  /* 跟著滑鼠的半透明效果 */
+}
+
+/* 🎯 跟著滑鼠的透明卡片效果 - 安全版本 */
+.card-fallback {
+  opacity: 0.8 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid #10b981 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3) !important;
+  /* 移除會導致問題的樣式 */
+  /* 不設定 position: fixed, transform: rotate, pointer-events */
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */

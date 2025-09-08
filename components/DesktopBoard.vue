@@ -319,7 +319,8 @@ const onListAddCard = async (listId: string, title: string) => {
   
   try {
     // 桌面版也使用樂觀更新，但處理錯誤
-    await addCardAction(listId, title, 'medium')
+    // 不傳遞 status，讓它使用預設值
+    await addCardAction(listId, title)
     console.log('✅ [DESKTOP-BOARD] 卡片新增完成')
   } catch (error) {
     console.error('❌ [DESKTOP-BOARD] 新增卡片失敗:', error)

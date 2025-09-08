@@ -141,7 +141,8 @@ export default defineEventHandler(async (event) => {
         description: body.description,
         position: position,
         list_id: body.list_id,
-        status: body.status  // 包含 AI 生成任務的狀態標籤
+        status: body.status || 'todo',        // 預設狀態為 'todo'
+        priority: body.priority || 'medium'   // 預設優先級為 'medium'
       })
       .select()
       .maybeSingle() // ✅ 查無資料時不回傳錯誤

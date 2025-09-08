@@ -37,7 +37,10 @@
       "Bash(node:*)",
       "mcp__ide__getDiagnostics",
       "WebFetch(domain:github.com)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(open \"http://localhost:3002\")",
+      "Bash(yarn list:*)",
+      "Bash(DEV_SKIP_AUTH=true DEV_USER_ID=\"a971548d-298f-4513-883f-a6bd370eff1b\" yarn dev)"
     ],
     "defaultMode": "acceptEdits"
   }

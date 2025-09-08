@@ -639,7 +639,8 @@ const onListAddCard = async (listId: string, title: string) => {
   
   try {
     // 🚀 Store 已實現樂觀更新，我們只需要處理錯誤
-    await addCardAction(listId, title, 'medium')
+    // 不傳遞 status，讓它使用預設值
+    await addCardAction(listId, title)
     console.log('✅ [MOBILE-BOARD] 卡片新增完成')
   } catch (error) {
     console.error('❌ [MOBILE-BOARD] 新增卡片失敗:', error)

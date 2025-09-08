@@ -494,19 +494,15 @@ onMounted(() => {
   }
 }
 
-/* 📱 手機版拖拽全局樣式 - 確保 SortableJS fallback 模式正常工作 */
-.sortable-fallback {
-  display: block !important;
-  position: fixed !important;
-  z-index: 100000 !important;
-  pointer-events: none !important;
-  transition: none !important;
-  transform: rotate(5deg) !important;
+/* 📱 手機版拖拽全局樣式 - 修復版本 */
+.sortable-fallback,
+.card-fallback {
   opacity: 0.8 !important;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3) !important;
+  border: 2px solid #10b981 !important;
   border-radius: 8px !important;
-  background: white !important;
-  border: 2px solid #3b82f6 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  /* 移除會導致問題的樣式：rotate, position fixed, pointer-events none */
 }
 
 /* 📱 手機版拖拽時的觸摸區域 */
