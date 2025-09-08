@@ -399,13 +399,21 @@ const togglePriority = () => {
   /* 保持原有的 shadow，只移除可能的藍色邊框 */
 }
 
-/* 🎯 極簡拖曳樣式 - 測試版本 */
-.card-draggable.sortable-chosen {
+/* 🎯 配合自定義 class 名稱的拖曳樣式 */
+.card-draggable.card-chosen {
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.card-draggable.card-dragging {
+  opacity: 0.9;
   border: 2px solid #10b981 !important;
 }
 
-.card-draggable.sortable-drag {
-  opacity: 0.9;
+.card-draggable.card-ghost {
+  opacity: 0.4;
+  background: #f3f4f6;
+  border: 2px dashed #9ca3af !important;
 }
 
 /* 🎯 占位符樣式 - 顯示卡片將要放置的位置 */

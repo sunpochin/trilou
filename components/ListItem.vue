@@ -232,6 +232,7 @@
       <draggable
         class="min-h-5"
         :list="list.cards"
+        group="cards"
         @change="handleCardChange"
         tag="div"
         :disabled="false"
@@ -504,21 +505,26 @@ const handleCardChange = (event: any) => {
   width: 100%;
 }
 
-/* 使用跟 List 一樣的模式，避免 sortable- 前綴 */
+/* 🎨 拖曳視覺效果 - 安全版本，不會卡住 */
 .card-chosen .card-draggable {
   opacity: 0.8;
-  border: 2px solid #10b981;
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
 }
 
 .card-ghost .card-draggable {
-  opacity: 0.5;
-  background: #f0f0f0;
-  border: 2px dashed #9ca3af;
+  opacity: 0.4;
+  background: #f3f4f6;
+  border: 2px dashed #9ca3af !important;
+  /* 占位符效果 */
 }
 
 .card-dragging .card-draggable {
   opacity: 0.9;
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  border: 2px solid #10b981 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.95);
+  /* 跟著滑鼠的半透明效果 */
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */
