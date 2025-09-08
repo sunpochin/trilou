@@ -107,41 +107,13 @@
     @click="openCardModal"
     tabindex="-1"
   >
-    <!-- 顯示模式：顯示卡片標題 -->
+    <!-- 顯示模式：顯示卡片標題（移除小圓圈和移動效果） -->
     <div 
       v-if="!isEditing" 
       class="min-h-6 pr-8 pb-6 relative"
     >
-      <!-- 勾選框 - 永久顯示已勾選狀態，hover 時顯示未勾選 -->
-      <div 
-        class="absolute left-0 top-0.5 flex-shrink-0 w-4 h-4 transition-all duration-200 z-10"
-        :class="isChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
-        @click.stop="toggleCheckbox"
-      >
-        <div 
-          class="w-full h-full rounded-full border-2 flex items-center justify-center cursor-pointer transition-all duration-200"
-          :class="isChecked ? 'bg-green-500 border-green-500' : 'border-gray-400 hover:border-gray-600'"
-        >
-          <svg 
-            v-if="isChecked"
-            class="w-2.5 h-2.5 text-white" 
-            fill="currentColor" 
-            viewBox="0 0 20 20"
-          >
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-          </svg>
-        </div>
-      </div>
-      
-      <!-- 卡片標題 - 酷炫的位移效果：未 hover 時佔滿寬度，hover 時往右讓出空間 -->
-      <div 
-        class="transition-all duration-200 break-words overflow-hidden"
-        :class="{ 
-          'text-gray-500': isChecked,
-          'ml-0 group-hover:ml-6': !isChecked,
-          'ml-6': isChecked
-        }"
-      >
+      <!-- 直接顯示卡片標題，移除小圓圈和文字移動效果 -->
+      <div class="break-words overflow-hidden">
         {{ card.title }}
       </div>
     </div>
@@ -244,15 +216,15 @@ const isEditing = ref(false)
 const editingTitle = ref('')
 const editInput = ref<HTMLInputElement | null>(null)
 
-// 勾選狀態管理
-const isChecked = ref(false)
+// 勾選狀態管理（已移除勾選框功能）
+// const isChecked = ref(false)
 
-// 🎯 純渲染：切換勾選狀態（本地 UI 狀態）
-const toggleCheckbox = () => {
-  isChecked.value = !isChecked.value
-  console.log(`📋 [PURE-CARD] 本地勾選狀態: ${props.card.title} -> ${isChecked.value ? '已完成' : '未完成'}`)
-  // 純渲染組件不處理業務邏輯，只管理 UI 狀態
-}
+// 🎯 純渲染：切換勾選狀態（本地 UI 狀態，已移除勾選框功能）
+// const toggleCheckbox = () => {
+//   isChecked.value = !isChecked.value
+//   console.log(`📋 [PURE-CARD] 本地勾選狀態: ${props.card.title} -> ${isChecked.value ? '已完成' : '未完成'}`)
+//   // 純渲染組件不處理業務邏輯，只管理 UI 狀態
+// }
 
 // 開始編輯（目前已停用，但保留以備後用）
 // const startEditing = () => {
