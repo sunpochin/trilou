@@ -230,13 +230,13 @@
         <!-- 💡 十歲小朋友解釋：卡片被「點名」時會發光 -->
         
       <draggable
-        class="min-h-5"
-        :list="list.cards"
-        group="cards"
+        v-model="list.cards"
+        item-key="id"
         tag="div"
+        class="min-h-5"
         :disabled="false"
         :animation="200"
-        @change="$emit('card-move', $event)"
+        @end="handleDragEnd"
       >
         <div v-for="card in list.cards" :key="card.id" class="draggable-card-wrapper">
           <Card 
@@ -496,6 +496,8 @@ const cancelEdit = () => {
 .draggable-card-wrapper {
   width: 100%;
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* 🎯 拖拽時的視覺回饋 - 選中狀態 */
@@ -517,15 +519,24 @@ const cancelEdit = () => {
   border: 2px dashed #9ca3af;
 }
 
-/* 🎯 正在拖拽中的樣式 */
+/* 🎯 正在拖拽中的樣式 - 移除導致卡住的 transform */
 .sortable-drag .card-draggable,
 .mobile-drag .card-draggable,
 .desktop-drag .card-draggable {
   cursor: grabbing;
-  transform: rotate(3deg) scale(1.05); /* 更明顯的旋轉和縮放 */
   opacity: 0.9;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   border: 2px solid #10b981; /* 拖拽中顯示綠色邊框 */
+}
+
+/* 🎯 限制拖曳時的 wrapper 寬度 */
+.sortable-drag,
+.mobile-drag,
+.desktop-drag {
+  max-width: 272px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */

@@ -413,11 +413,15 @@ const togglePriority = () => {
   box-shadow: none !important;
 }
 
-/* 🎯 拖拽時的視覺回饋 - 綠色表示可以移動 */
+/* 🎯 拖拽時的視覺回饋 - 移除導致卡住的 rotate */
 .card-draggable.sortable-drag {
   opacity: 0.9;
-  transform: rotate(2deg);
   border: 2px solid #10b981 !important;
+  /* 強制限制拖曳時的寬度 */
+  width: 100% !important;
+  max-width: 272px !important; /* 約等於列表寬度 - padding */
+  min-width: 0 !important;
+  box-sizing: border-box !important;
 }
 
 /* 🎯 占位符樣式 - 顯示卡片將要放置的位置 */
