@@ -517,7 +517,21 @@ const handleDragEnd = (evt: any) => {
     draggedElement.blur() // 確保移除 focus
     // 移除可能殘留的拖拽類別，防止下次拖拽衝突
     draggedElement.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
+    draggedElement.classList.remove('mobile-chosen', 'mobile-ghost', 'mobile-drag')
+    draggedElement.classList.remove('desktop-chosen', 'desktop-ghost', 'desktop-drag')
+    
+    // 也清理內部的卡片元素
+    const innerCard = draggedElement.querySelector('.card-draggable')
+    if (innerCard) {
+      innerCard.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
+      innerCard.blur()
+    }
   }
+  
+  // 全域清理：移除所有可能殘留的拖曳類別
+  document.querySelectorAll('.sortable-chosen, .sortable-ghost, .sortable-drag').forEach(el => {
+    el.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
+  })
 }
 </script>
 
@@ -535,7 +549,7 @@ const handleDragEnd = (evt: any) => {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transform: scale(1.02);
   cursor: grabbing;
-  border: 2px solid #3b82f6; /* 藍色邊框 */
+  /* 移除藍色邊框，讓 Card.vue 的綠色邊框生效 */
 }
 
 /* 🎯 拖拽時的占位符樣式 */
