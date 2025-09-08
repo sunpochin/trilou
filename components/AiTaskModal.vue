@@ -149,14 +149,15 @@ async function generateCards() {
     console.log(`✅ [AI-MODAL] 成功生成 ${cards.length} 個任務`, cards)
     
     // 🎯 步驟4：按優先級排序卡片 (urgent > high > medium > low > 其他)
+    // 注意：使用 priority 欄位而非 status 欄位來進行優先級排序
     const priorityOrder = ['urgent', 'high', 'medium', 'low']
     const sortedCards = [...cards].sort((a, b) => {
-      const aPriority = priorityOrder.indexOf(a.status) === -1 ? 999 : priorityOrder.indexOf(a.status)
-      const bPriority = priorityOrder.indexOf(b.status) === -1 ? 999 : priorityOrder.indexOf(b.status)
+      const aPriority = priorityOrder.indexOf(a.priority || a.status) === -1 ? 999 : priorityOrder.indexOf(a.priority || a.status)
+      const bPriority = priorityOrder.indexOf(b.priority || b.status) === -1 ? 999 : priorityOrder.indexOf(b.priority || b.status)
       return aPriority - bPriority
     })
     
-    console.log(`🎯 [AI-MODAL] 卡片已按優先級排序:`, sortedCards.map(c => `${c.title} (${c.status})`))
+    console.log(`🎯 [AI-MODAL] 卡片已按優先級排序:`, sortedCards.map(c => `${c.title} (${c.priority || c.status || 'default'})`))
     
     // 🎯 步驟5：調整計數器以反映實際生成的卡片數量
     const actualCardCount = sortedCards.length
@@ -227,10 +228,17 @@ async function addGeneratedCardsToBoard(cards: Array<{title: string, description
     for (let i = 0; i < cards.length; i++) {
       const card = cards[i]
       try {
-        await addCard(finalTargetListId, card.title, card.status || 'todo', card.description)
+        // 修正：status 應該是 todo/doing/done，而不是優先級
+        // 如果 AI 錯誤地將優先級放在 status 欄位，我們需要修正
+        let cardStatus = 'todo'  // 預設狀態
+        if (card.status && ['todo', 'doing', 'done'].includes(card.status)) {
+          cardStatus = card.status
+        }
+        
+        await addCard(finalTargetListId, card.title, cardStatus, card.description)
         // 每個卡片成功加入後，減少計數器
         completePendingCards(1)
-        console.log(`✅ [AI-MODAL] 成功加入卡片 ${i + 1}/${cards.length}: ${card.title}`)
+        console.log(`✅ [AI-MODAL] 成功加入卡片 ${i + 1}/${cards.length}: ${card.title} (status: ${cardStatus})`)
       } catch (cardError) {
         console.error(`❌ [AI-MODAL] 加入卡片失敗: ${card.title}`, cardError)
         // 即使卡片加入失敗，也要減少計數器以保持一致性

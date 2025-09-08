@@ -145,9 +145,11 @@ export class CardRepository {
    */
   async createCard(title: string, listId: string, description?: string, status?: string): Promise<Card> {
     try {
+      console.log('📞 [REPO] 呼叫 API 新增卡片:', { title, listId, description, status })
+      
       // 📞 呼叫 API 新增卡片
       // 注意：這裡要把 listId 轉換成 list_id
-      const apiCard: Card = await $fetch('/api/cards', {
+      const apiCard = await $fetch('/api/cards', {
         method: 'POST',
         body: { 
           title,                // 標題保持不變
@@ -157,9 +159,16 @@ export class CardRepository {
         }
       })
       
+      console.log('📥 [REPO] API 回應原始資料:', apiCard)
+      
       // 🔄 轉換 API 回應成前端格式
-      return this.transformApiCard(apiCard)
+      // API 回應是蛇形命名，需要轉換成駝峰命名
+      const transformedCard = this.transformApiCard(apiCard)
+      console.log('🔄 [REPO] 轉換後的卡片資料:', transformedCard)
+      
+      return transformedCard
     } catch (error) {
+      console.error('❌ [REPO] createCard 錯誤詳情:', error)
       // 🚨 統一錯誤處理
       throw this.handleError(error, '新增卡片失敗')
     }
