@@ -112,7 +112,10 @@ export const useCardActions = () => {
         })
       }
       
-      // 使用 EventBus 通知系統替代笑閉的 alert
+      // 顯示錯誤訊息
+      alert(MESSAGES.card.moveError)
+      
+      // 同時使用 EventBus 通知系統
       eventBus.emit('notification:error', {
         title: '卡片移動失敗',
         message: MESSAGES.card.moveError,

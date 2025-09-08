@@ -404,7 +404,8 @@ describe('BoardStore', () => {
           '簡單卡片',
           'list-1',
           undefined,
-          undefined
+          undefined,
+          undefined  // priority 參數現在是第 5 個參數
         )
       })
     })
