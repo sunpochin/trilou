@@ -546,34 +546,19 @@ const handleDragStart = (evt: any) => {
   document.body.style.webkitUserSelect = 'none'
 }
 
-// 🎯 拖拽結束處理 - 清理狀態
+// 🎯 拖拽結束處理 - 簡化清理，避免卡住
 const handleDragEnd = (evt: any) => {
   console.log('🎯 [LIST] 拖拽結束')
   // 恢復文字選取
   document.body.style.userSelect = ''
   document.body.style.webkitUserSelect = ''
   
-  // 清理拖拽元素的狀態
-  const draggedElement = evt.item
-  if (draggedElement) {
-    draggedElement.blur() // 確保移除 focus
-    // 移除可能殘留的拖拽類別，防止下次拖拽衝突
-    draggedElement.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
-    draggedElement.classList.remove('mobile-chosen', 'mobile-ghost', 'mobile-drag')
-    draggedElement.classList.remove('desktop-chosen', 'desktop-ghost', 'desktop-drag')
-    
-    // 也清理內部的卡片元素
-    const innerCard = draggedElement.querySelector('.card-draggable')
-    if (innerCard) {
-      innerCard.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
-      innerCard.blur()
+  // 只做最基本的清理，讓 SortableJS 處理其餘部分
+  setTimeout(() => {
+    if (evt.item) {
+      evt.item.blur()
     }
-  }
-  
-  // 全域清理：移除所有可能殘留的拖曳類別
-  document.querySelectorAll('.sortable-chosen, .sortable-ghost, .sortable-drag').forEach(el => {
-    el.classList.remove('sortable-chosen', 'sortable-ghost', 'sortable-drag')
-  })
+  }, 50)
 }
 </script>
 
@@ -589,8 +574,8 @@ const handleDragEnd = (evt: any) => {
 .mobile-chosen .card-draggable,
 .desktop-chosen .card-draggable {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transform: scale(1.02);
   cursor: grabbing;
+  /* 移除 transform: scale 避免與拖曳衝突 */
   /* 移除藍色邊框，讓 Card.vue 的綠色邊框生效 */
 }
 
