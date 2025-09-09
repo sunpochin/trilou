@@ -1,4 +1,98 @@
 /**
+ * 🎯 EventBus - 組件間通訊的廣播系統
+ * 
+ * ## 📚 為什麼要用 EventBus？
+ * 
+ * ### 問題：組件直接依賴的困境
+ * ```typescript
+ * // ❌ 壞方法：組件必須互相認識
+ * class CardComponent {
+ *   constructor(private listComponent: ListComponent) {}
+ *   addCard() {
+ *     this.listComponent.updateCount() // 耦合太緊密
+ *   }
+ * }
+ * ```
+ * 
+ * ### 解決方案：EventBus 廣播系統
+ * ```typescript
+ * // ✅ 好方法：透過事件溝通
+ * // Card 組件：廣播訊息
+ * eventBus.emit('card:created', { cardId: '123', title: '新卡片' })
+ * 
+ * // List 組件：收聽訊息
+ * eventBus.on('card:created', (data) => {
+ *   updateCardCount()
+ * })
+ * ```
+ * 
+ * ## 🚀 快速使用指南
+ * 
+ * ### 1️⃣ 基本使用
+ * ```typescript
+ * import { eventBus } from '@/events/EventBus'
+ * 
+ * // 發送事件
+ * eventBus.emit('card:created', { 
+ *   cardId: '123', 
+ *   listId: 'abc',
+ *   title: '買牛奶' 
+ * })
+ * 
+ * // 監聽事件
+ * eventBus.on('card:created', (data) => {
+ *   console.log(`新卡片：${data.title}`)
+ * })
+ * 
+ * // 取消監聽
+ * eventBus.off('card:created', callback)
+ * ```
+ * 
+ * ### 2️⃣ 一次性監聽
+ * ```typescript
+ * // 只監聽一次，自動取消
+ * eventBus.once('user:login', (data) => {
+ *   showWelcomeMessage(`歡迎 ${data.email}！`)
+ * })
+ * ```
+ * 
+ * ### 3️⃣ 在 Vue 組件中使用
+ * ```typescript
+ * import { onMounted, onUnmounted } from 'vue'
+ * import { eventBus } from '@/events/EventBus'
+ * 
+ * export default {
+ *   setup() {
+ *     const handleCardCreated = (data) => {
+ *       // 處理卡片建立事件
+ *     }
+ *     
+ *     onMounted(() => {
+ *       eventBus.on('card:created', handleCardCreated)
+ *     })
+ *     
+ *     onUnmounted(() => {
+ *       eventBus.off('card:created', handleCardCreated)
+ *     })
+ *   }
+ * }
+ * ```
+ * 
+ * ## 📋 可用事件列表
+ * - `card:created` - 卡片建立時
+ * - `card:deleted` - 卡片刪除時
+ * - `card:moved` - 卡片移動時
+ * - `list:created` - 列表建立時
+ * - `list:deleted` - 列表刪除時
+ * - `user:login` - 使用者登入時
+ * - `user:logout` - 使用者登出時
+ * - `notification:show` - 顯示通知時
+ * - `error:occurred` - 發生錯誤時
+ * 
+ * 💡 更多概念說明請參考 docs/ARCHITECTURE.md
+ */
+
+/**
  * 📢 Observer Pattern = 學校廣播系統
  * 
  * 🤔 想像學校裡發生了重要的事：
