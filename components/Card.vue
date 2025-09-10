@@ -185,7 +185,6 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 import type { CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
 

@@ -321,7 +321,7 @@ import { VueDraggableNext as draggable } from 'vue-draggable-next'
 // 🔧 Composables 引入
 import { useCardActions } from '@/composables/useCardActions'
 import { useInlineEdit } from '@/composables/useInlineEdit'
-import { useDragAndDrop, getDragOptions, type DragEvent, type DragItem } from '@/composables/useDragAndDrop'
+import { useDragAndDrop, type DragEvent, type DragItem } from '@/composables/useDragAndDrop'
 
 // 📊 型別定義
 import type { ListUI, CardUI } from '@/types'
