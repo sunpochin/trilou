@@ -165,56 +165,85 @@
 </template>
 
 <script setup lang="ts">
+// #region ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
+// 📦 Vue 核心功能
 import { ref, nextTick, onMounted } from 'vue'
+
+// 🏠 組件引入
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
-import { useListActions } from '@/composables/useListActions'
-import { useBoardView } from '@/composables/useBoardView'
-import { useCardActions } from '@/composables/useCardActions'
+
+// 🔌 第三方函庫
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
+
+// 🔧 Composables 引入
+import { useBoardCommon } from '@/composables/useBoardCommon'
+import { useBoardView } from '@/composables/useBoardView'
+import { useCardOperations } from '@/composables/useCardOperations'
+import { useDragAndDrop, type DragEvent } from '@/composables/useDragAndDrop'
+
+// 📊 型別定義
 import type { CardUI } from '@/types'
+
+// 💬 常數和事件
 import { MESSAGES } from '@/constants/messages'
 import { eventBus } from '@/events/EventBus'
 
-// 使用統一的卡片型別定義
-type Card = CardUI
 
-// 拖拽事件型別定義
-interface DragEvent {
-  moved?: { element: Card }
-  removed?: { element: Card }
-}
+// #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 
-interface DragItem {
-  id: string
-  [key: string]: unknown
-}
+// #region ═══════════════════════ 🎮 COMPOSABLES & SETUP ═══════════════════════
+// 🖥️ 桌面版主要 Composable 設定
+const {
+  // 狀態
+  viewData,
+  showCardModal,
+  selectedCard,
+  showAiModal,
+  targetListId,
+  isAddingList,
+  newListTitle,
+  newListInput,
+  isSavingList,
+  draggingState,
+  
+  // 列表管理
+  startAddList,
+  cancelAddList,
+  saveNewList,
+  deleteList: deleteListAction,
+  updateListTitle: updateListTitleAction,
+  
+  // 卡片管理
+  openCardModal,
+  closeCardModal,
+  deleteCard: deleteCardAction,
+  updateCardTitle: updateCardTitleAction,
+  addCard: addCardAction,
+  
+  // AI 功能
+  openAiModal,
+  onAiGenerationStart: handleAiGenerationStart,
+  onAiGenerationComplete: handleAiGenerationComplete,
+  
+  // 拖拽功能
+  onDragStart,
+  onDragEnd
+} = useBoardCommon()
 
-// 🖥️ 桌面版：使用 vue-draggable-next 處理所有拖拽
-const { addList, deleteList: deleteListAction, updateListTitle: updateListTitleAction } = useListActions()
-const { viewData, handleCardMove, handleListMove } = useBoardView()
-const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction, addCard: addCardAction } = useCardActions()
+// 📋 特定操作 Composables
+const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
+const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
+const { handleCardMove, handleListMove } = useBoardView()
 
-// 模態框狀態管理
-const showCardModal = ref(false)
-const selectedCard = ref<Card | null>(null)
+// 🤖 AI 生成狀態
+const aiGeneratingListId = ref<string | null>(null)
+// #endregion ═══════════════════════ 🎮 COMPOSABLES & SETUP ═══════════════════════
 
-// 拖拽狀態管理
-const draggingState = ref({
-  isDragging: false,
-  draggedItem: null as DragItem | null,
-  dragType: null as 'card' | 'list' | null
-})
-
-// 新增列表狀態管理
-const isAddingList = ref(false)
-const newListTitle = ref('')
-const newListInput = ref<HTMLInputElement | null>(null)
-const isSavingList = ref(false)
-
-// 🖥️ 桌面版：處理卡片拖拽事件（vue-draggable-next）
+// #region ═══════════════════════ 🔄 DRAG & DROP HANDLERS ═══════════════════════
+// 🖥️ 卡片拖拽事件處理
 const onCardMove = async (event: DragEvent) => {
   console.log('🖥️ [DESKTOP-DRAG] 卡片移動事件:', event)
   
@@ -259,7 +288,7 @@ const onCardMove = async (event: DragEvent) => {
   }
 }
 
-// 🖥️ 桌面版：處理列表移動事件（vue-draggable-next）
+// 🖥️ 列表拖拽事件處理
 const onListMove = async (event: DragEvent) => {
   console.log('🖥️ [DESKTOP-DRAG] 列表移動事件:', event)
   
@@ -272,7 +301,9 @@ const onListMove = async (event: DragEvent) => {
     }
   }
 }
+// #endregion ═══════════════════════ 🔄 DRAG & DROP HANDLERS ═══════════════════════
 
+// #region ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
 /**
  * 🖥️ 桌面版樂觀更新系統 - 與手機版相同的強大體驗！
  * 
@@ -332,35 +363,11 @@ const onListAddCard = async (listId: string, title: string) => {
   }
 }
 
-// 🤖 AI 生成任務 - 開啟 AiTaskModal
-const showAiModal = ref(false)
-const targetListId = ref<string | null>(null)
-const aiGeneratingListId = ref<string | null>(null)
-
-const onAiGenerate = (listId: string) => {
-  console.log('🤖 [DESKTOP-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
-  targetListId.value = listId
-  showAiModal.value = true
-}
-
-// 🌈 處理 AI 生成開始事件
-const onAiGenerationStart = (listId: string) => {
-  console.log('🌈 [DESKTOP-BOARD] AI 開始生成，列表:', listId)
-  aiGeneratingListId.value = listId
-}
-
-// 🌈 處理 AI 生成完成事件
-const onAiGenerationComplete = () => {
-  console.log('✅ [DESKTOP-BOARD] AI 生成完成，清除狀態')
-  aiGeneratingListId.value = null
-}
-
 // 🗑️ 列表刪除 - 需要確認的重要操作
 const onListDelete = async (listId: string) => {
   console.log('🗑️ [DESKTOP-BOARD] 刪除列表:', listId)
   
   try {
-    // 刪除操作需要明確的結果反饋
     await deleteListAction(listId)
     console.log('✅ [DESKTOP-BOARD] 列表刪除成功')
   } catch (error) {
@@ -377,64 +384,34 @@ const onListDelete = async (listId: string) => {
 const onListUpdateTitle = async (listId: string, newTitle: string) => {
   console.log('✏️ [DESKTOP-BOARD] 更新列表標題:', { listId, newTitle })
   
-  // 🚀 桌面版也享受樂觀更新的快速體驗
   updateListTitleAction(listId, newTitle).catch(error => {
     console.error('❌ [DESKTOP-BOARD] 列表標題更新失敗:', error)
-    // Store 層已處理回滾
   })
   
   console.log('⚡ [DESKTOP-BOARD] 列表標題樂觀更新完成')
 }
+// #endregion ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
 
-// 開始 inline 新增列表
-const startAddList = async () => {
-  isAddingList.value = true
-  newListTitle.value = ''
-  
-  // 等待 DOM 更新後聚焦到輸入框
-  await nextTick()
-  if (newListInput.value) {
-    newListInput.value.focus()
-  }
+// 使用共用的 AI 生成函數，但需要管理本地狀態
+const onAiGenerate = (listId: string) => {
+  console.log('🤖 [DESKTOP-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
+  openAiModal(listId)
 }
 
-
-// 保存新列表 - 重構版：符合依賴反轉原則
-const saveNewList = async () => {
-  // 防止重複提交
-  if (isSavingList.value) return
-  
-  const titleToSave = newListTitle.value.trim()
-  if (!titleToSave) return
-  
-  isSavingList.value = true
-  
-  try {
-    // 🎯 透過 composable 執行：避免組件直接存取 store (依賴反轉原則)
-    await addList(titleToSave)
-    
-    // 僅成功後才更新 UI
-    isAddingList.value = false
-    newListTitle.value = ''
-    console.log(`✅ [TRELLO-BOARD] 成功創建列表: ${titleToSave}`)
-    
-  } catch (error) {
-    console.error('❌ [TRELLO-BOARD] 創建列表失敗:', error)
-    // 失敗則維持輸入以便重試
-    isAddingList.value = true
-    newListTitle.value = titleToSave
-    
-  } finally {
-    isSavingList.value = false
-  }
+const onAiGenerationStart = (listId: string) => {
+  console.log('🌈 [DESKTOP-BOARD] AI 開始生成，列表:', listId)
+  aiGeneratingListId.value = listId
+  handleAiGenerationStart()
 }
 
-// 取消新增列表
-const cancelAddList = () => {
-  isAddingList.value = false
-  newListTitle.value = ''
+const onAiGenerationComplete = () => {
+  console.log('✅ [DESKTOP-BOARD] AI 生成完成，清除狀態')
+  aiGeneratingListId.value = null
+  handleAiGenerationComplete()
 }
+// #endregion ═══════════════════════ 🤖 AI FUNCTIONS ═══════════════════════
 
+// #region ═══════════════════════ 🧪 TESTING UTILITIES ═══════════════════════
 // 🧪 測試 Toast 通知功能
 const testToast = (type: 'success' | 'error' | 'info' | 'warning') => {
   const testMessages = {
@@ -461,19 +438,9 @@ const testToast = (type: 'success' | 'error' | 'info' | 'warning') => {
   
   console.log(`🧪 [TEST-TOAST] 測試 ${type} 通知:`, message)
 }
+// #endregion ═══════════════════════ 🧪 TESTING UTILITIES ═══════════════════════
 
-// 開啟卡片模態框
-const openCardModal = (card: Card) => {
-  selectedCard.value = card
-  showCardModal.value = true
-}
-
-// 關閉卡片模態框
-const closeCardModal = () => {
-  showCardModal.value = false
-  selectedCard.value = null
-}
-
+// #region ═══════════════════════ 🔧 LIFECYCLE HOOKS ═══════════════════════
 // 🖥️ 桌面版組件初始化
 onMounted(() => {
   console.log('🖥️ [DESKTOP-BOARD] 桌面版看板初始化完成')
@@ -482,6 +449,7 @@ onMounted(() => {
 // 在組件載入時記錄當前狀態
 console.log('🖼️ [DESKTOP-BOARD] 桌面版專用看板載入')
 console.log('🖼️ [DESKTOP-BOARD] 使用依賴反轉原則，透過 composable 訪問資料')
+// #endregion ═══════════════════════ 🔧 LIFECYCLE HOOKS ═══════════════════════
 </script>
 
 <style scoped>

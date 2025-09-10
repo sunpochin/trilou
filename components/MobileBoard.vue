@@ -240,62 +240,80 @@ style="width: calc(100vw - 2rem); max-width: 420px;"
 </template>
 
 <script setup lang="ts">
+// #region ═══════════════════════ 📦 IMPORTS ═══════════════════════
 import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
-import { useListActions } from '@/composables/useListActions'
+import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
-import { useCardActions } from '@/composables/useCardActions'
+import { useCardOperations } from '@/composables/useCardOperations'
+import { useDragAndDrop } from '@/composables/useDragAndDrop'
+import { useInlineEdit } from '@/composables/useInlineEdit'
 import { useGesture } from '@vueuse/gesture'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
 import { eventBus } from '@/events/EventBus'
 
-// 使用統一的卡片型別定義
-type Card = CardUI
+// #endregion ═══════════════════════ 📦 IMPORTS ═══════════════════════
 
-// 拖拽事件型別定義
-interface DragEvent {
-  moved?: { element: Card }
-  removed?: { element: Card }
-}
+// #region ═══════════════════════ 🎯 COMPOSABLES & SETUP ═══════════════════════
+// 📱 手機版：使用共用的看板邏輯
+const {
+  // 狀態
+  viewData,
+  showCardModal,
+  selectedCard,
+  showAiModal,
+  targetListId,
+  isAddingList,
+  newListTitle,
+  newListInput,
+  isSavingList,
+  draggingState,
+  
+  // 列表管理
+  startAddList,
+  cancelAddList,
+  saveNewList,
+  deleteList: deleteListAction,
+  updateListTitle: updateListTitleAction,
+  
+  // 卡片管理
+  openCardModal,
+  closeCardModal,
+  deleteCard: deleteCardAction,
+  updateCardTitle: updateCardTitleAction,
+  addCard: addCardAction,
+  
+  // AI 功能
+  openAiModal,
+  onAiGenerationStart: handleAiGenerationStart,
+  onAiGenerationComplete: handleAiGenerationComplete,
+  
+  // 拖拽功能
+  onDragStart,
+  onDragEnd,
+  onListMove
+} = useBoardCommon()
 
-interface DragItem {
-  id: string
-  [key: string]: unknown
-}
+// 使用專用的操作 composables
+const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
+const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 
-// 📱 手機版：使用 composables
-const { addList, deleteList: deleteListAction, updateListTitle: updateListTitleAction } = useListActions()
-const { viewData, handleCardMove, handleListMove } = useBoardView()
-const { deleteCard: deleteCardAction, updateCardTitle: updateCardTitleAction, addCard: addCardAction } = useCardActions()
+// 需要單獨引入來處理手機版特有的拖拽邏輯
+const { handleCardMove, handleListMove } = useBoardView()
+// #endregion ═══════════════════════ 🎯 COMPOSABLES & SETUP ═══════════════════════
 
+// #region ═══════════════════════ 📱 MOBILE SPECIFIC STATE ═══════════════════════
 // 看板容器的 DOM 引用
 const boardContainerRef = ref<HTMLElement | null>(null)
 const mobileListsContainer = ref<HTMLElement | null>(null)
 
 // 🎯 簡化方案：移除複雜的字體縮放和瀏覽器偵測
 // 接受合理限制，提供穩定的使用者體驗
-
-// 拖拽狀態管理
-const draggingState = ref({
-  isDragging: false,
-  draggedItem: null as DragItem | null,
-  dragType: null as 'card' | 'list' | null
-})
-
-// 模態框狀態管理
-const showCardModal = ref(false)
-const selectedCard = ref<Card | null>(null)
-
-// 新增列表狀態管理
-const isAddingList = ref(false)
-const newListTitle = ref('')
-const newListInput = ref<HTMLInputElement | null>(null)
-const isSavingList = ref(false)
 
 // 🔄 列表拖曳模式狀態
 // 💡 十歲小朋友解釋：這個開關決定你是「滑動看列表」還是「拖動換位置」
@@ -307,20 +325,6 @@ const toggleListDragMode = () => {
   console.log(`📱 [MOBILE] 切換到${isListDragMode.value ? '排序' : '滑動'}模式`)
 }
 
-// 🎯 處理列表移動事件
-const onListMove = async (event: any) => {
-  console.log('📱 [MOBILE-DRAG] 列表移動事件:', event)
-  
-  if (event.moved) {
-    try {
-      await handleListMove()
-      console.log('✅ [MOBILE-DRAG] 列表順序更新成功')
-    } catch (error) {
-      console.error('❌ [MOBILE-DRAG] 列表順序更新失敗:', error)
-    }
-  }
-}
-
 // 📱 手機版長按 + 拖拽系統
 const longPressTimer = ref<number | null>(null)
 const isLongPressing = ref(false)
@@ -330,6 +334,9 @@ const isDraggingDisabled = ref(true)  // 是否禁用拖拽（預設禁用）
 // 📋 手機版列表切換系統
 const isListSnapping = ref(false)
 
+// #endregion ═══════════════════════ 📱 MOBILE SPECIFIC STATE ═══════════════════════
+
+// #region ═══════════════════════ 🎮 GESTURE HANDLING ═══════════════════════
 // 🧹 清理函數存儲
 const cleanupFunctions = ref<(() => void)[]>([])
 
@@ -546,23 +553,10 @@ const setupAdvancedGestures = () => {
   })
 }
 
-// 拖拽事件處理
-const onDragStart = (item: DragItem, type: 'card' | 'list') => {
-  console.log('📱 [MOBILE-BOARD] 拖拽開始:', { item, type })
-  draggingState.value.isDragging = true
-  draggingState.value.draggedItem = item
-  draggingState.value.dragType = type
-}
-
-const onDragEnd = () => {
-  console.log('📱 [MOBILE-BOARD] 拖拽結束')
-  draggingState.value.isDragging = false
-  draggingState.value.draggedItem = null
-  draggingState.value.dragType = null
-}
+// 拖拽事件已由 useBoardCommon 提供
 
 // 處理卡片拖拽移動事件
-const onCardMove = async (event: DragEvent) => {
+const onCardMove = async (event: any) => {
   console.log('📱 [MOBILE-BOARD] Card move event:', event)
   
   if (event.moved) {
@@ -597,84 +591,18 @@ const onCardMove = async (event: DragEvent) => {
     }
   }
 }
+// #endregion ═══════════════════════ 🔄 EVENT HANDLERS ═══════════════════════
 
-// 🎯 樂觀更新系統 - 立即更新 UI，失敗時回滾
-
-// 🗑️ 卡片刪除 - 需要確認的重要操作
-const onCardDelete = async (card: Card) => {
-  console.log('🗑️ [MOBILE-BOARD] 刪除卡片:', card.title)
-  
-  try {
-    // 這個操作用戶需要知道是否成功，所以等待結果
-    await deleteCardAction(card)
-    console.log('✅ [MOBILE-BOARD] 卡片刪除成功')
-    // 可以顯示成功提示（可選）
-  } catch (error) {
-    console.error('❌ [MOBILE-BOARD] 卡片刪除失敗:', error)
-    eventBus.emit('notification:error', {
-      title: '刪除失敗',
-      message: '刪除失敗，請稍後再試',
-      duration: 5000
-    })
-  }
-}
+// #region ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
+// 🗑️ 卡片刪除 - 使用共用的卡片操作
+const onCardDelete = handleCardDelete
 
 // ✏️ 卡片標題更新 - 樂觀更新策略  
-const onCardUpdateTitle = async (cardId: string, newTitle: string) => {
-  console.log('✏️ [MOBILE-BOARD] 更新卡片標題:', { cardId, newTitle })
-  
-  // 🚀 樂觀更新：不等待，讓用戶感覺超快
-  // Store 內部已經實現了樂觀更新 + 失敗回滾
-  updateCardTitleAction(cardId, newTitle).catch(error => {
-    console.error('❌ [MOBILE-BOARD] 卡片標題更新失敗:', error)
-    // 錯誤已在 Store 層處理回滾，這裡只需要記錄
-  })
-  
-  console.log('⚡ [MOBILE-BOARD] 卡片標題樂觀更新完成')
-}
+// ✏️ 卡片標題更新 - 使用共用的卡片操作
+const onCardUpdateTitle = handleCardUpdateTitle
 
-// 📌 新增卡片 - 樂觀更新 + 錯誤處理
-const onListAddCard = async (listId: string, title: string) => {
-  console.log('📌 [MOBILE-BOARD] 新增卡片:', { listId, title })
-  
-  try {
-    // 🚀 Store 已實現樂觀更新，我們只需要處理錯誤
-    // 不傳遞 status，讓它使用預設值
-    await addCardAction(listId, title)
-    console.log('✅ [MOBILE-BOARD] 卡片新增完成')
-  } catch (error) {
-    console.error('❌ [MOBILE-BOARD] 新增卡片失敗:', error)
-    // Store 已經回滾了，我們提供用戶友好的錯誤訊息
-    eventBus.emit('notification:error', {
-      title: '新增失敗',
-      message: '新增卡片失敗，請檢查網路連線後再試',
-      duration: 5000
-    })
-  }
-}
-
-// 🤖 AI 生成任務 - 開啟 AiTaskModal
-const showAiModal = ref(false)
-const targetListId = ref<string | null>(null)
-const aiGeneratingListId = ref<string | null>(null)
-
-const onAiGenerate = (listId: string) => {
-  console.log('🤖 [MOBILE-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
-  targetListId.value = listId
-  showAiModal.value = true
-}
-
-// 🌈 處理 AI 生成開始事件
-const onAiGenerationStart = (listId: string) => {
-  console.log('🌈 [MOBILE-BOARD] AI 開始生成，列表:', listId)
-  aiGeneratingListId.value = listId
-}
-
-// 🌈 處理 AI 生成完成事件
-const onAiGenerationComplete = () => {
-  console.log('✅ [MOBILE-BOARD] AI 生成完成，清除狀態')
-  aiGeneratingListId.value = null
-}
+// 📌 新增卡片 - 使用共用的卡片操作
+const onListAddCard = handleCardAdd
 
 // 🗑️ 列表刪除 - 需要確認的重要操作
 const onListDelete = async (listId: string) => {
@@ -708,54 +636,32 @@ const onListUpdateTitle = async (listId: string, newTitle: string) => {
   
   console.log('⚡ [MOBILE-BOARD] 列表標題樂觀更新完成')
 }
+// #endregion ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
 
-// 新增列表功能
-const startAddList = async () => {
-  isAddingList.value = true
-  newListTitle.value = ''
-  
-  await nextTick()
-  if (newListInput.value) {
-    newListInput.value.focus()
-  }
+// #region ═══════════════════════ 🤖 AI FUNCTIONS ═══════════════════════
+// 🤖 AI 生成狀態
+const aiGeneratingListId = ref<string | null>(null)
+
+// 使用共用的 AI 生成函數，但需要管理本地狀態
+const onAiGenerate = (listId: string) => {
+  console.log('🤖 [MOBILE-BOARD] 開啟 AI 生成模態框，目標列表:', listId)
+  openAiModal(listId)
 }
 
-const saveNewList = async () => {
-  if (isSavingList.value) return
-  
-  const titleToSave = newListTitle.value.trim()
-  if (!titleToSave) return
-  
-  isSavingList.value = true
-  
-  try {
-    await addList(titleToSave)
-    isAddingList.value = false
-    newListTitle.value = ''
-    console.log(`✅ [MOBILE-BOARD] 成功創建列表: ${titleToSave}`)
-  } catch (error) {
-    console.error('❌ [MOBILE-BOARD] 創建列表失敗:', error)
-  } finally {
-    isSavingList.value = false
-  }
+const onAiGenerationStart = (listId: string) => {
+  console.log('🌈 [MOBILE-BOARD] AI 開始生成，列表:', listId)
+  aiGeneratingListId.value = listId
+  handleAiGenerationStart()
 }
 
-const cancelAddList = () => {
-  isAddingList.value = false
-  newListTitle.value = ''
+const onAiGenerationComplete = () => {
+  console.log('✅ [MOBILE-BOARD] AI 生成完成，清除狀態')
+  aiGeneratingListId.value = null
+  handleAiGenerationComplete()
 }
+// #endregion ═══════════════════════ 🤖 AI FUNCTIONS ═══════════════════════
 
-// 卡片模態框
-const openCardModal = (card: Card) => {
-  selectedCard.value = card
-  showCardModal.value = true
-}
-
-const closeCardModal = () => {
-  showCardModal.value = false
-  selectedCard.value = null
-}
-
+// #region ═══════════════════════ 🔄 LIFECYCLE HOOKS ═══════════════════════
 // 初始化 - 只處理基本手勢，避免重複初始化列表手勢
 onMounted(async () => {
   console.log('📱 [MOBILE-BOARD] 組件初始化')
@@ -794,6 +700,7 @@ onUnmounted(() => {
   cleanupFunctions.value.forEach(cleanup => cleanup())
   cleanupFunctions.value = []
 })
+// #endregion ═══════════════════════ 🔄 LIFECYCLE HOOKS ═══════════════════════
 </script>
 
 <style scoped>

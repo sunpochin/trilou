@@ -107,15 +107,15 @@
   - 保持自然的 CSS 樣式優先級，避免過度使用 !important
 
   🎨 視覺效果設計：
-  - 選中狀態：藍色邊框 + 輕微放大（scale 1.02）
-  - 拖拽中：綠色邊框 + 旋轉 3 度 + 放大 1.05 倍 + 強化陰影
+  - 選中狀態：藍色邊框 + 輕微放大
+  - 拖拽中：綠色邊框 + 旋轉 2 度 + 強化陰影
   - 占位符：虛線邊框 + 半透明背景
 
-  📝 樣式類別對應：
-  - chosen-class: mobile-chosen / desktop-chosen
-  - drag-class: mobile-drag / desktop-drag  
-  - ghost-class: mobile-ghost / desktop-ghost
-  - CSS 同時支援 sortable-* 和 mobile-*/desktop-* 類別名稱
+  📝 實際使用的樣式類別：
+  - chosenClass: card-chosen (選中時)
+  - dragClass: card-dragging (拖拽中)
+  - ghostClass: card-ghost (占位符)
+  - fallbackClass: card-fallback (跟隨滑鼠)
 -->
 
 <template>
@@ -307,32 +307,33 @@
 </template>
 
 <script setup lang="ts">
-import Card from '@/components/Card.vue'
-import { CardStatus, CardPriority } from '@/types/api'
-import ListMenu from '@/components/ListMenu.vue'
-import { VueDraggableNext as draggable } from 'vue-draggable-next'
-// 🎯 純渲染組件：不直接使用 composables
+// #region ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
+// 📦 Vue 核心功能
 import { ref, nextTick, computed } from 'vue'
+
+// 🏠 組件引入
+import Card from '@/components/Card.vue'
+import ListMenu from '@/components/ListMenu.vue'
+
+// 🔌 第三方函庫
+import { VueDraggableNext as draggable } from 'vue-draggable-next'
+
+// 🔧 Composables 引入
 import { useCardActions } from '@/composables/useCardActions'
+import { useInlineEdit } from '@/composables/useInlineEdit'
+import { useDragAndDrop, getDragOptions, type DragEvent, type DragItem } from '@/composables/useDragAndDrop'
 
-// 使用統一的型別定義
+// 📊 型別定義
 import type { ListUI, CardUI } from '@/types'
-type List = ListUI
+import { CardStatus, CardPriority } from '@/types/api'
 
-// 拖拽事件型別定義
-interface DragEvent {
-  moved?: { element: CardUI }
-  removed?: { element: CardUI }
-}
 
-interface DragItem {
-  id: string
-  [key: string]: unknown
-}
+// #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 
+// #region ═══════════════════════ 🎯 PROPS & EMITS ═══════════════════════
 // 🎯 純渲染組件：接收父組件傳入的資料和狀態
 const props = defineProps<{
-  list: List
+  list: ListUI
   dragging: boolean  // 父組件控制的拖拽狀態
   isMobile?: boolean  // 是否為手機版
   aiGeneratingListId?: string | null  // 正在生成 AI 任務的列表 ID
@@ -352,93 +353,67 @@ const emit = defineEmits<{
   'list-update-title': [listId: string, newTitle: string]
   'ai-generate': [listId: string]
 }>()
+// #endregion ═══════════════════════ 🎯 PROPS & EMITS ═══════════════════════
 
-// 🎯 純渲染組件：移除直接 composable 使用
-
-// 🌈 檢查這個特定列表是否正在生成 AI 任務
+// #region ═══════════════════════ 🎮 COMPOSABLES & STATE ═══════════════════════
+// 🌈 AI 生成狀態檢查
 const isAiGenerating = computed(() => 
   props.aiGeneratingListId === props.list.id
 )
 
-// 編輯狀態
-const isEditingTitle = ref(false)
-const editingTitle = ref('')
-const titleInput = ref<HTMLInputElement | null>(null)
+// 📝 列表標題編輯 Composable
+const titleEdit = useInlineEdit({
+  onSave: (newTitle) => {
+    emit('list-update-title', props.list.id, newTitle)
+  },
+  defaultValue: props.list.title
+})
 
-// 新增卡片狀態
-const isAddingCard = ref(false)
-const newCardTitle = ref('')
-const newCardInput = ref<HTMLTextAreaElement | null>(null)
+// 📌 新增卡片 Composable
+const cardAddEdit = useInlineEdit({
+  onSave: (cardTitle) => {
+    emit('list-add-card', props.list.id, cardTitle)
+  },
+  placeholder: '輸入卡片標題...'
+})
 
-// 🎯 純渲染：處理新增卡片 (委派給父組件)
-const handleAddCard = () => {
-  console.log('📌 [PURE-LIST] 新增卡片事件，委派給父組件')
-  // 使用 inline 新增模式
-  startAddCard()
-}
+// 🔄 拖拽功能 Composable
+const { startDrag, endDrag, handleCardDragMove } = useDragAndDrop()
 
-// 開始 inline 新增卡片
-const startAddCard = async () => {
-  isAddingCard.value = true
-  newCardTitle.value = ''
-  
-  // 等待 DOM 更新後聚焦到輸入框
-  await nextTick()
-  if (newCardInput.value) {
-    newCardInput.value.focus()
-  }
-}
-
-// 新增狀態管理：防止重複提交
-const isSavingCard = ref(false)
-
-// 🎯 純渲染：保存新卡片 (委派給父組件)
-const saveNewCard = async () => {
-  if (isSavingCard.value) return
-  
-  const titleToSave = newCardTitle.value.trim()
-  if (!titleToSave) return
-  
-  isSavingCard.value = true
-  
-  try {
-    // 委派給父組件處理業務邏輯
-    emit('list-add-card', props.list.id, titleToSave)
-    
-    // UI 更新
-    isAddingCard.value = false
-    newCardTitle.value = ''
-    console.log(`📌 [PURE-LIST] 新增卡片事件已發送: ${titleToSave}`)
-    
-  } catch (error) {
-    console.error('❌ [PURE-LIST] 發送新增卡片事件失敗:', error)
-  } finally {
-    isSavingCard.value = false
-  }
-}
-
-// 取消新增卡片
-const cancelAddCard = () => {
-  isAddingCard.value = false
-  newCardTitle.value = ''
-}
-
-// 🎯 純渲染：處理刪除列表 (委派給父組件)
-const handleDeleteList = () => {
-  console.log('🗑️ [PURE-LIST] 刪除列表事件，委派給父組件:', props.list.title)
-  emit('list-delete', props.list.id)
-}
-
-// 🤖 純渲染：處理 AI 生成任務 (委派給父組件)
-const handleAiGenerate = () => {
-  console.log('🤖 [PURE-LIST] AI 生成任務事件，委派給父組件:', props.list.title)
-  emit('ai-generate', props.list.id)
-}
-
-// 🎯 使用 Composable 處理卡片操作，遵循依賴反轉原則
+// 📋 卡片操作 Composable
 const { updateCardStatus, updateCardPriority } = useCardActions()
 
-// 處理卡片狀態更新
+// 🔗 編輯狀態別名（保持相容性）
+const isEditingTitle = titleEdit.isEditing
+const editingTitle = titleEdit.editingValue
+const titleInput = titleEdit.inputRef as any
+
+const isAddingCard = cardAddEdit.isEditing
+const newCardTitle = cardAddEdit.editingValue
+const newCardInput = cardAddEdit.inputRef as any
+// #endregion ═══════════════════════ 🎮 COMPOSABLES & STATE ═══════════════════════
+
+// #region ═══════════════════════ 📝 TITLE EDITING ═══════════════════════
+// 別名函數（保持相容性）
+const startEditTitle = () => titleEdit.startEdit(props.list.title)
+const saveTitle = titleEdit.saveEdit
+const cancelEdit = titleEdit.cancelEdit
+// #endregion ═══════════════════════ 📝 TITLE EDITING ═══════════════════════
+
+// #region ═══════════════════════ 📌 CARD OPERATIONS ═══════════════════════
+// 📌 新增卡片函數
+const handleAddCard = () => {
+  console.log('📌 [PURE-LIST] 新增卡片事件，委派給父組件')
+  cardAddEdit.startEdit()
+}
+
+// 新增卡片別名函數（保持相容性）
+const startAddCard = cardAddEdit.startEdit
+const saveNewCard = cardAddEdit.saveEdit
+const cancelAddCard = cardAddEdit.cancelEdit
+const isSavingCard = cardAddEdit.isSaving
+
+// 🔄 卡片狀態更新
 const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
   console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status, statusType: typeof status })
   
@@ -447,12 +422,11 @@ const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
     console.log('✅ [LIST-ITEM] 狀態更新成功')
   } catch (error) {
     console.error('❌ [LIST-ITEM] 更新卡片狀態失敗:', error)
-    // 如果失敗了，重新載入整個 board 以同步狀態
     emit('card-updated')
   }
 }
 
-// 處理卡片優先順序更新
+// 🏆 卡片優先順序更新
 const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) => {
   console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority, priorityType: typeof priority })
   
@@ -461,46 +435,38 @@ const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) 
     console.log('✅ [LIST-ITEM] 優先順序更新成功')
   } catch (error) {
     console.error('❌ [LIST-ITEM] 更新優先順序失敗:', error)
-    // 如果失敗了，重新載入整個 board 以同步狀態
     emit('card-updated')
   }
 }
+// #endregion ═══════════════════════ 📌 CARD OPERATIONS ═══════════════════════
 
-// 開始編輯標題
-const startEditTitle = async () => {
-  isEditingTitle.value = true
-  editingTitle.value = props.list.title
-  
-  // 等待 DOM 更新後聚焦並全選文字
-  await nextTick()
-  if (titleInput.value) {
-    titleInput.value.focus()
-    titleInput.value.select()
-  }
-}
-
-// 🎯 純渲染：儲存標題變更 (委派給父組件)
-const saveTitle = async () => {
-  const newTitle = editingTitle.value.trim()
-  if (newTitle && newTitle !== props.list.title) {
-    console.log('✏️ [PURE-LIST] 更新列表標題事件，委派給父組件:', { old: props.list.title, new: newTitle })
-    emit('list-update-title', props.list.id, newTitle)
-  }
-  isEditingTitle.value = false
-}
-
-// 取消編輯
-const cancelEdit = () => {
-  editingTitle.value = props.list.title
-  isEditingTitle.value = false
-}
-
-// 🎯 使用跟 List 一樣的 @change 事件處理
-const handleCardChange = (event: any) => {
+// #region ═══════════════════════ 🔄 DRAG & DROP ═══════════════════════
+// 🎯 拖拽變更事件處理
+const handleCardChange = async (event: any) => {
   console.log('🎯 [CARD-CHANGE] 卡片變更事件:', event)
-  // 直接轉發給父組件，跟 List 一樣的處理方式
-  emit('card-move', event)
+  try {
+    await handleCardDragMove(event, props.list.id)
+    emit('card-move', event)
+  } catch (error) {
+    console.error('❌ [CARD-CHANGE] 處理卡片移動失敗:', error)
+  }
 }
+
+// #endregion ═══════════════════════ 🔄 DRAG & DROP ═══════════════════════
+
+// #region ═══════════════════════ 🗑️ LIST OPERATIONS ═══════════════════════
+// 🗑️ 刪除列表函數
+const handleDeleteList = () => {
+  console.log('🗑️ [PURE-LIST] 刪除列表事件，委派給父組件:', props.list.title)
+  emit('list-delete', props.list.id)
+}
+
+// 🤖 AI 生成函數
+const handleAiGenerate = () => {
+  console.log('🤖 [PURE-LIST] AI 生成任務事件，委派給父組件:', props.list.title)
+  emit('ai-generate', props.list.id)
+}
+// #endregion ═══════════════════════ 🗑️ LIST OPERATIONS ═══════════════════════
 </script>
 
 <style scoped>
@@ -528,6 +494,7 @@ const handleCardChange = (event: any) => {
   border: 2px solid #10b981 !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
   background: rgba(255, 255, 255, 0.95);
+  transform: rotate(2deg);  /* 拖曳時傾斜 2 度 */
   /* 跟著滑鼠的半透明效果 */
 }
 
@@ -538,8 +505,7 @@ const handleCardChange = (event: any) => {
   border: 2px solid #10b981 !important;
   border-radius: 8px !important;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3) !important;
-  /* 移除會導致問題的樣式 */
-  /* 不設定 position: fixed, transform: rotate, pointer-events */
+  /* 不能設定 transform，會和 vue-draggable-next 的位置控制衝突 */
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */
@@ -679,73 +645,4 @@ const handleCardChange = (event: any) => {
   transform: none;
 }
 
-/* 📱 手機版拖拽魔法樣式系統 */
-/* 💡 十歲小朋友解釋：這些是「魔法咒語」，讓卡片在不同狀態下有不同的樣子！ */
-
-/* 🎭 正在被拖拽的卡片樣式 (mobile-drag) */
-/* 💡 十歲小朋友解釋：當你正在拖拽卡片時，卡片會變成這個樣子 */
-:deep(.mobile-drag) {
-  transform: rotate(5deg) !important;        /* 🔄 稍微傾斜 5 度，看起來像被拿起來 */
-  opacity: 0.8 !important;                   /* 🌫️ 變成半透明，表示正在移動 */
-  transition: none !important;               /* ⚡ 關閉動畫，讓它可以跟手指同步移動 */
-  z-index: 9999 !important;                  /* 🏔️ 放到最上層，不會被其他東西蓋住 */
-  pointer-events: none !important;           /* 🚫 不響應點擊，避免干擾拖拽 */
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important; /* ✨ 加陰影，看起來像浮在空中 */
-  position: absolute !important;             /* 📍 可以自由移動位置 */
-}
-
-/* 👻 幽靈卡片樣式 (mobile-ghost) */
-/* 💡 十歲小朋友解釋：原來位置留下的「影子」，告訴你卡片原來在哪裡 */
-:deep(.mobile-ghost) {
-  opacity: 0.3 !important;                   /* 🌫️ 很淡很淡，像幽靈一樣 */
-  background-color: #e5e7eb !important;      /* 🎨 灰色背景 */
-  border: 2px dashed #9ca3af !important;     /* 📦 虛線邊框，表示「這裡空了」 */
-  transition: all 0.2s ease !important;      /* 🎬 平滑動畫，0.2秒變化 */
-}
-
-/* ✨ 被選中的卡片樣式 (mobile-chosen) */
-/* 💡 十歲小朋友解釋：當你長按選中卡片時，卡片會「發光」告訴你被選到了 */
-:deep(.mobile-chosen) {
-  transform: scale(1.05) !important;         /* 🔍 放大 5%，表示被選中 */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important; /* ✨ 加陰影，看起來會發光 */
-  transition: transform 0.1s ease !important; /* ⚡ 快速動畫，0.1秒變化 */
-}
-
-/* 🎯 SortableJS Fallback 模式的超級魔法樣式！ */
-/* 💡 十歲小朋友解釋：這是最重要的魔法！讓卡片的「影分身」跟著手指到處跑！ */
-:deep(.sortable-fallback) {
-  /* 🏠 位置設定：讓影分身可以飛到任何地方 */
-  display: block !important;                 /* 📦 確保顯示出來 */
-  position: fixed !important;                /* 🌍 固定在整個螢幕上，不受容器限制 */
-  z-index: 100000 !important;                /* 🏔️ 放到最最最上層 (比任何東西都高) */
-  
-  /* 🚫 行為設定：讓影分身不會干擾其他操作 */
-  pointer-events: none !important;           /* 🚫 不能點擊，避免干擾 */
-  transition: none !important;               /* ⚡ 關閉所有動畫，100% 跟手指同步 */
-  
-  /* 🎨 外觀設定：讓影分身看起來很酷 */
-  transform: rotate(5deg) !important;        /* 🔄 傾斜 5 度，像被拿起來 */
-  opacity: 0.8 !important;                   /* 🌫️ 半透明，表示是「影分身」 */
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4) !important; /* ✨ 超大陰影，像飛在天空中 */
-  border-radius: 8px !important;             /* 🟫 圓角，看起來更美 */
-  background: white !important;              /* ⚪ 白色背景，清楚易見 */
-}
-
-/* 🎯 確保拖拽容器不會限制影分身移動 */
-/* 💡 十歲小朋友解釋：這個魔法確保影分身可以飛出原來的「籠子」！ */
-:deep(.sortable-drag) {
-  position: fixed !important;                /* 🌍 也是固定在整個螢幕 */
-  z-index: 100000 !important;                /* 🏔️ 同樣放在最上層 */
-  pointer-events: none !important;           /* 🚫 同樣不能點擊 */
-}
-
-/* 🎉 十歲小朋友總結：
-   這些魔法咒語讓手機版拖拽變得超厲害！
-   1. 長按 → 卡片發光 (chosen)
-   2. 開始拖拽 → 創造影分身 (fallback)，原位留幽靈 (ghost)
-   3. 拖拽中 → 影分身跟著手指跑遍整個螢幕
-   4. 放開 → 卡片移動到新位置，影分身和幽靈消失
-   
-   就像變魔術一樣神奇！✨
-*/
 </style>

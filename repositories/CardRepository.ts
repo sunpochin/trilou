@@ -31,8 +31,6 @@
  */
 import type { CardUI } from '@/types'
 
-// 使用統一的卡片型別定義
-type Card = CardUI
 
 // Repository 使用 API 型別，因為它直接與後端互動
 
@@ -85,7 +83,7 @@ export class CardRepository {
   async getAllCards(): Promise<Card[]> {
     try {
       // 📞 呼叫 API 取得原始資料
-      const apiCards: Card[] = await $fetch('/api/cards')
+      const apiCards: CardUI[] = await $fetch('/api/cards')
       
       // 確保回傳的是一個陣列，如果 API 回應 null 或非陣列，則回傳空陣列
       if (!Array.isArray(apiCards)) {
@@ -261,7 +259,7 @@ export class CardRepository {
    * @param apiCard - API 回傳的卡片資料（蛇形命名）
    * @returns Card - 前端格式的卡片資料（駝峰命名）
    */
-  private transformApiCard(apiCard: any): Card {
+  private transformApiCard(apiCard: any): CardUI {
     // 確保 apiCard 是物件
     if (!apiCard || typeof apiCard !== 'object') {
       // 或者可以拋出一個錯誤，取決於您希望如何處理這種情況
@@ -358,7 +356,7 @@ export class CardRepository {
    * @param apiCards - API 回傳的卡片陣列（蛇形命名）
    * @returns Card[] - 前端格式的卡片陣列（駝峰命名）
    */
-  private transformApiCards(apiCards: Card[]): Card[] {
+  private transformApiCards(apiCards: CardUI[]): CardUI[] {
     // 使用 map 對每張卡片執行格式轉換
     return apiCards.map(card => this.transformApiCard(card))
   }
