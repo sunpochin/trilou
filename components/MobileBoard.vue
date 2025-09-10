@@ -257,8 +257,6 @@ import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
 import { eventBus } from '@/events/EventBus'
 
-// 使用統一的卡片型別定義
-type Card = CardUI
 // #endregion ═══════════════════════ 📦 IMPORTS ═══════════════════════
 
 // #region ═══════════════════════ 🎯 COMPOSABLES & SETUP ═══════════════════════

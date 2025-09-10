@@ -191,8 +191,6 @@ import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
 import { eventBus } from '@/events/EventBus'
 
-// 🏷️ 型別別名
-type Card = CardUI
 
 // #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 

@@ -39,8 +39,6 @@ import type { CardUI } from '@/types'
 import { eventBus } from '@/events/EventBus'
 import type { DragItem, DragEvent } from '@/composables/useDragAndDrop'
 
-// 使用統一的卡片型別定義
-export type Card = CardUI
 
 
 
@@ -56,7 +54,7 @@ export function useBoardCommon() {
   
   // ========== 模態框狀態 ==========
   const showCardModal = ref(false)
-  const selectedCard = ref<Card | null>(null)
+  const selectedCard = ref<CardUI | null>(null)
   const showAiModal = ref(false)
   const targetListId = ref<string | null>(null)
   
@@ -165,7 +163,7 @@ export function useBoardCommon() {
   /**
    * 開啟卡片編輯模態框
    */
-  const openCardModal = (card: Card) => {
+  const openCardModal = (card: CardUI) => {
     selectedCard.value = card
     showCardModal.value = true
   }

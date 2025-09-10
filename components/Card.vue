@@ -189,22 +189,20 @@ import { formatStatus, getStatusTagClass } from '@/utils/statusFormatter'
 import type { CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
 
-// 使用統一的卡片型別定義
-type Card = CardUI
 
 // 🎯 純渲染組件：接收父組件傳入的資料和狀態
 const props = defineProps<{
-  card: Card
+  card: CardUI
   dragging: boolean  // 父組件控制的拖拽狀態
   isMobile?: boolean  // 是否為手機版
 }>()
 
 // 🎯 純渲染組件：定義事件 (父組件處理邏輯)
 const emit = defineEmits<{
-  openModal: [card: Card]
-  delete: [card: Card]
+  openModal: [card: CardUI]
+  delete: [card: CardUI]
   updateTitle: [cardId: string, newTitle: string]
-  dragStart: [card: Card, type: 'card']
+  dragStart: [card: CardUI, type: 'card']
   dragEnd: []
   updateStatus: [cardId: string, status: CardStatus]
   updatePriority: [cardId: string, priority: CardPriority]

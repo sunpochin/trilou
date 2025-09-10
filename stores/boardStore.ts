@@ -3,15 +3,11 @@ import type { CardUI, ListUI, BoardUI } from '@/types'
 import { cardRepository } from '@/repositories/CardRepository'
 import { listRepository } from '@/repositories/ListRepository'
 
-// 使用統一的型別定義
-type Card = CardUI
-type List = ListUI  
-type Board = BoardUI
 
 // 匯出看板狀態管理 Store
 export const useBoardStore = defineStore('board', {
   // 定義 Store 的狀態
-  state: (): { board: Board; isLoading: boolean; openMenuId: string | null; pendingAiCards: number; isCreatingDefaultLists: boolean } => ({
+  state: (): { board: BoardUI; isLoading: boolean; openMenuId: string | null; pendingAiCards: number; isCreatingDefaultLists: boolean } => ({
     board: {
       id: 'board-1',
       title: 'My Board',
@@ -101,11 +97,11 @@ export const useBoardStore = defineStore('board', {
 
         // 建立卡片 ID 到列表 ID 的映射
         // Repository 已經轉換好格式，直接使用
-        const cardsByListId: { [listId: string]: Card[] } = {}
+        const cardsByListId: { [listId: string]: CardUI[] } = {}
         
         if (cardsResponse) {
           console.log(`📋 [STORE] 處理 ${cardsResponse.length} 張卡片`)
-          cardsResponse.forEach((card: Card) => {
+          cardsResponse.forEach((card: CardUI) => {
             if (!cardsByListId[card.listId]) {
               cardsByListId[card.listId] = []
             }
@@ -128,7 +124,7 @@ export const useBoardStore = defineStore('board', {
           console.log(`📈 [STORE] 處理 ${listsResponse.length} 個列表`)
           
           // 🎯 組合列表和卡片，並確保按 position 排序
-          const listsWithCards: List[] = listsResponse.map((list: List) => ({
+          const listsWithCards: ListUI[] = listsResponse.map((list: ListUI) => ({
             ...list,
             cards: cardsByListId[list.id] || [] // 如果列表沒有卡片則使用空陣列
           }))
@@ -204,7 +200,7 @@ export const useBoardStore = defineStore('board', {
       // 🎯 步驟1：建立暫時列表（立即顯示在 UI）
       // 使用時間戳作為暫時 ID，確保唯一性
       const tempId = `temp-list-${Date.now()}-${Math.random()}`
-      const optimisticList: List = {
+      const optimisticList: ListUI = {
         id: tempId,
         title: title.trim(),
         position: this.board.lists.length, // 放在最後一個位置
@@ -228,7 +224,7 @@ export const useBoardStore = defineStore('board', {
         // 🎯 步驟3：成功時，用真實列表替換暫時列表
         const listIndex = this.board.lists.findIndex(list => list.id === tempId)
         if (listIndex !== -1) {
-          const realList: List = {
+          const realList: ListUI = {
             ...response,
             cards: [] // 新列表初始沒有卡片
           }

@@ -327,15 +327,13 @@ import { useDragAndDrop, getDragOptions, type DragEvent, type DragItem } from '@
 import type { ListUI, CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
 
-// 🏷️ 型別別名
-type List = ListUI
 
 // #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 
 // #region ═══════════════════════ 🎯 PROPS & EMITS ═══════════════════════
 // 🎯 純渲染組件：接收父組件傳入的資料和狀態
 const props = defineProps<{
-  list: List
+  list: ListUI
   dragging: boolean  // 父組件控制的拖拽狀態
   isMobile?: boolean  // 是否為手機版
   aiGeneratingListId?: string | null  // 正在生成 AI 任務的列表 ID

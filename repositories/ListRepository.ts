@@ -9,8 +9,6 @@
 
 import type { ListUI } from '@/types'
 
-// 使用統一的列表型別定義
-type List = ListUI
 
 /**
  * 📋 ListRepository 類別
@@ -38,7 +36,7 @@ export class ListRepository {
    * 🔧 回傳值：
    * @returns Promise<List[]> - 排序後的列表陣列
    */
-  async getAllLists(): Promise<List[]> {
+  async getAllLists(): Promise<ListUI[]> {
     try {
       console.log('🚀 [LIST-REPO] 開始取得所有列表')
       
@@ -67,7 +65,7 @@ export class ListRepository {
    * @param title - 列表標題
    * @returns Promise<List> - 新建立的列表
    */
-  async createList(title: string): Promise<List> {
+  async createList(title: string): Promise<ListUI> {
     try {
       console.log(`🚀 [LIST-REPO] 開始建立列表: ${title}`)
       
@@ -208,7 +206,7 @@ export class ListRepository {
    * @param apiList - API 回傳的列表資料
    * @returns List - 前端格式的列表資料
    */
-  private transformApiList(apiList: any): List {
+  private transformApiList(apiList: any): ListUI {
     if (!apiList || typeof apiList !== 'object') {
       throw new Error('無效的 API 列表資料')
     }
@@ -227,7 +225,7 @@ export class ListRepository {
    * @param apiLists - API 回傳的列表陣列
    * @returns List[] - 前端格式的列表陣列
    */
-  private transformApiLists(apiLists: any[]): List[] {
+  private transformApiLists(apiLists: any[]): ListUI[] {
     if (!Array.isArray(apiLists)) {
       console.warn('⚠️ [LIST-REPO] API 回應不是陣列，回傳空陣列')
       return []
