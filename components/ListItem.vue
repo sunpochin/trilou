@@ -107,15 +107,15 @@
   - 保持自然的 CSS 樣式優先級，避免過度使用 !important
 
   🎨 視覺效果設計：
-  - 選中狀態：藍色邊框 + 輕微放大（scale 1.02）
-  - 拖拽中：綠色邊框 + 旋轉 3 度 + 放大 1.05 倍 + 強化陰影
+  - 選中狀態：藍色邊框 + 輕微放大
+  - 拖拽中：綠色邊框 + 旋轉 2 度 + 強化陰影
   - 占位符：虛線邊框 + 半透明背景
 
-  📝 樣式類別對應：
-  - chosen-class: mobile-chosen / desktop-chosen
-  - drag-class: mobile-drag / desktop-drag  
-  - ghost-class: mobile-ghost / desktop-ghost
-  - CSS 同時支援 sortable-* 和 mobile-*/desktop-* 類別名稱
+  📝 實際使用的樣式類別：
+  - chosenClass: card-chosen (選中時)
+  - dragClass: card-dragging (拖拽中)
+  - ghostClass: card-ghost (占位符)
+  - fallbackClass: card-fallback (跟隨滑鼠)
 -->
 
 <template>
@@ -494,6 +494,7 @@ const handleAiGenerate = () => {
   border: 2px solid #10b981 !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
   background: rgba(255, 255, 255, 0.95);
+  transform: rotate(2deg);  /* 拖曳時傾斜 2 度 */
   /* 跟著滑鼠的半透明效果 */
 }
 
@@ -504,8 +505,7 @@ const handleAiGenerate = () => {
   border: 2px solid #10b981 !important;
   border-radius: 8px !important;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3) !important;
-  /* 移除會導致問題的樣式 */
-  /* 不設定 position: fixed, transform: rotate, pointer-events */
+  /* 不能設定 transform，會和 vue-draggable-next 的位置控制衝突 */
 }
 
 /* 🖱️ 游標狀態：hover 時顯示可抓取，拖拽時顯示正在抓取 */
@@ -645,73 +645,4 @@ const handleAiGenerate = () => {
   transform: none;
 }
 
-/* 📱 手機版拖拽魔法樣式系統 */
-/* 💡 十歲小朋友解釋：這些是「魔法咒語」，讓卡片在不同狀態下有不同的樣子！ */
-
-/* 🎭 正在被拖拽的卡片樣式 (mobile-drag) */
-/* 💡 十歲小朋友解釋：當你正在拖拽卡片時，卡片會變成這個樣子 */
-:deep(.mobile-drag) {
-  transform: rotate(5deg) !important;        /* 🔄 稍微傾斜 5 度，看起來像被拿起來 */
-  opacity: 0.8 !important;                   /* 🌫️ 變成半透明，表示正在移動 */
-  transition: none !important;               /* ⚡ 關閉動畫，讓它可以跟手指同步移動 */
-  z-index: 9999 !important;                  /* 🏔️ 放到最上層，不會被其他東西蓋住 */
-  pointer-events: none !important;           /* 🚫 不響應點擊，避免干擾拖拽 */
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important; /* ✨ 加陰影，看起來像浮在空中 */
-  position: absolute !important;             /* 📍 可以自由移動位置 */
-}
-
-/* 👻 幽靈卡片樣式 (mobile-ghost) */
-/* 💡 十歲小朋友解釋：原來位置留下的「影子」，告訴你卡片原來在哪裡 */
-:deep(.mobile-ghost) {
-  opacity: 0.3 !important;                   /* 🌫️ 很淡很淡，像幽靈一樣 */
-  background-color: #e5e7eb !important;      /* 🎨 灰色背景 */
-  border: 2px dashed #9ca3af !important;     /* 📦 虛線邊框，表示「這裡空了」 */
-  transition: all 0.2s ease !important;      /* 🎬 平滑動畫，0.2秒變化 */
-}
-
-/* ✨ 被選中的卡片樣式 (mobile-chosen) */
-/* 💡 十歲小朋友解釋：當你長按選中卡片時，卡片會「發光」告訴你被選到了 */
-:deep(.mobile-chosen) {
-  transform: scale(1.05) !important;         /* 🔍 放大 5%，表示被選中 */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important; /* ✨ 加陰影，看起來會發光 */
-  transition: transform 0.1s ease !important; /* ⚡ 快速動畫，0.1秒變化 */
-}
-
-/* 🎯 SortableJS Fallback 模式的超級魔法樣式！ */
-/* 💡 十歲小朋友解釋：這是最重要的魔法！讓卡片的「影分身」跟著手指到處跑！ */
-:deep(.sortable-fallback) {
-  /* 🏠 位置設定：讓影分身可以飛到任何地方 */
-  display: block !important;                 /* 📦 確保顯示出來 */
-  position: fixed !important;                /* 🌍 固定在整個螢幕上，不受容器限制 */
-  z-index: 100000 !important;                /* 🏔️ 放到最最最上層 (比任何東西都高) */
-  
-  /* 🚫 行為設定：讓影分身不會干擾其他操作 */
-  pointer-events: none !important;           /* 🚫 不能點擊，避免干擾 */
-  transition: none !important;               /* ⚡ 關閉所有動畫，100% 跟手指同步 */
-  
-  /* 🎨 外觀設定：讓影分身看起來很酷 */
-  transform: rotate(5deg) !important;        /* 🔄 傾斜 5 度，像被拿起來 */
-  opacity: 0.8 !important;                   /* 🌫️ 半透明，表示是「影分身」 */
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4) !important; /* ✨ 超大陰影，像飛在天空中 */
-  border-radius: 8px !important;             /* 🟫 圓角，看起來更美 */
-  background: white !important;              /* ⚪ 白色背景，清楚易見 */
-}
-
-/* 🎯 確保拖拽容器不會限制影分身移動 */
-/* 💡 十歲小朋友解釋：這個魔法確保影分身可以飛出原來的「籠子」！ */
-:deep(.sortable-drag) {
-  position: fixed !important;                /* 🌍 也是固定在整個螢幕 */
-  z-index: 100000 !important;                /* 🏔️ 同樣放在最上層 */
-  pointer-events: none !important;           /* 🚫 同樣不能點擊 */
-}
-
-/* 🎉 十歲小朋友總結：
-   這些魔法咒語讓手機版拖拽變得超厲害！
-   1. 長按 → 卡片發光 (chosen)
-   2. 開始拖拽 → 創造影分身 (fallback)，原位留幽靈 (ghost)
-   3. 拖拽中 → 影分身跟著手指跑遍整個螢幕
-   4. 放開 → 卡片移動到新位置，影分身和幽靈消失
-   
-   就像變魔術一樣神奇！✨
-*/
 </style>
