@@ -34,13 +34,19 @@
  * - 錯誤時會自動修復，用戶不用擔心
  */
 
-import { ref, type Ref } from 'vue'
+import { ref } from 'vue'
 import { useBoardView } from '@/composables/useBoardView'
-import type { CardUI, ListUI } from '@/types'
+import type { CardUI } from '@/types'
 
 export interface DragItem {
   id: string
   [key: string]: unknown
+}
+
+export interface DragEvent {
+  moved?: { element: CardUI }
+  removed?: { element: CardUI }
+  added?: { element: CardUI }
 }
 
 export interface DragState {
@@ -203,7 +209,7 @@ export function getDragOptions(enabled: boolean = true) {
     ghostClass: 'ghost-card',
     chosenClass: 'chosen-card',
     dragClass: 'dragging-card',
-    delay: 100, // 延遲拖拽，避免誤觸
+    delay: 100, // 延遲拖拽 1 秒，區分手機上的「拖曳」vs「滑動看板」
     delayOnTouchOnly: true, // 只在觸控設備上延遲
     touchStartThreshold: 5, // 觸控移動閾值
     forceFallback: false, // 使用原生 HTML5 拖拽

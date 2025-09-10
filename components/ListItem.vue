@@ -321,7 +321,7 @@ import { VueDraggableNext as draggable } from 'vue-draggable-next'
 // 🔧 Composables 引入
 import { useCardActions } from '@/composables/useCardActions'
 import { useInlineEdit } from '@/composables/useInlineEdit'
-import { useDragAndDrop, getDragOptions } from '@/composables/useDragAndDrop'
+import { useDragAndDrop, getDragOptions, type DragEvent, type DragItem } from '@/composables/useDragAndDrop'
 
 // 📊 型別定義
 import type { ListUI, CardUI } from '@/types'
@@ -330,16 +330,6 @@ import { CardStatus, CardPriority } from '@/types/api'
 // 🏷️ 型別別名
 type List = ListUI
 
-// 🔄 拖拽事件型別
-interface DragEvent {
-  moved?: { element: CardUI }
-  removed?: { element: CardUI }
-}
-
-interface DragItem {
-  id: string
-  [key: string]: unknown
-}
 // #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 
 // #region ═══════════════════════ 🎯 PROPS & EMITS ═══════════════════════
@@ -464,17 +454,6 @@ const handleCardChange = async (event: any) => {
   }
 }
 
-// 🏁 拖拽開始事件
-const onCardDragStart = (card: any) => {
-  startDrag({ id: card.id }, 'card')
-  emit('drag-start', { id: card.id }, 'card')
-}
-
-// 🏁 拖拽結束事件
-const onCardDragEnd = () => {
-  endDrag()
-  emit('drag-end')
-}
 // #endregion ═══════════════════════ 🔄 DRAG & DROP ═══════════════════════
 
 // #region ═══════════════════════ 🗑️ LIST OPERATIONS ═══════════════════════

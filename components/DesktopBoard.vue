@@ -182,7 +182,7 @@ import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
-import { useDragAndDrop } from '@/composables/useDragAndDrop'
+import { useDragAndDrop, type DragEvent } from '@/composables/useDragAndDrop'
 
 // 📊 型別定義
 import type { CardUI } from '@/types'
@@ -194,11 +194,6 @@ import { eventBus } from '@/events/EventBus'
 // 🏷️ 型別別名
 type Card = CardUI
 
-// 🔄 拖拽事件型別
-interface DragEvent {
-  moved?: { element: CardUI }
-  removed?: { element: CardUI }
-}
 // #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 
 // #region ═══════════════════════ 🎮 COMPOSABLES & SETUP ═══════════════════════

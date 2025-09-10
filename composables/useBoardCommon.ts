@@ -37,20 +37,12 @@ import { useBoardView } from '@/composables/useBoardView'
 import { useCardActions } from '@/composables/useCardActions'
 import type { CardUI } from '@/types'
 import { eventBus } from '@/events/EventBus'
+import type { DragItem, DragEvent } from '@/composables/useDragAndDrop'
 
 // 使用統一的卡片型別定義
 export type Card = CardUI
 
-// 拖拽事件型別定義
-export interface DragEvent {
-  moved?: { element: Card }
-  removed?: { element: Card }
-}
 
-export interface DragItem {
-  id: string
-  [key: string]: unknown
-}
 
 /**
  * 看板共用邏輯
