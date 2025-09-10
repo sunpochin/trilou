@@ -307,19 +307,30 @@
 </template>
 
 <script setup lang="ts">
-import Card from '@/components/Card.vue'
-import { CardStatus, CardPriority } from '@/types/api'
-import ListMenu from '@/components/ListMenu.vue'
-import { VueDraggableNext as draggable } from 'vue-draggable-next'
-// 🎯 純渲染組件：不直接使用 composables
+// #region ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
+// 📦 Vue 核心功能
 import { ref, nextTick, computed } from 'vue'
-import { useCardActions } from '@/composables/useCardActions'
 
-// 使用統一的型別定義
+// 🏠 組件引入
+import Card from '@/components/Card.vue'
+import ListMenu from '@/components/ListMenu.vue'
+
+// 🔌 第三方函庫
+import { VueDraggableNext as draggable } from 'vue-draggable-next'
+
+// 🔧 Composables 引入
+import { useCardActions } from '@/composables/useCardActions'
+import { useInlineEdit } from '@/composables/useInlineEdit'
+import { useDragAndDrop, getDragOptions } from '@/composables/useDragAndDrop'
+
+// 📊 型別定義
 import type { ListUI, CardUI } from '@/types'
+import { CardStatus, CardPriority } from '@/types/api'
+
+// 🏷️ 型別別名
 type List = ListUI
 
-// 拖拽事件型別定義
+// 🔄 拖拽事件型別
 interface DragEvent {
   moved?: { element: CardUI }
   removed?: { element: CardUI }
@@ -329,7 +340,9 @@ interface DragItem {
   id: string
   [key: string]: unknown
 }
+// #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 
+// #region ═══════════════════════ 🎯 PROPS & EMITS ═══════════════════════
 // 🎯 純渲染組件：接收父組件傳入的資料和狀態
 const props = defineProps<{
   list: List
@@ -352,93 +365,67 @@ const emit = defineEmits<{
   'list-update-title': [listId: string, newTitle: string]
   'ai-generate': [listId: string]
 }>()
+// #endregion ═══════════════════════ 🎯 PROPS & EMITS ═══════════════════════
 
-// 🎯 純渲染組件：移除直接 composable 使用
-
-// 🌈 檢查這個特定列表是否正在生成 AI 任務
+// #region ═══════════════════════ 🎮 COMPOSABLES & STATE ═══════════════════════
+// 🌈 AI 生成狀態檢查
 const isAiGenerating = computed(() => 
   props.aiGeneratingListId === props.list.id
 )
 
-// 編輯狀態
-const isEditingTitle = ref(false)
-const editingTitle = ref('')
-const titleInput = ref<HTMLInputElement | null>(null)
+// 📝 列表標題編輯 Composable
+const titleEdit = useInlineEdit({
+  onSave: (newTitle) => {
+    emit('list-update-title', props.list.id, newTitle)
+  },
+  defaultValue: props.list.title
+})
 
-// 新增卡片狀態
-const isAddingCard = ref(false)
-const newCardTitle = ref('')
-const newCardInput = ref<HTMLTextAreaElement | null>(null)
+// 📌 新增卡片 Composable
+const cardAddEdit = useInlineEdit({
+  onSave: (cardTitle) => {
+    emit('list-add-card', props.list.id, cardTitle)
+  },
+  placeholder: '輸入卡片標題...'
+})
 
-// 🎯 純渲染：處理新增卡片 (委派給父組件)
-const handleAddCard = () => {
-  console.log('📌 [PURE-LIST] 新增卡片事件，委派給父組件')
-  // 使用 inline 新增模式
-  startAddCard()
-}
+// 🔄 拖拽功能 Composable
+const { startDrag, endDrag, handleCardDragMove } = useDragAndDrop()
 
-// 開始 inline 新增卡片
-const startAddCard = async () => {
-  isAddingCard.value = true
-  newCardTitle.value = ''
-  
-  // 等待 DOM 更新後聚焦到輸入框
-  await nextTick()
-  if (newCardInput.value) {
-    newCardInput.value.focus()
-  }
-}
-
-// 新增狀態管理：防止重複提交
-const isSavingCard = ref(false)
-
-// 🎯 純渲染：保存新卡片 (委派給父組件)
-const saveNewCard = async () => {
-  if (isSavingCard.value) return
-  
-  const titleToSave = newCardTitle.value.trim()
-  if (!titleToSave) return
-  
-  isSavingCard.value = true
-  
-  try {
-    // 委派給父組件處理業務邏輯
-    emit('list-add-card', props.list.id, titleToSave)
-    
-    // UI 更新
-    isAddingCard.value = false
-    newCardTitle.value = ''
-    console.log(`📌 [PURE-LIST] 新增卡片事件已發送: ${titleToSave}`)
-    
-  } catch (error) {
-    console.error('❌ [PURE-LIST] 發送新增卡片事件失敗:', error)
-  } finally {
-    isSavingCard.value = false
-  }
-}
-
-// 取消新增卡片
-const cancelAddCard = () => {
-  isAddingCard.value = false
-  newCardTitle.value = ''
-}
-
-// 🎯 純渲染：處理刪除列表 (委派給父組件)
-const handleDeleteList = () => {
-  console.log('🗑️ [PURE-LIST] 刪除列表事件，委派給父組件:', props.list.title)
-  emit('list-delete', props.list.id)
-}
-
-// 🤖 純渲染：處理 AI 生成任務 (委派給父組件)
-const handleAiGenerate = () => {
-  console.log('🤖 [PURE-LIST] AI 生成任務事件，委派給父組件:', props.list.title)
-  emit('ai-generate', props.list.id)
-}
-
-// 🎯 使用 Composable 處理卡片操作，遵循依賴反轉原則
+// 📋 卡片操作 Composable
 const { updateCardStatus, updateCardPriority } = useCardActions()
 
-// 處理卡片狀態更新
+// 🔗 編輯狀態別名（保持相容性）
+const isEditingTitle = titleEdit.isEditing
+const editingTitle = titleEdit.editingValue
+const titleInput = titleEdit.inputRef as any
+
+const isAddingCard = cardAddEdit.isEditing
+const newCardTitle = cardAddEdit.editingValue
+const newCardInput = cardAddEdit.inputRef as any
+// #endregion ═══════════════════════ 🎮 COMPOSABLES & STATE ═══════════════════════
+
+// #region ═══════════════════════ 📝 TITLE EDITING ═══════════════════════
+// 別名函數（保持相容性）
+const startEditTitle = () => titleEdit.startEdit(props.list.title)
+const saveTitle = titleEdit.saveEdit
+const cancelEdit = titleEdit.cancelEdit
+// #endregion ═══════════════════════ 📝 TITLE EDITING ═══════════════════════
+
+// #region ═══════════════════════ 📌 CARD OPERATIONS ═══════════════════════
+// 📌 新增卡片函數
+const handleAddCard = () => {
+  console.log('📌 [PURE-LIST] 新增卡片事件，委派給父組件')
+  cardAddEdit.startEdit()
+}
+
+// 新增卡片別名函數（保持相容性）
+const startAddCard = cardAddEdit.startEdit
+const saveNewCard = cardAddEdit.saveEdit
+const cancelAddCard = cardAddEdit.cancelEdit
+const isSavingCard = cardAddEdit.isSaving
+
+// 🔄 卡片狀態更新
 const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
   console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status, statusType: typeof status })
   
@@ -447,12 +434,11 @@ const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
     console.log('✅ [LIST-ITEM] 狀態更新成功')
   } catch (error) {
     console.error('❌ [LIST-ITEM] 更新卡片狀態失敗:', error)
-    // 如果失敗了，重新載入整個 board 以同步狀態
     emit('card-updated')
   }
 }
 
-// 處理卡片優先順序更新
+// 🏆 卡片優先順序更新
 const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) => {
   console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority, priorityType: typeof priority })
   
@@ -461,46 +447,49 @@ const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) 
     console.log('✅ [LIST-ITEM] 優先順序更新成功')
   } catch (error) {
     console.error('❌ [LIST-ITEM] 更新優先順序失敗:', error)
-    // 如果失敗了，重新載入整個 board 以同步狀態
     emit('card-updated')
   }
 }
+// #endregion ═══════════════════════ 📌 CARD OPERATIONS ═══════════════════════
 
-// 開始編輯標題
-const startEditTitle = async () => {
-  isEditingTitle.value = true
-  editingTitle.value = props.list.title
-  
-  // 等待 DOM 更新後聚焦並全選文字
-  await nextTick()
-  if (titleInput.value) {
-    titleInput.value.focus()
-    titleInput.value.select()
-  }
-}
-
-// 🎯 純渲染：儲存標題變更 (委派給父組件)
-const saveTitle = async () => {
-  const newTitle = editingTitle.value.trim()
-  if (newTitle && newTitle !== props.list.title) {
-    console.log('✏️ [PURE-LIST] 更新列表標題事件，委派給父組件:', { old: props.list.title, new: newTitle })
-    emit('list-update-title', props.list.id, newTitle)
-  }
-  isEditingTitle.value = false
-}
-
-// 取消編輯
-const cancelEdit = () => {
-  editingTitle.value = props.list.title
-  isEditingTitle.value = false
-}
-
-// 🎯 使用跟 List 一樣的 @change 事件處理
-const handleCardChange = (event: any) => {
+// #region ═══════════════════════ 🔄 DRAG & DROP ═══════════════════════
+// 🎯 拖拽變更事件處理
+const handleCardChange = async (event: any) => {
   console.log('🎯 [CARD-CHANGE] 卡片變更事件:', event)
-  // 直接轉發給父組件，跟 List 一樣的處理方式
-  emit('card-move', event)
+  try {
+    await handleCardDragMove(event, props.list.id)
+    emit('card-move', event)
+  } catch (error) {
+    console.error('❌ [CARD-CHANGE] 處理卡片移動失敗:', error)
+  }
 }
+
+// 🏁 拖拽開始事件
+const onCardDragStart = (card: any) => {
+  startDrag({ id: card.id }, 'card')
+  emit('drag-start', { id: card.id }, 'card')
+}
+
+// 🏁 拖拽結束事件
+const onCardDragEnd = () => {
+  endDrag()
+  emit('drag-end')
+}
+// #endregion ═══════════════════════ 🔄 DRAG & DROP ═══════════════════════
+
+// #region ═══════════════════════ 🗑️ LIST OPERATIONS ═══════════════════════
+// 🗑️ 刪除列表函數
+const handleDeleteList = () => {
+  console.log('🗑️ [PURE-LIST] 刪除列表事件，委派給父組件:', props.list.title)
+  emit('list-delete', props.list.id)
+}
+
+// 🤖 AI 生成函數
+const handleAiGenerate = () => {
+  console.log('🤖 [PURE-LIST] AI 生成任務事件，委派給父組件:', props.list.title)
+  emit('ai-generate', props.list.id)
+}
+// #endregion ═══════════════════════ 🗑️ LIST OPERATIONS ═══════════════════════
 </script>
 
 <style scoped>
