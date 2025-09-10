@@ -34,6 +34,11 @@ const emailInput = ref('');
 const isEmailLoading = ref(false);
 
 
+// 導航到測試帳號頁面
+const navigateToTestAccount = () => {
+  window.location.href = window.location.href + '?skipAuth=true';
+};
+
 // 處理 Magic Email Login
 const signInWithEmail = async () => {
   if (!emailInput.value.trim()) {
@@ -150,6 +155,29 @@ onMounted(() => {
         <div class="mb-8 space-y-2">
           <p class="text-sm text-gray-500">{{ MESSAGES.login.privacyNote }}</p>
           <GoogleLoginButton />
+          <!-- 測試帳號登入按鈕 -->
+          <div class="flex justify-center">
+          <button
+            @click="navigateToTestAccount"
+            class="test-login-btn"
+          >
+            <svg
+              class="test-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>使用測試帳號</span>
+          </button>
+          </div>
         </div>
         
         <!-- 分隔線 -->
@@ -257,6 +285,43 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 測試帳號登入按鈕樣式 - 與 Google 按鈕一致 */
+.test-login-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background-color: white;
+  border: 2px solid #dadce0;
+  border-radius: 0.5rem;
+  color: #3c4043;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 180px; /* 比 Google 按鈕稍窄 */
+}
+
+.test-login-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #dadce0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.test-login-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.test-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #5f6368;
+}
+
 /* 🎨 AI 按鈕的神秘魔法效果 */
 .ai-button-magic {
   background: linear-gradient(45deg, #3B82F6, #6366F1, #8B5CF6, #3B82F6);

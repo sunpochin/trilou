@@ -297,6 +297,273 @@ interface AppEvents {
 - 需要「記住」資料？用 **Pinia Store**
 - 只是「通知」事件？用 **EventBus**
 
+## 🔍 Event Bus 模式 vs Observer 模式
+
+### 📚 **相同點：都是「通知」機制**
+
+兩者的核心概念相同：**當某件事發生時，通知所有關心的人**
+
+```typescript
+// 🔔 Observer 模式
+subject.attach(observer)
+subject.notify()
+
+// 🚌 Event Bus 模式
+eventBus.on('event', listener)
+eventBus.emit('event')
+```
+
+### 🔄 **關鍵差異**
+
+| 特性 | Observer 模式 | Event Bus 模式 |
+|------|--------------|---------------|
+| **耦合程度** | 中度耦合 | 完全解耦 |
+| **關係** | Subject 知道 Observer | 發送者不知道接收者 |
+| **事件類型** | 通常單一類型 | 多種事件類型 |
+| **通訊方式** | 直接呼叫 | 透過事件名稱 |
+| **實作複雜度** | 需要介面/類別 | 簡單的函數回調 |
+
+### 🏫 **十歲孩童解釋**
+
+#### **Observer 模式 = 訂閱報紙**
+```typescript
+// 報社（Subject）知道每個訂戶（Observer）
+class 報社 {
+  訂戶們: 訂戶[] = []
+  
+  訂閱(訂戶) {
+    this.訂戶們.push(訂戶)  // 報社記住你的地址
+  }
+  
+  發報() {
+    this.訂戶們.forEach(訂戶 => 訂戶.收報())  // 直接送到每家
+  }
+}
+```
+- 📰 報社必須記住每個訂戶
+- 🏠 訂戶搬家要通知報社
+- 📋 報社有訂戶名單
+
+#### **Event Bus = 學校廣播**
+```typescript
+// 廣播室不知道誰在聽
+eventBus.emit('下課了')  // 只管廣播
+
+// 各教室自己決定要不要聽
+eventBus.on('下課了', () => {  // 自己裝喇叭
+  console.log('收到！')
+})
+```
+- 📢 校長不知道哪些教室有開喇叭
+- 🔊 教室可以隨時開關喇叭
+- 🎯 廣播內容用「頻道名」區分
+
+### 💻 **程式碼比較**
+
+#### **Classic Observer Pattern（傳統觀察者）**
+```typescript
+// 觀察者必須實作特定介面
+interface Observer {
+  update(data: any): void
+}
+
+class Subject {
+  private observers: Observer[] = []
+  
+  attach(observer: Observer) {
+    this.observers.push(observer)
+  }
+  
+  detach(observer: Observer) {
+    const index = this.observers.indexOf(observer)
+    if (index > -1) {
+      this.observers.splice(index, 1)
+    }
+  }
+  
+  notify(data: any) {
+    this.observers.forEach(obs => obs.update(data))
+  }
+}
+
+// 使用時 - 緊密耦合
+class CardObserver implements Observer {
+  update(data) {
+    console.log('卡片更新了', data)
+  }
+}
+
+const subject = new Subject()
+const observer = new CardObserver()
+subject.attach(observer)  // Subject 和 Observer 互相認識
+subject.notify({ id: '123' })
+```
+
+#### **Event Bus Pattern（事件匯流排）**
+```typescript
+// 完全不需要知道對方存在
+// 發送方（可能在 Card.vue）
+eventBus.emit('card:updated', { id: '123' })
+
+// 接收方（可能在完全不同的檔案 Statistics.vue）
+eventBus.on('card:updated', (data) => {
+  console.log('卡片更新了', data)
+})
+
+// 發送方和接收方完全不知道對方存在！
+```
+
+### 🎭 **實際應用場景比較**
+
+| 場景 | Observer 適合 | Event Bus 適合 | 原因 |
+|------|--------------|---------------|------|
+| **Model-View 同步** | ✅ MVC/MVP 架構 | ❌ 太鬆散 | Model 和 View 本來就該認識 |
+| **跨組件通訊** | ❌ 需要互相認識 | ✅ 完美解耦 | 組件不該互相依賴 |
+| **狀態管理** | ✅ 如 MobX | ❌ 缺乏結構 | 需要明確的依賴關係 |
+| **插件系統** | ❌ 太緊密 | ✅ 動態擴展 | 插件應該獨立運作 |
+| **遊戲引擎事件** | ❌ 效能考量 | ✅ 靈活多變 | 遊戲事件種類繁多 |
+
+### 🔍 **深入技術比較**
+
+#### **1. 訂閱方式差異**
+```typescript
+// Observer：必須有 Subject 實例的參考
+const stockMarket = new StockMarket()  // 必須先有實例
+stockMarket.attach(this)  // 需要 subject 參考
+
+// Event Bus：全局單例，不需要參考
+eventBus.on('stock:update', callback)  // 直接使用全局 eventBus
+```
+
+#### **2. 型別安全性**
+```typescript
+// Observer：編譯時期的強型別檢查
+interface StockObserver {
+  updatePrice(price: number): void  // 明確的介面契約
+  updateVolume(volume: number): void
+}
+
+// Event Bus：執行時期的型別定義
+interface Events {
+  'stock:price': { price: number }  // 需要手動維護型別
+  'stock:volume': { volume: number }
+}
+```
+
+#### **3. 生命週期管理**
+```typescript
+// Observer：手動管理，容易遺忘
+class Component {
+  private observer: Observer
+  
+  onMount() {
+    this.observer = new MyObserver()
+    subject.attach(this.observer)  // 記得 attach
+  }
+  
+  onUnmount() {
+    subject.detach(this.observer)  // 容易忘記 detach！
+  }
+}
+
+// Event Bus：更靈活的管理方式
+class Component {
+  onMount() {
+    eventBus.on('event', this.handleEvent)
+    eventBus.once('login', this.handleFirstLogin)  // 自動清理
+  }
+  
+  onUnmount() {
+    eventBus.off('event', this.handleEvent)  // 用函數參考即可
+  }
+}
+```
+
+#### **4. 效能考量**
+```typescript
+// Observer：直接呼叫，效能較好
+observers.forEach(o => o.update(data))  // 直接函數呼叫
+
+// Event Bus：需要查找和匹配，稍慢
+const listeners = this.listeners.get(eventName)  // 需要 Map 查找
+listeners?.forEach(l => l(data))  // 然後呼叫
+```
+
+### 💡 **選擇指南**
+
+#### **使用 Observer Pattern 當你需要：**
+- ✅ 強型別約束和編譯時期檢查
+- ✅ 明確的一對多依賴關係
+- ✅ 高效能的直接通訊
+- ✅ 可預測的資料流向
+
+#### **使用 Event Bus 當你需要：**
+- ✅ 組件間完全解耦
+- ✅ 動態的多對多通訊
+- ✅ 插件化的擴展機制
+- ✅ 跨模組的事件傳遞
+
+### 🎯 **在 Trello Clone 專案中的實踐**
+
+我們的 EventBus 其實是 **Observer Pattern 的事件驅動實作**：
+
+```typescript
+class EventBus {
+  // listeners Map 就是 observers 的集合
+  private listeners: Map<string, EventCallback[]> = new Map()
+  
+  // on 方法 = Observer 的 attach/subscribe
+  on(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, [])
+    }
+    this.listeners.get(event)!.push(callback)
+  }
+  
+  // emit 方法 = Subject 的 notify
+  emit(event, data) {
+    const callbacks = this.listeners.get(event)
+    callbacks?.forEach(cb => cb(data))
+  }
+  
+  // off 方法 = Observer 的 detach/unsubscribe  
+  off(event, callback) {
+    const callbacks = this.listeners.get(event)
+    // ... 移除邏輯
+  }
+}
+```
+
+### 🌟 **關鍵洞察**
+
+**Event Bus 是 Observer Pattern 的進化版：**
+
+1. **從物件導向到事件驅動**
+   - Observer：以物件和介面為中心
+   - Event Bus：以事件和回調為中心
+
+2. **從緊耦合到鬆耦合**
+   - Observer：Subject 持有 Observer 參考
+   - Event Bus：透過事件名稱間接通訊
+
+3. **從靜態到動態**
+   - Observer：編譯時期決定關係
+   - Event Bus：執行時期動態訂閱
+
+**本質相同，思維不同：**
+兩者都是實現 **發布-訂閱模式（Pub-Sub Pattern）** 的方式，只是抽象層級和實作細節不同！
+
+### 📝 **實戰建議**
+
+在現代前端開發中，通常這樣選擇：
+
+- **小型應用**：Event Bus 足夠
+- **中型應用**：Pinia/Vuex (內建 Observer)
+- **大型應用**：結合使用
+  - 狀態管理用 Pinia（Observer）
+  - 跨模組通訊用 Event Bus
+  - 組件內部用 Props/Emit
+
 ### defineEventHandler vs Event Bus Pattern
 
 這是兩個經常被混淆但完全不同的概念：
