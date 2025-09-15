@@ -153,9 +153,11 @@
     </div>
     
     <!-- 刪除按鈕 - 只在 hover 時顯示 -->
+    <!-- 🔧 使用 mousedown 避免與拖拽庫的衝突，類似 ListMenu 的修復方式 -->
     <button 
       v-if="!isEditing"
-      @click.stop="deleteCard"
+      @mousedown.stop="handleDeleteMouseDown"
+      @click.stop.prevent
       class="absolute top-2 right-2 p-1 rounded hover:bg-red-100 transition-colors duration-200 opacity-100' : 'opacity-0 group-hover:opacity-100"
       title="刪除卡片"
     >
@@ -262,6 +264,21 @@ const cancelEdit = () => {
 // 🎯 純渲染：開啟卡片模態框
 const openCardModal = () => {
   emit('openModal', props.card)
+}
+
+// 🔧 處理刪除按鈕的 mousedown 事件，避免與拖拽庫衝突
+const handleDeleteMouseDown = (event: MouseEvent) => {
+  console.log('🖱️ [PURE-CARD] handleDeleteMouseDown 被觸發!', {
+    cardTitle: props.card.title,
+    cardId: props.card.id
+  })
+  
+  // 防止事件冒泡和預設行為
+  event.stopPropagation()
+  event.preventDefault()
+  
+  // 立即執行刪除操作
+  deleteCard()
 }
 
 // 🎯 純渲染：刪除卡片 (使用 Inject 直接呼叫)
