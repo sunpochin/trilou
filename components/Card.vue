@@ -266,12 +266,21 @@ const openCardModal = () => {
 
 // 🎯 純渲染：刪除卡片 (使用 Inject 直接呼叫)
 const deleteCard = async () => {
-  console.log('🗑️ [PURE-CARD] 使用 Inject 刪除卡片:', props.card.title)
+  console.log('🗑️ [PURE-CARD] deleteCard 被觸發!', {
+    cardTitle: props.card.title,
+    cardId: props.card.id,
+    injectedDeleteCard: !!injectedDeleteCard
+  })
   
   // 使用注入的方法，避免多層事件傳遞
   if (injectedDeleteCard) {
-    await injectedDeleteCard(props.card)
-    console.log('✅ [PURE-CARD] 刪除操作已委派給注入的方法')
+    console.log('✅ [PURE-CARD] 找到注入的方法，即將呼叫...')
+    try {
+      await injectedDeleteCard(props.card)
+      console.log('✅ [PURE-CARD] 刪除操作已委派給注入的方法')
+    } catch (error) {
+      console.error('❌ [PURE-CARD] 注入方法執行失敗:', error)
+    }
   } else {
     // 降級方案：如果沒有注入，仍使用事件傳遞
     console.warn('⚠️ [PURE-CARD] 未找到注入的 deleteCard，使用事件傳遞')

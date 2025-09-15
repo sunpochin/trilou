@@ -52,6 +52,7 @@
           :ai-generating-list-id="aiGeneratingListId"
           @card-move="onCardMove"
           @open-card-modal="openCardModal"
+          @card-delete="deleteCardWithUndo"
           @card-update-title="onCardUpdateTitle"
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
@@ -131,6 +132,14 @@
       @generation-start="onAiGenerationStart"
       @generation-complete="onAiGenerationComplete"
     />
+
+    <!-- Undo Toast 通知 -->
+    <UndoToast
+      :visible="undoState.toastState.visible"
+      :message="undoState.toastState.message"
+      @undo="handleUndo"
+      @close="handleToastClose"
+    />
   </div>
 </template>
 
@@ -142,6 +151,7 @@ import { ref, nextTick, onMounted, provide } from 'vue'
 // 🏠 組件引入
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
+import UndoToast from '@/components/UndoToast.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 
@@ -153,8 +163,13 @@ import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
 import { useDragAndDrop, type DragEvent } from '@/composables/useDragAndDrop'
+import { useUndo } from '@/composables/useUndo'
 
-// 📊 型別定義 - CardUI 已移除（不再需要）
+// 🏪 Store 引入 - 需要用於 undo 復原操作
+import { useBoardStore } from '@/stores/boardStore'
+
+// 📊 型別定義
+import type { CardUI } from '@/types'
 
 // 💬 常數和事件
 import { MESSAGES } from '@/constants/messages'
@@ -206,9 +221,45 @@ const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperat
 const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 const { handleCardMove, handleListMove } = useBoardView()
 
+// 🔄 Undo 復原系統
+const undoState = useUndo()
+const boardStore = useBoardStore()
+
+// 🔄 創建整合 undo 系統的刪除函數
+const deleteCardWithUndo = async (card: CardUI) => {
+  console.log('🔥🔥🔥 [DESKTOP-BOARD] deleteCardWithUndo 被呼叫!', {
+    cardTitle: card.title,
+    cardId: card.id,
+    cardType: typeof card
+  })
+  
+  try {
+    console.log('🔥🔥🔥 [DESKTOP-BOARD] 開始呼叫 handleCardDelete...')
+    
+    // 使用 useCardOperations 處理刪除邏輯
+    const deleteInfo = await handleCardDelete(card)
+    
+    console.log('🔥🔥🔥 [DESKTOP-BOARD] handleCardDelete 回傳:', deleteInfo)
+    
+    if (deleteInfo) {
+      console.log('🔥🔥🔥 [DESKTOP-BOARD] 開始呼叫 softDeleteCard...')
+      console.log('🔥🔥🔥 [DESKTOP-BOARD] undoState:', undoState)
+      console.log('🔥🔥🔥 [DESKTOP-BOARD] undoState.toastState:', undoState.toastState)
+      // 使用當前組件的 undo 狀態處理軟刪除
+      undoState.softDeleteCard(deleteInfo.card, deleteInfo.listId, deleteInfo.position)
+      console.log('🔥🔥🔥 [DESKTOP-BOARD] 軟刪除完成，toast 狀態:', undoState.toastState)
+      console.log('✅ [DESKTOP-BOARD] 卡片已軟刪除，toast 應該已顯示')
+    } else {
+      console.error('❌ [DESKTOP-BOARD] deleteInfo 為空，無法執行軟刪除')
+    }
+  } catch (error) {
+    console.error('❌ [DESKTOP-BOARD] 卡片刪除失敗:', error)
+  }
+}
+
 // 🔌 Provide/Inject - 提供給子組件使用的方法
 // 使用 Symbol 作為 key 確保唯一性，避免命名衝突
-provide('deleteCard', handleCardDelete)
+provide('deleteCard', deleteCardWithUndo)
 
 // 🤖 AI 生成狀態
 const aiGeneratingListId = ref<string | null>(null)
@@ -345,6 +396,46 @@ const onListUpdateTitle = async (listId: string, newTitle: string) => {
   })
   
   console.log('⚡ [DESKTOP-BOARD] 列表標題樂觀更新完成')
+}
+
+// 🔄 復原已刪除的卡片
+const handleUndo = () => {
+  console.log('🔄 [DESKTOP-BOARD] 用戶點擊復原按鈕')
+  
+  const itemId = undoState.toastState.itemId
+  if (!itemId) {
+    console.error('❌ [DESKTOP-BOARD] 沒有找到要復原的項目 ID')
+    return
+  }
+  
+  // 從 undo 系統復原項目
+  const deletedItem = undoState.undoDelete(itemId)
+  if (!deletedItem) {
+    console.error('❌ [DESKTOP-BOARD] 復原失敗，找不到刪除的項目')
+    return
+  }
+  
+  // 將卡片還原到原始位置
+  const { data: card, restoreInfo } = deletedItem
+  const targetList = boardStore.board.lists.find(list => list.id === restoreInfo.listId)
+  
+  if (targetList) {
+    // 將卡片插入到原始位置
+    targetList.cards.splice(restoreInfo.position, 0, card)
+    console.log('✅ [DESKTOP-BOARD] 卡片已復原到原始位置:', {
+      cardTitle: card.title,
+      listTitle: targetList.title,
+      position: restoreInfo.position
+    })
+  } else {
+    console.error('❌ [DESKTOP-BOARD] 找不到目標列表:', restoreInfo.listId)
+  }
+}
+
+// 🙈 關閉 Toast 通知
+const handleToastClose = () => {
+  console.log('🙈 [DESKTOP-BOARD] 關閉 Toast 通知')
+  undoState.hideToast()
 }
 // #endregion ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
 

@@ -251,6 +251,7 @@
             :dragging="dragging"
             :is-mobile="props.isMobile"
             @open-modal="$emit('open-card-modal', card)"
+            @delete="$emit('card-delete', card)"
             @update-title="(cardId, newTitle) => $emit('card-update-title', cardId, newTitle)"
             @update-status="(cardId, status) => handleCardStatusUpdate(cardId, status)"
             @update-priority="(cardId, priority) => handleCardPriorityUpdate(cardId, priority)"
@@ -342,6 +343,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'card-move': [event: DragEvent]
   'open-card-modal': [card: CardUI]
+  'card-delete': [card: CardUI]
   'drag-start': [item: DragItem, type: 'card' | 'list']
   'drag-end': []
   'card-update-title': [cardId: string, newTitle: string]
