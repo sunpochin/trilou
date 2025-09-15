@@ -113,6 +113,9 @@ export function useBoardCommon() {
         title: '新增失敗',
         message: '無法新增列表，請稍後再試'
       })
+      // 錯誤時也要重置編輯狀態，讓用戶可以重新嘗試
+      newListTitle.value = ''
+      isAddingList.value = false
     } finally {
       isSavingList.value = false
     }
