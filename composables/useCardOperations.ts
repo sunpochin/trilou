@@ -51,13 +51,16 @@ export function useCardOperations() {
    * 刪除卡片（需要確認）
    */
   const handleCardDelete = async (card: CardUI | string) => {
-    const cardId = typeof card === 'string' ? card : card.id
-    const cardTitle = typeof card === 'string' ? '此卡片' : card.title
+    // deleteCardAction 需要完整的 CardUI 物件，不能只傳 ID
+    if (typeof card === 'string') {
+      console.error('❌ [CARD-OPS] handleCardDelete 需要完整的卡片物件，不能只傳 ID')
+      throw new Error('需要完整的卡片物件')
+    }
     
-    console.log('🗑️ [CARD-OPS] 刪除卡片:', cardTitle)
+    console.log('🗑️ [CARD-OPS] 刪除卡片:', card.title)
     
     try {
-      await deleteCardAction(cardId)
+      await deleteCardAction(card)
       console.log('✅ [CARD-OPS] 卡片刪除成功')
       
       eventBus.emit('notification:success', {

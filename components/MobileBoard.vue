@@ -96,7 +96,6 @@
             @open-card-modal="openCardModal"
             @drag-start="onDragStart"
             @drag-end="onDragEnd"
-            @card-delete="onCardDelete"
             @card-update-title="onCardUpdateTitle"
             @list-add-card="onListAddCard"
             @list-delete="onListDelete"
@@ -127,7 +126,6 @@
           @open-card-modal="openCardModal"
           @drag-start="onDragStart"
           @drag-end="onDragEnd"
-          @card-delete="onCardDelete"
           @card-update-title="onCardUpdateTitle"
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
@@ -241,7 +239,7 @@ style="width: calc(100vw - 2rem); max-width: 420px;"
 
 <script setup lang="ts">
 // #region ═══════════════════════ 📦 IMPORTS ═══════════════════════
-import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, watch, provide } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
@@ -305,6 +303,10 @@ const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 
 // 需要單獨引入來處理手機版特有的拖拽邏輯
 const { handleCardMove, handleListMove } = useBoardView()
+
+// 🔌 Provide/Inject - 提供給子組件使用的方法
+// 使用統一的 key 讓 Card 組件能夠注入
+provide('deleteCard', handleCardDelete)
 // #endregion ═══════════════════════ 🎯 COMPOSABLES & SETUP ═══════════════════════
 
 // #region ═══════════════════════ 📱 MOBILE SPECIFIC STATE ═══════════════════════
@@ -594,8 +596,7 @@ const onCardMove = async (event: any) => {
 // #endregion ═══════════════════════ 🔄 EVENT HANDLERS ═══════════════════════
 
 // #region ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
-// 🗑️ 卡片刪除 - 使用共用的卡片操作
-const onCardDelete = handleCardDelete
+// 🗑️ 卡片刪除 - 現在透過 Provide/Inject 處理，不需要事件處理器
 
 // ✏️ 卡片標題更新 - 樂觀更新策略  
 // ✏️ 卡片標題更新 - 使用共用的卡片操作

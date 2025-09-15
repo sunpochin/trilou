@@ -184,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 import type { CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
 
@@ -207,6 +207,9 @@ const emit = defineEmits<{
   updatePriority: [cardId: string, priority: CardPriority]
 }>()
 
+// 🔌 Inject - 從父層注入 deleteCard 方法
+// 使用 Provide/Inject 模式縮短事件鏈
+const injectedDeleteCard = inject<(card: CardUI | string) => Promise<void>>('deleteCard')
 
 // 編輯狀態管理
 const isEditing = ref(false)
@@ -261,10 +264,19 @@ const openCardModal = () => {
   emit('openModal', props.card)
 }
 
-// 🎯 純渲染：刪除卡片 (委派給父組件)
-const deleteCard = () => {
-  console.log('🗑️ [PURE-CARD] 刪除事件，委派給父組件:', props.card.title)
-  emit('delete', props.card)
+// 🎯 純渲染：刪除卡片 (使用 Inject 直接呼叫)
+const deleteCard = async () => {
+  console.log('🗑️ [PURE-CARD] 使用 Inject 刪除卡片:', props.card.title)
+  
+  // 使用注入的方法，避免多層事件傳遞
+  if (injectedDeleteCard) {
+    await injectedDeleteCard(props.card)
+    console.log('✅ [PURE-CARD] 刪除操作已委派給注入的方法')
+  } else {
+    // 降級方案：如果沒有注入，仍使用事件傳遞
+    console.warn('⚠️ [PURE-CARD] 未找到注入的 deleteCard，使用事件傳遞')
+    emit('delete', props.card)
+  }
 }
 
 // 狀態標籤樣式

@@ -251,7 +251,6 @@
             :dragging="dragging"
             :is-mobile="props.isMobile"
             @open-modal="$emit('open-card-modal', card)"
-            @delete="$emit('card-delete', card)"
             @update-title="(cardId, newTitle) => $emit('card-update-title', cardId, newTitle)"
             @update-status="(cardId, status) => handleCardStatusUpdate(cardId, status)"
             @update-priority="(cardId, priority) => handleCardPriorityUpdate(cardId, priority)"
@@ -345,7 +344,6 @@ const emit = defineEmits<{
   'open-card-modal': [card: CardUI]
   'drag-start': [item: DragItem, type: 'card' | 'list']
   'drag-end': []
-  'card-delete': [card: CardUI]
   'card-update-title': [cardId: string, newTitle: string]
   'card-updated': []
   'list-add-card': [listId: string, title: string]
