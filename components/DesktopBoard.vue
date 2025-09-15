@@ -42,6 +42,7 @@
         ghostClass="list-ghost"
         chosenClass="list-chosen"
         dragClass="list-dragging"
+        handle=".list-drag-handle"
       >
         <ListItem
           v-for="list in viewData.lists" 

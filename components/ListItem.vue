@@ -133,7 +133,7 @@
       <!-- 非編輯狀態：顯示標題 -->
       <h2 
         v-if="!isEditingTitle" 
-        class="w-full text-base font-bold select-none cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+        class="w-full text-base font-bold select-none cursor-move hover:bg-gray-100 px-2 py-1 rounded list-drag-handle"
         @click="startEditTitle"
       >
         {{ list.title }}
