@@ -265,7 +265,7 @@
       <button 
         v-if="!isAddingCard"
         class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
-        @click="startAddCard"
+        @click="() => startAddCard()"
       >
         + 新增卡片
       </button>
@@ -277,7 +277,7 @@
       >
         <textarea
           ref="newCardInput"
-          v-model="newCardTitle"
+          v-model="cardAddEdit.editingValue.value"
           placeholder="輸入這張卡片的標題..."
           class="w-full resize-none border-none outline-none text-sm min-h-14"
           @keydown.enter.prevent="saveNewCard"
@@ -286,7 +286,7 @@
         <div class="flex gap-2 mt-2">
           <button
             @click="saveNewCard"
-            :disabled="!newCardTitle.trim()"
+            :disabled="!(typeof cardAddEdit.editingValue.value === 'string' && cardAddEdit.editingValue.value.trim())"
             class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             新增卡片
@@ -370,6 +370,7 @@ const titleEdit = useInlineEdit({
 // 📌 新增卡片 Composable
 const cardAddEdit = useInlineEdit({
   onSave: (cardTitle) => {
+    console.log('📌 [LIST-ITEM] 準備新增卡片:', { listId: props.list.id, cardTitle })
     emit('list-add-card', props.list.id, cardTitle)
   },
   placeholder: '輸入卡片標題...'
@@ -387,7 +388,6 @@ const editingTitle = titleEdit.editingValue
 const titleInput = titleEdit.inputRef as any
 
 const isAddingCard = cardAddEdit.isEditing
-const newCardTitle = cardAddEdit.editingValue
 const newCardInput = cardAddEdit.inputRef as any
 // #endregion ═══════════════════════ 🎮 COMPOSABLES & STATE ═══════════════════════
 

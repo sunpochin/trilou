@@ -602,8 +602,24 @@ const onCardMove = async (event: any) => {
 // ✏️ 卡片標題更新 - 使用共用的卡片操作
 const onCardUpdateTitle = handleCardUpdateTitle
 
-// 📌 新增卡片 - 使用共用的卡片操作
-const onListAddCard = handleCardAdd
+// 📌 新增卡片 - 手機版樂觀更新
+const onListAddCard = async (listId: string, title: string) => {
+  console.log('📌 [MOBILE-BOARD] 新增卡片:', { listId, title })
+  
+  try {
+    // 手機版也使用樂觀更新，但處理錯誤
+    // 不傳遞 status，讓它使用預設值
+    await addCardAction(listId, title)
+    console.log('✅ [MOBILE-BOARD] 卡片新增完成')
+  } catch (error) {
+    console.error('❌ [MOBILE-BOARD] 新增卡片失敗:', error)
+    eventBus.emit('notification:error', {
+      title: '新增失敗',
+      message: '新增卡片失敗，請檢查網路連線後再試',
+      duration: 5000
+    })
+  }
+}
 
 // 🗑️ 列表刪除 - 需要確認的重要操作
 const onListDelete = async (listId: string) => {
