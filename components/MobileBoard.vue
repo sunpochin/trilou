@@ -241,7 +241,7 @@ style="width: calc(100vw - 2rem); max-width: 420px;"
 
 <script setup lang="ts">
 // #region ═══════════════════════ 📦 IMPORTS ═══════════════════════
-import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, watch, provide } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
@@ -250,6 +250,7 @@ import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
+import { useCardActions } from '@/composables/useCardActions'
 import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineEdit } from '@/composables/useInlineEdit'
 import { useGesture } from '@vueuse/gesture'
@@ -302,9 +303,14 @@ const {
 // 使用專用的操作 composables
 const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
 const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
+const { updateCardStatus, updateCardPriority } = useCardActions()
 
 // 需要單獨引入來處理手機版特有的拖拽邏輯
 const { handleCardMove, handleListMove } = useBoardView()
+
+// 🔌 Provide - 為子組件提供卡片狀態更新方法
+provide('updateCardStatus', updateCardStatus)
+provide('updateCardPriority', updateCardPriority)
 // #endregion ═══════════════════════ 🎯 COMPOSABLES & SETUP ═══════════════════════
 
 // #region ═══════════════════════ 📱 MOBILE SPECIFIC STATE ═══════════════════════

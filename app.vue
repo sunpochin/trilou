@@ -12,6 +12,11 @@ import { MESSAGES } from '@/constants/messages';
 import { computed } from 'vue';
 import { eventBus } from '@/events/EventBus';
 
+// 設置頁面標題
+useHead({
+  title: 'Trilou'
+})
+
 // 從 Nuxt app 取得 Supabase client
 const { $supabase } = useNuxtApp();
 // 取得 Pinia store

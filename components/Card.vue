@@ -184,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 import type { CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
 
@@ -203,9 +203,12 @@ const emit = defineEmits<{
   updateTitle: [cardId: string, newTitle: string]
   dragStart: [card: CardUI, type: 'card']
   dragEnd: []
-  updateStatus: [cardId: string, status: CardStatus]
-  updatePriority: [cardId: string, priority: CardPriority]
+  // updateStatus 和 updatePriority 已改用 inject，不再需要 emit
 }>()
+
+// 🔌 Inject - 從父層注入卡片更新方法
+const injectedUpdateStatus = inject<(cardId: string, status: CardStatus) => Promise<void>>('updateCardStatus')
+const injectedUpdatePriority = inject<(cardId: string, priority: CardPriority) => Promise<void>>('updateCardPriority')
 
 
 // 編輯狀態管理
@@ -324,7 +327,7 @@ const getPriorityLabel = (priority: CardPriority) => {
 }
 
 // 切換狀態（循環：Todo → Doing → Done → Todo）
-const toggleStatus = () => {
+const toggleStatus = async () => {
   const currentStatus = props.card.status || CardStatus.TODO
   let newStatus: CardStatus
   
@@ -342,11 +345,26 @@ const toggleStatus = () => {
       newStatus = CardStatus.TODO
   }
   
-  emit('updateStatus', props.card.id, newStatus)
+  // 🔌 使用注入的方法，避免事件鏈傳遞
+  if (injectedUpdateStatus) {
+    console.log('🔄 [CARD] 使用注入的 updateStatus 方法:', {
+      cardTitle: props.card.title,
+      oldStatus: currentStatus,
+      newStatus
+    })
+    try {
+      await injectedUpdateStatus(props.card.id, newStatus)
+    } catch (error) {
+      console.error('❌ [CARD] updateStatus 失敗:', error)
+    }
+  } else {
+    // 降級方案：如果沒有注入，顯示錯誤（因為已不支援 emit）
+    console.error('❌ [CARD] 未找到注入的 updateStatus 方法，無法更新狀態')
+  }
 }
 
 // 切換優先順序（循環：High → Medium → Low → High）
-const togglePriority = () => {
+const togglePriority = async () => {
   const currentPriority = props.card.priority || CardPriority.MEDIUM
   let newPriority: CardPriority
   
@@ -364,7 +382,22 @@ const togglePriority = () => {
       newPriority = CardPriority.MEDIUM
   }
   
-  emit('updatePriority', props.card.id, newPriority)
+  // 🔌 使用注入的方法，避免事件鏈傳遞
+  if (injectedUpdatePriority) {
+    console.log('🔄 [CARD] 使用注入的 updatePriority 方法:', {
+      cardTitle: props.card.title,
+      oldPriority: currentPriority,
+      newPriority
+    })
+    try {
+      await injectedUpdatePriority(props.card.id, newPriority)
+    } catch (error) {
+      console.error('❌ [CARD] updatePriority 失敗:', error)
+    }
+  } else {
+    // 降級方案：如果沒有注入，顯示錯誤（因為已不支援 emit）
+    console.error('❌ [CARD] 未找到注入的 updatePriority 方法，無法更新優先順序')
+  }
 }
 
 </script>

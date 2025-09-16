@@ -160,3 +160,88 @@ yarn build
 - 使用 `@/` 別名而非相對路徑導入
 - 遵循 SOLID 原則進行組件設計和重構
 
+# CLAUDE.md – Code Review Guidelines
+
+## 專案技術堆疊
+- Vue 3 + Nuxt (部分仍有 Vue 2 舊程式碼)
+- JavaScript (ES2020+)
+- HTML5 / CSS3
+- **沒有 TypeScript**（請不要建議轉 TS）
+
+---
+
+## 代碼風格
+- 使用 ESLint + Prettier 的預設規則  
+- 縮排：2 spaces  
+- 單引號 `'`，避免雙引號 `"`  
+- 儘量用 `const` / `let`，避免 `var`  
+- 行尾不要加分號（除非必要）  
+- 刪掉無用的 import 與註解  
+
+---
+
+## Vue / Nuxt 規範
+- 元件名稱：PascalCase (e.g. `UserProfile.vue`)  
+- Props 命名：camelCase（在 template 用時轉 kebab-case）  
+- 每個元件應保持單一責任，避免膨脹  
+- 優先使用 `<script setup>` 語法  
+- 避免在 `mounted` 放過多邏輯，能拆就拆  
+
+---
+
+## CSS / 樣式
+- 優先使用 Tailwind CSS utility classes  
+- 自訂樣式統一放在 `assets/css/`，避免直接在 `.vue` 檔過度膨脹  
+- class 命名遵循 BEM（block__element--modifier）  
+
+---
+
+## 錯誤處理
+- `async/await` 必須加上 try/catch  
+- API 呼叫需經過統一的 `api/` 模組，不要散落在元件內  
+- 避免在元件內直接 `console.log`，如需 debug 請暫時註解或使用 logger  
+
+---
+
+## 前端效能檢查
+
+### 一般原則
+- 保持打包體積小，避免引入不必要的第三方套件  
+- 檢查是否有可重複利用的元件，避免重複程式碼  
+- 避免在 template 直接放複雜運算，應搬到 computed 或 methods  
+
+### Vue / Nuxt 特有
+- 使用 Nuxt 的 **lazy loading** 功能：  
+  - route-level code splitting (`defineAsyncComponent` 或 `lazy: true`)  
+  - dynamic imports (`import()`) 而非一次載入整包  
+- 確認元件僅在需要時才載入，避免首頁過度載入  
+- SSR 頁面檢查 hydration 是否正確，避免不必要 re-render  
+
+### 資源最佳化
+- 圖片：優先使用 `.webp` 或 `.avif`  
+- icon：使用 SVG sprite 或 icon library，避免多個獨立檔案  
+- CSS/JS：確認 tree-shaking 有效，未使用代碼不應打包  
+
+### API / 資料處理
+- API 請求應有 cache 機制，避免重複呼叫  
+- 大量資料使用 pagination 或 infinite scroll  
+- 資料轉換應交由後端處理，避免前端過重  
+
+### 監控與診斷
+- 檢查是否有監控 Web Vitals (LCP, FID, CLS)  
+- 避免在 production 留下 debug 工具或開發用 console.log  
+
+---
+
+## 其他原則
+- 保持函式純粹，減少對全域狀態依賴  
+- README 或註解應有助於後續維護者理解  
+- 可讀性優先於微小的效能優化  
+
+---
+
+## Claude Review 提醒
+1. 請特別檢查是否有 **未使用的變數 / console.log**。  
+2. 確認代碼是否依循 **Vue / Nuxt 最佳實踐**。  
+3. 如有安全性風險（XSS, API error 未處理），需標出。  
+4. 避免雞毛蒜皮的風格建議，保持建議簡潔有價值。  

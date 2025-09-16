@@ -137,7 +137,7 @@
 <script setup lang="ts">
 // #region ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 // 📦 Vue 核心功能
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, provide } from 'vue'
 
 // 🏠 組件引入
 import ListItem from '@/components/ListItem.vue'
@@ -152,6 +152,7 @@ import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
+import { useCardActions } from '@/composables/useCardActions'
 import { useDragAndDrop, type DragEvent } from '@/composables/useDragAndDrop'
 
 // 📊 型別定義
@@ -207,9 +208,15 @@ const {
 const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
 const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 const { handleCardMove, handleListMove } = useBoardView()
+const { updateCardStatus, updateCardPriority } = useCardActions()
 
 // 🤖 AI 生成狀態
 const aiGeneratingListId = ref<string | null>(null)
+
+// 🔌 Provide - 為子組件提供卡片狀態更新方法
+provide('updateCardStatus', updateCardStatus)
+provide('updateCardPriority', updateCardPriority)
+
 // #endregion ═══════════════════════ 🎮 COMPOSABLES & SETUP ═══════════════════════
 
 // #region ═══════════════════════ 🔄 DRAG & DROP HANDLERS ═══════════════════════

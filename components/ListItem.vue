@@ -253,8 +253,6 @@
             @open-modal="$emit('open-card-modal', card)"
             @delete="$emit('card-delete', card)"
             @update-title="(cardId, newTitle) => $emit('card-update-title', cardId, newTitle)"
-            @update-status="(cardId, status) => handleCardStatusUpdate(cardId, status)"
-            @update-priority="(cardId, priority) => handleCardPriorityUpdate(cardId, priority)"
           />
         </div>
       </draggable>
@@ -319,13 +317,11 @@ import ListMenu from '@/components/ListMenu.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 
 // 🔧 Composables 引入
-import { useCardActions } from '@/composables/useCardActions'
 import { useInlineEdit } from '@/composables/useInlineEdit'
 import { useDragAndDrop, type DragEvent, type DragItem } from '@/composables/useDragAndDrop'
 
 // 📊 型別定義
 import type { ListUI, CardUI } from '@/types'
-import { CardStatus, CardPriority } from '@/types/api'
 
 
 // #endregion ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
@@ -380,8 +376,7 @@ const cardAddEdit = useInlineEdit({
 // 🔄 拖拽功能 Composable
 const { startDrag, endDrag, handleCardDragMove } = useDragAndDrop()
 
-// 📋 卡片操作 Composable
-const { updateCardStatus, updateCardPriority } = useCardActions()
+// 📋 卡片狀態操作已改用 provide/inject，不再需要在 ListItem 中引入
 
 // 🔗 編輯狀態別名（保持相容性）
 const isEditingTitle = titleEdit.isEditing
@@ -413,31 +408,8 @@ const saveNewCard = cardAddEdit.saveEdit
 const cancelAddCard = cardAddEdit.cancelEdit
 const isSavingCard = cardAddEdit.isSaving
 
-// 🔄 卡片狀態更新
-const handleCardStatusUpdate = async (cardId: string, status: CardStatus) => {
-  console.log('🔄 [LIST-ITEM] 更新卡片狀態:', { cardId, status, statusType: typeof status })
-  
-  try {
-    await updateCardStatus(cardId, status)
-    console.log('✅ [LIST-ITEM] 狀態更新成功')
-  } catch (error) {
-    console.error('❌ [LIST-ITEM] 更新卡片狀態失敗:', error)
-    emit('card-updated')
-  }
-}
-
-// 🏆 卡片優先順序更新
-const handleCardPriorityUpdate = async (cardId: string, priority: CardPriority) => {
-  console.log('🔄 [LIST-ITEM] 更新卡片優先順序:', { cardId, priority, priorityType: typeof priority })
-  
-  try {
-    await updateCardPriority(cardId, priority)
-    console.log('✅ [LIST-ITEM] 優先順序更新成功')
-  } catch (error) {
-    console.error('❌ [LIST-ITEM] 更新優先順序失敗:', error)
-    emit('card-updated')
-  }
-}
+// 🔄 狀態和優先順序更新已改用 provide/inject 模式
+// Card 組件會直接使用注入的方法，不再需要通過 ListItem 轉發
 // #endregion ═══════════════════════ 📌 CARD OPERATIONS ═══════════════════════
 
 // #region ═══════════════════════ 🔄 DRAG & DROP ═══════════════════════

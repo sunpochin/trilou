@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineNuxtConfig({
   app: {
     head: {
+      title: 'Trilou',
       meta: [
         { charset: 'utf-8' },
         { 
