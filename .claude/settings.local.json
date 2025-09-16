@@ -41,7 +41,8 @@
       "Bash(open \"http://localhost:3002\")",
       "Bash(yarn list:*)",
       "Bash(DEV_SKIP_AUTH=true DEV_USER_ID=\"a971548d-298f-4513-883f-a6bd370eff1b\" yarn dev)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx cypress run:*)"
     ],
     "defaultMode": "acceptEdits"
   }

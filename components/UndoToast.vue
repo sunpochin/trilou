@@ -31,6 +31,7 @@
   >
     <div
       v-if="visible"
+      data-testid="undo-toast"
       class="fixed bottom-4 left-4 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 max-w-sm"
     >
       <!-- 封存圖示 -->
@@ -46,6 +47,7 @@
 
       <!-- 復原按鈕 -->
       <button
+        data-testid="undo-button"
         @click="handleUndo"
         class="text-blue-400 hover:text-blue-300 text-sm font-medium px-2 py-1 rounded hover:bg-gray-700 transition-colors"
       >
@@ -54,6 +56,7 @@
 
       <!-- 關閉按鈕 -->
       <button
+        data-testid="close-toast-button"
         @click="handleClose"
         class="text-gray-400 hover:text-white ml-1"
       >

@@ -129,7 +129,8 @@
 
 <template>
   <!-- 🎯 純渲染卡片組件 - 共用 mobile/desktop -->
-  <div 
+  <div
+    data-testid="card"
     class="bg-white rounded px-3 py-3 mb-2 shadow-sm transition-all duration-200 hover:shadow-md relative group min-h-16 cursor-grab card-draggable max-w-full overflow-hidden"
     :class="{ 'card-dragging': dragging }"
     @click="openCardModal"
@@ -184,6 +185,7 @@
     <!-- 🔧 使用 pointerdown 支援觸控設備，避免與拖拽庫的衝突 -->
     <button
       v-if="!isEditing"
+      data-testid="delete-button"
       @pointerdown.stop="handleDeletePointerDown"
       @click.stop.prevent
       class="absolute top-2 right-2 p-1 rounded hover:bg-red-100 transition-colors duration-200 opacity-100' : 'opacity-0 group-hover:opacity-100"

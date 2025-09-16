@@ -30,8 +30,9 @@
 
 <template>
   <!-- 手機版看板容器 -->
-  <div 
+  <div
     ref="boardContainerRef"
+    data-testid="board-container"
     style="margin: 0; padding: 0; width: 100vw; box-sizing: border-box; position: relative;"
     class="block overflow-y-auto mobile-container gap-4 h-[85vh] bg-gray-100 font-sans"
     @contextmenu.prevent

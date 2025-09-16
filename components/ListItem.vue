@@ -121,11 +121,12 @@
 <template>
   <!-- 單個列表容器 -->
   <!-- 💡 十歲小朋友解釋：如果有拖曳把手，就不要上面的圓角，因為把手已經有圓角了 -->
-  <div 
+  <div
+    data-testid="list-container"
     :class="[
       'bg-gray-200 p-2 flex-shrink-0 flex flex-col',
       props.isMobile ? 'mobile-list-item rounded-b-lg' : 'w-80 rounded'
-    ]" 
+    ]"
     :data-list-id="list.id"
   >
     <!-- 列表標題區域 -->
@@ -263,9 +264,10 @@
     <!-- 新增卡片區域 -->
     <div class="mt-2">
       <!-- 顯示按鈕模式 -->
-      <button 
+      <button
         v-if="!isAddingCard"
-        class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
+        data-testid="add-card-button"
+        class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800"
         @click="() => startAddCard()"
       >
         + 新增卡片
@@ -278,6 +280,7 @@
       >
         <textarea
           ref="newCardInput"
+          data-testid="card-input"
           v-model="cardAddEdit.editingValue.value"
           placeholder="輸入這張卡片的標題..."
           class="w-full resize-none border-none outline-none text-sm min-h-14"
@@ -286,6 +289,7 @@
         />
         <div class="flex gap-2 mt-2">
           <button
+            data-testid="confirm-add-card"
             @click="saveNewCard"
             :disabled="!(typeof cardAddEdit.editingValue.value === 'string' && cardAddEdit.editingValue.value.trim())"
             class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"

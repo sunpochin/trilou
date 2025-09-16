@@ -10,7 +10,8 @@
 
 <template>
   <!-- 桌面版看板主容器 - 純桌面優化 -->
-  <div 
+  <div
+    data-testid="board-container"
     :class="[
       'w-full p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans',
       viewData.isLoading ? 'flex items-center justify-center' : 'flex gap-4'
