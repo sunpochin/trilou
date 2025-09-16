@@ -184,7 +184,7 @@
     <!-- 🔧 使用 pointerdown 支援觸控設備，避免與拖拽庫的衝突 -->
     <button
       v-if="!isEditing"
-      @pointerdown.stop="handleDeleteMouseDown"
+      @pointerdown.stop="handleDeletePointerDown"
       @click.stop.prevent
       class="absolute top-2 right-2 p-1 rounded hover:bg-red-100 transition-colors duration-200 opacity-100' : 'opacity-0 group-hover:opacity-100"
       title="刪除卡片"
@@ -297,8 +297,8 @@ const openCardModal = () => {
 }
 
 // 🔧 處理刪除按鈕的 pointerdown 事件，支援觸控設備
-const handleDeleteMouseDown = (event: PointerEvent) => {
-  logger.debug('[PURE-CARD] handleDeleteMouseDown 被觸發!', {
+const handleDeletePointerDown = (event: PointerEvent) => {
+  logger.debug('[PURE-CARD] handleDeletePointerDown 被觸發!', {
     cardTitle: props.card.title,
     cardId: props.card.id
   })

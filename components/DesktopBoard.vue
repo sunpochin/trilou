@@ -164,6 +164,7 @@ import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
 import { useDragAndDrop, type DragEvent } from '@/composables/useDragAndDrop'
 import { useBoardUndo } from '@/composables/useBoardUndo'
+import { logger } from '@/utils/logger'
 
 
 // 📊 型別定義
@@ -220,7 +221,7 @@ const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 const { handleCardMove, handleListMove } = useBoardView()
 
 // 🔄 Undo 復原系統
-const { undoState, provideDeleteCard } = useBoardUndo()
+const { undoState, provideDeleteCard, undoLastDelete } = useBoardUndo()
 
 // 🔌 提供刪除函數給子組件
 provideDeleteCard()
@@ -364,36 +365,8 @@ const onListUpdateTitle = async (listId: string, newTitle: string) => {
 
 // 🔄 復原已刪除的卡片
 const handleUndo = () => {
-  console.log('🔄 [DESKTOP-BOARD] 用戶點擊復原按鈕')
-  
-  const itemId = undoState.toastState.itemId
-  if (!itemId) {
-    console.error('❌ [DESKTOP-BOARD] 沒有找到要復原的項目 ID')
-    return
-  }
-  
-  // 從 undo 系統復原項目
-  const deletedItem = undoState.undoDelete(itemId)
-  if (!deletedItem) {
-    console.error('❌ [DESKTOP-BOARD] 復原失敗，找不到刪除的項目')
-    return
-  }
-  
-  // 將卡片還原到原始位置
-  const { data: card, restoreInfo } = deletedItem
-  const targetList = boardStore.board.lists.find(list => list.id === restoreInfo.listId)
-  
-  if (targetList) {
-    // 將卡片插入到原始位置
-    targetList.cards.splice(restoreInfo.position, 0, card)
-    console.log('✅ [DESKTOP-BOARD] 卡片已復原到原始位置:', {
-      cardTitle: card.title,
-      listTitle: targetList.title,
-      position: restoreInfo.position
-    })
-  } else {
-    console.error('❌ [DESKTOP-BOARD] 找不到目標列表:', restoreInfo.listId)
-  }
+  logger.debug('[DESKTOP-BOARD] 用戶點擊復原按鈕')
+  undoLastDelete()
 }
 
 // 🙈 關閉 Toast 通知

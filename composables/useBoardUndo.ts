@@ -110,13 +110,27 @@ export function useBoardUndo() {
     const deletedItem = undoState.undoDelete(undoState.toastState.itemId)
 
     if (deletedItem && deletedItem.type === 'card') {
-      // 復原卡片到原本的列表和位置
-      boardStore.restoreCard(
-        deletedItem.data as CardUI,
-        deletedItem.listId!,
-        deletedItem.position!
-      )
-      logger.debug('[BOARD-UNDO] 卡片已復原')
+      // 找到目標列表
+      const listId = deletedItem.restoreInfo.listId
+      const targetList = boardStore.board.lists.find(list => list.id === listId)
+
+      if (targetList) {
+        // 復原卡片到原本的位置
+        const card = deletedItem.data as CardUI
+        const position = deletedItem.restoreInfo.position
+
+        // 確保位置不超過陣列長度
+        const safePosition = Math.min(position, targetList.cards.length)
+        targetList.cards.splice(safePosition, 0, card)
+
+        logger.debug('[BOARD-UNDO] 卡片已復原到位置', {
+          cardTitle: card.title,
+          listId: listId,
+          position: safePosition
+        })
+      } else {
+        logger.error('[BOARD-UNDO] 找不到目標列表:', listId)
+      }
     }
   }
 

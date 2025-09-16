@@ -317,7 +317,7 @@ const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 const { handleCardMove, handleListMove } = useBoardView()
 
 // 🔄 Undo 復原系統
-const { undoState, deleteCardWithUndo, provideDeleteCard } = useBoardUndo()
+const { undoState, deleteCardWithUndo, provideDeleteCard, undoLastDelete } = useBoardUndo()
 
 // 🔌 提供刪除函數給子組件
 provideDeleteCard()
@@ -695,36 +695,7 @@ const onAiGenerationComplete = () => {
 // #region ═══════════════════════ 🔄 UNDO FUNCTIONS ═══════════════════════
 // 🔄 復原已刪除的卡片
 const handleUndo = () => {
-  console.log('🔄 [MOBILE-BOARD] 用戶點擊復原按鈕')
-  
-  const itemId = undoState.toastState.itemId
-  if (!itemId) {
-    console.error('❌ [MOBILE-BOARD] 沒有找到要復原的項目 ID')
-    return
-  }
-  
-  // 從 undo 系統復原項目
-  const deletedItem = undoState.undoDelete(itemId)
-  if (!deletedItem) {
-    console.error('❌ [MOBILE-BOARD] 復原失敗，找不到刪除的項目')
-    return
-  }
-  
-  // 將卡片還原到原始位置
-  const { data: card, restoreInfo } = deletedItem
-  const targetList = boardStore.board.lists.find(list => list.id === restoreInfo.listId)
-  
-  if (targetList) {
-    // 將卡片插入到原始位置
-    targetList.cards.splice(restoreInfo.position, 0, card)
-    console.log('✅ [MOBILE-BOARD] 卡片已復原到原始位置:', {
-      cardTitle: card.title,
-      listTitle: targetList.title,
-      position: restoreInfo.position
-    })
-  } else {
-    console.error('❌ [MOBILE-BOARD] 找不到目標列表:', restoreInfo.listId)
-  }
+  undoLastDelete()
 }
 
 // 🙈 關閉 Toast 通知
