@@ -48,24 +48,30 @@ export function useCardOperations() {
   } = useCardActions()
 
   /**
-   * 刪除卡片（需要確認）
+   * 刪除卡片（返回刪除信息供調用者處理 undo）
    */
   const handleCardDelete = async (card: CardUI | string) => {
-    const cardId = typeof card === 'string' ? card : card.id
-    const cardTitle = typeof card === 'string' ? '此卡片' : card.title
+    // deleteCardAction 需要完整的 CardUI 物件，不能只傳 ID
+    if (typeof card === 'string') {
+      console.error('❌ [CARD-OPS] handleCardDelete 需要完整的卡片物件，不能只傳 ID')
+      throw new Error('需要完整的卡片物件')
+    }
     
-    console.log('🗑️ [CARD-OPS] 刪除卡片:', cardTitle)
+    console.log('🗑️ [CARD-OPS] 處理卡片刪除:', card.title)
     
     try {
-      await deleteCardAction(cardId)
-      console.log('✅ [CARD-OPS] 卡片刪除成功')
+      // 刪除卡片並獲取恢復信息
+      const deleteInfo = await deleteCardAction(card)
       
-      eventBus.emit('notification:success', {
-        title: '刪除成功',
-        message: '卡片已刪除'
-      })
+      if (!deleteInfo) {
+        throw new Error('無法獲取卡片刪除信息')
+      }
+      
+      console.log('✅ [CARD-OPS] 卡片刪除處理完成，返回刪除信息')
+      return deleteInfo
+      
     } catch (error) {
-      console.error('❌ [CARD-OPS] 卡片刪除失敗:', error)
+      console.error('❌ [CARD-OPS] 卡片刪除處理失敗:', error)
       eventBus.emit('notification:error', {
         title: '刪除失敗',
         message: '無法刪除卡片，請稍後再試',

@@ -30,8 +30,9 @@
 
 <template>
   <!-- 手機版看板容器 -->
-  <div 
+  <div
     ref="boardContainerRef"
+    data-testid="board-container"
     style="margin: 0; padding: 0; width: 100vw; box-sizing: border-box; position: relative;"
     class="block overflow-y-auto mobile-container gap-4 h-[85vh] bg-gray-100 font-sans"
     @contextmenu.prevent
@@ -94,9 +95,9 @@
             :ai-generating-list-id="aiGeneratingListId"
             @card-move="onCardMove"
             @open-card-modal="openCardModal"
+            @card-delete="deleteCardWithUndo"
             @drag-start="onDragStart"
             @drag-end="onDragEnd"
-            @card-delete="onCardDelete"
             @card-update-title="onCardUpdateTitle"
             @list-add-card="onListAddCard"
             @list-delete="onListDelete"
@@ -125,9 +126,9 @@
           :ai-generating-list-id="aiGeneratingListId"
           @card-move="onCardMove"
           @open-card-modal="openCardModal"
+          @card-delete="deleteCardWithUndo"
           @drag-start="onDragStart"
           @drag-end="onDragEnd"
-          @card-delete="onCardDelete"
           @card-update-title="onCardUpdateTitle"
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
@@ -236,22 +237,32 @@ style="width: calc(100vw - 2rem); max-width: 420px;"
       @generation-start="onAiGenerationStart"
       @generation-complete="onAiGenerationComplete"
     />
+
+    <!-- 📱 Mobile Undo Toast 通知 -->
+    <UndoToast
+      :visible="undoState.toastState.visible"
+      :message="undoState.toastState.message"
+      @undo="handleUndo"
+      @close="handleToastClose"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 // #region ═══════════════════════ 📦 IMPORTS ═══════════════════════
-import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, watch, provide } from 'vue'
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
+import UndoToast from '@/components/UndoToast.vue'
 import { VueDraggableNext as draggable } from 'vue-draggable-next'
 import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
 import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineEdit } from '@/composables/useInlineEdit'
+import { useBoardUndo } from '@/composables/useBoardUndo'
 import { useGesture } from '@vueuse/gesture'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
@@ -300,11 +311,17 @@ const {
 } = useBoardCommon()
 
 // 使用專用的操作 composables
-const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
+const { handleCardUpdateTitle, handleCardAdd } = useCardOperations()
 const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 
 // 需要單獨引入來處理手機版特有的拖拽邏輯
 const { handleCardMove, handleListMove } = useBoardView()
+
+// 🔄 Undo 復原系統
+const { undoState, deleteCardWithUndo, provideDeleteCard, undoLastDelete } = useBoardUndo()
+
+// 🔌 提供刪除函數給子組件
+provideDeleteCard()
 // #endregion ═══════════════════════ 🎯 COMPOSABLES & SETUP ═══════════════════════
 
 // #region ═══════════════════════ 📱 MOBILE SPECIFIC STATE ═══════════════════════
@@ -594,15 +611,30 @@ const onCardMove = async (event: any) => {
 // #endregion ═══════════════════════ 🔄 EVENT HANDLERS ═══════════════════════
 
 // #region ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
-// 🗑️ 卡片刪除 - 使用共用的卡片操作
-const onCardDelete = handleCardDelete
+// 🗑️ 卡片刪除 - 現在透過 Provide/Inject 處理，不需要事件處理器
 
 // ✏️ 卡片標題更新 - 樂觀更新策略  
 // ✏️ 卡片標題更新 - 使用共用的卡片操作
 const onCardUpdateTitle = handleCardUpdateTitle
 
-// 📌 新增卡片 - 使用共用的卡片操作
-const onListAddCard = handleCardAdd
+// 📌 新增卡片 - 手機版樂觀更新
+const onListAddCard = async (listId: string, title: string) => {
+  console.log('📌 [MOBILE-BOARD] 新增卡片:', { listId, title })
+  
+  try {
+    // 手機版也使用樂觀更新，但處理錯誤
+    // 不傳遞 status，讓它使用預設值
+    await addCardAction(listId, title)
+    console.log('✅ [MOBILE-BOARD] 卡片新增完成')
+  } catch (error) {
+    console.error('❌ [MOBILE-BOARD] 新增卡片失敗:', error)
+    eventBus.emit('notification:error', {
+      title: '新增失敗',
+      message: '新增卡片失敗，請檢查網路連線後再試',
+      duration: 5000
+    })
+  }
+}
 
 // 🗑️ 列表刪除 - 需要確認的重要操作
 const onListDelete = async (listId: string) => {
@@ -660,6 +692,19 @@ const onAiGenerationComplete = () => {
   handleAiGenerationComplete()
 }
 // #endregion ═══════════════════════ 🤖 AI FUNCTIONS ═══════════════════════
+
+// #region ═══════════════════════ 🔄 UNDO FUNCTIONS ═══════════════════════
+// 🔄 復原已刪除的卡片
+const handleUndo = () => {
+  undoLastDelete()
+}
+
+// 🙈 關閉 Toast 通知
+const handleToastClose = () => {
+  console.log('🙈 [MOBILE-BOARD] 關閉 Toast 通知')
+  undoState.hideToast()
+}
+// #endregion ═══════════════════════ 🔄 UNDO FUNCTIONS ═══════════════════════
 
 // #region ═══════════════════════ 🔄 LIFECYCLE HOOKS ═══════════════════════
 // 初始化 - 只處理基本手勢，避免重複初始化列表手勢

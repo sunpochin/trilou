@@ -10,7 +10,8 @@
 
 <template>
   <!-- 桌面版看板主容器 - 純桌面優化 -->
-  <div 
+  <div
+    data-testid="board-container"
     :class="[
       'w-full p-4 h-[85vh] overflow-x-auto bg-gray-100 font-sans',
       viewData.isLoading ? 'flex items-center justify-center' : 'flex gap-4'
@@ -42,6 +43,7 @@
         ghostClass="list-ghost"
         chosenClass="list-chosen"
         dragClass="list-dragging"
+        handle=".list-drag-handle"
       >
         <ListItem
           v-for="list in viewData.lists" 
@@ -51,7 +53,7 @@
           :ai-generating-list-id="aiGeneratingListId"
           @card-move="onCardMove"
           @open-card-modal="openCardModal"
-          @card-delete="onCardDelete"
+          @card-delete="deleteCardWithUndo"
           @card-update-title="onCardUpdateTitle"
           @list-add-card="onListAddCard"
           @list-delete="onListDelete"
@@ -131,17 +133,26 @@
       @generation-start="onAiGenerationStart"
       @generation-complete="onAiGenerationComplete"
     />
+
+    <!-- Undo Toast 通知 -->
+    <UndoToast
+      :visible="undoState.toastState.visible"
+      :message="undoState.toastState.message"
+      @undo="handleUndo"
+      @close="handleToastClose"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 // #region ═══════════════════════ 📦 IMPORTS & TYPES ═══════════════════════
 // 📦 Vue 核心功能
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, provide } from 'vue'
 
 // 🏠 組件引入
 import ListItem from '@/components/ListItem.vue'
 import CardModal from '@/components/CardModal.vue'
+import UndoToast from '@/components/UndoToast.vue'
 import AiTaskModal from '@/components/AiTaskModal.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 
@@ -153,6 +164,9 @@ import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
 import { useDragAndDrop, type DragEvent } from '@/composables/useDragAndDrop'
+import { useBoardUndo } from '@/composables/useBoardUndo'
+import { logger } from '@/utils/logger'
+
 
 // 📊 型別定義
 import type { CardUI } from '@/types'
@@ -189,7 +203,6 @@ const {
   // 卡片管理
   openCardModal,
   closeCardModal,
-  deleteCard: deleteCardAction,
   updateCardTitle: updateCardTitleAction,
   addCard: addCardAction,
   
@@ -204,9 +217,15 @@ const {
 } = useBoardCommon()
 
 // 📋 特定操作 Composables
-const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
+const { handleCardUpdateTitle, handleCardAdd } = useCardOperations()
 const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 const { handleCardMove, handleListMove } = useBoardView()
+
+// 🔄 Undo 復原系統
+const { undoState, provideDeleteCard, undoLastDelete } = useBoardUndo()
+
+// 🔌 提供刪除函數給子組件
+provideDeleteCard()
 
 // 🤖 AI 生成狀態
 const aiGeneratingListId = ref<string | null>(null)
@@ -283,23 +302,7 @@ const onListMove = async (event: DragEvent) => {
  * - 📌 新增操作：樂觀更新 + 錯誤處理
  */
 
-// 🗑️ 卡片刪除 - 需要確認的重要操作
-const onCardDelete = async (card: CardUI) => {
-  console.log('🗑️ [DESKTOP-BOARD] 刪除卡片:', card.title)
-  
-  try {
-    // 刪除是重要操作，用戶需要知道結果
-    await deleteCardAction(card)
-    console.log('✅ [DESKTOP-BOARD] 卡片刪除成功')
-  } catch (error) {
-    console.error('❌ [DESKTOP-BOARD] 卡片刪除失敗:', error)
-    eventBus.emit('notification:error', {
-      title: '刪除失敗',
-      message: '刪除失敗，請稍後再試',
-      duration: 5000
-    })
-  }
-}
+// 🗑️ 卡片刪除 - 現在透過 Provide/Inject 處理，不需要事件處理器
 
 // ✏️ 卡片標題更新 - 桌面版樂觀更新
 const onCardUpdateTitle = async (cardId: string, newTitle: string) => {
@@ -359,6 +362,18 @@ const onListUpdateTitle = async (listId: string, newTitle: string) => {
   })
   
   console.log('⚡ [DESKTOP-BOARD] 列表標題樂觀更新完成')
+}
+
+// 🔄 復原已刪除的卡片
+const handleUndo = () => {
+  logger.debug('[DESKTOP-BOARD] 用戶點擊復原按鈕')
+  undoLastDelete()
+}
+
+// 🙈 關閉 Toast 通知
+const handleToastClose = () => {
+  console.log('🙈 [DESKTOP-BOARD] 關閉 Toast 通知')
+  undoState.hideToast()
 }
 // #endregion ═══════════════════════ 🗑️ CRUD OPERATIONS ═══════════════════════
 

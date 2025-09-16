@@ -121,11 +121,12 @@
 <template>
   <!-- 單個列表容器 -->
   <!-- 💡 十歲小朋友解釋：如果有拖曳把手，就不要上面的圓角，因為把手已經有圓角了 -->
-  <div 
+  <div
+    data-testid="list-container"
     :class="[
       'bg-gray-200 p-2 flex-shrink-0 flex flex-col',
       props.isMobile ? 'mobile-list-item rounded-b-lg' : 'w-80 rounded'
-    ]" 
+    ]"
     :data-list-id="list.id"
   >
     <!-- 列表標題區域 -->
@@ -133,7 +134,7 @@
       <!-- 非編輯狀態：顯示標題 -->
       <h2 
         v-if="!isEditingTitle" 
-        class="w-full text-base font-bold select-none cursor-pointer hover:bg-gray-100 px-2 py-1 rounded"
+        class="w-full text-base font-bold select-none cursor-move hover:bg-gray-100 px-2 py-1 rounded list-drag-handle"
         @click="startEditTitle"
       >
         {{ list.title }}
@@ -263,10 +264,11 @@
     <!-- 新增卡片區域 -->
     <div class="mt-2">
       <!-- 顯示按鈕模式 -->
-      <button 
+      <button
         v-if="!isAddingCard"
-        class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800" 
-        @click="startAddCard"
+        data-testid="add-card-button"
+        class="w-full p-3 bg-transparent border-2 border-dashed border-gray-300 rounded text-gray-600 cursor-pointer text-sm transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-800"
+        @click="() => startAddCard()"
       >
         + 新增卡片
       </button>
@@ -278,7 +280,8 @@
       >
         <textarea
           ref="newCardInput"
-          v-model="newCardTitle"
+          data-testid="card-input"
+          v-model="cardAddEdit.editingValue.value"
           placeholder="輸入這張卡片的標題..."
           class="w-full resize-none border-none outline-none text-sm min-h-14"
           @keydown.enter.prevent="saveNewCard"
@@ -286,8 +289,9 @@
         />
         <div class="flex gap-2 mt-2">
           <button
+            data-testid="confirm-add-card"
             @click="saveNewCard"
-            :disabled="!newCardTitle.trim()"
+            :disabled="!(typeof cardAddEdit.editingValue.value === 'string' && cardAddEdit.editingValue.value.trim())"
             class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             新增卡片
@@ -343,9 +347,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'card-move': [event: DragEvent]
   'open-card-modal': [card: CardUI]
+  'card-delete': [card: CardUI]
   'drag-start': [item: DragItem, type: 'card' | 'list']
   'drag-end': []
-  'card-delete': [card: CardUI]
   'card-update-title': [cardId: string, newTitle: string]
   'card-updated': []
   'list-add-card': [listId: string, title: string]
@@ -372,6 +376,7 @@ const titleEdit = useInlineEdit({
 // 📌 新增卡片 Composable
 const cardAddEdit = useInlineEdit({
   onSave: (cardTitle) => {
+    console.log('📌 [LIST-ITEM] 準備新增卡片:', { listId: props.list.id, cardTitle })
     emit('list-add-card', props.list.id, cardTitle)
   },
   placeholder: '輸入卡片標題...'
@@ -389,7 +394,6 @@ const editingTitle = titleEdit.editingValue
 const titleInput = titleEdit.inputRef as any
 
 const isAddingCard = cardAddEdit.isEditing
-const newCardTitle = cardAddEdit.editingValue
 const newCardInput = cardAddEdit.inputRef as any
 // #endregion ═══════════════════════ 🎮 COMPOSABLES & STATE ═══════════════════════
 
