@@ -69,13 +69,41 @@
   />
 
   ======================== 📱 跨裝置顯示問題解決 ========================
-  
+
   🧒 十歲小朋友解釋：為什麼同樣的卡片在不同手機上看起來不一樣？
-  
+
   🎨 想像你在不同的紙上畫同一張圖：
   - 有些紙比較厚，字會看起來粗一點（不同手機的螢幕密度）
   - 有些筆寫出來的字比較大（不同手機的預設字體）
   - 有些紙比較小，圖可能會擠在一起（不同螢幕尺寸）
+
+  ======================== 🏷️ 型別轉換 - 貼標籤的故事 ========================
+
+  🧒 十歲小朋友解釋：為什麼要用 `as CardStatus`？
+
+  🎒 想像你有一個盒子要放進收納櫃：
+
+  問題：
+  - 媽媽說：「這個盒子裡可能是玩具，也可能是空的，也可能是其他東西」
+  - 收納櫃說：「我只接受貼『玩具』標籤的盒子！」
+
+  解決方法：
+  ```
+  (card.status || CardStatus.TODO) as CardStatus
+  ```
+
+  分解說明：
+  1. card.status = 盒子裡的東西（可能是空的）
+  2. || = 「或者」（如果空的話）
+  3. CardStatus.TODO = 預設放一個「待辦」玩具
+  4. as CardStatus = 貼上「這是玩具」的保證標籤
+
+  這樣收納櫃就會相信：「好的，這個盒子確實裝的是玩具！」
+
+  為什麼需要這樣做？
+  - TypeScript（電腦管家）很小心，不確定盒子裡是什麼
+  - 我們確定盒子裡只會是三種玩具之一：TODO、DOING、DONE
+  - 所以我們跟管家保證：「相信我，這一定是合格的玩具！」
   
   💡 解決方法就像準備一個「萬能工具箱」：
   - 🔧 max-w-full: 告訴卡片「不可以比容器還寬」（像給圖片設邊界）
@@ -136,9 +164,9 @@
         <button
           @click.stop="toggleStatus"
           class="text-xs px-2 py-1 rounded-sm font-medium transition-colors whitespace-nowrap"
-          :class="getStatusClass(card.status || CardStatus.TODO)"
+          :class="getStatusClass((card.status || CardStatus.TODO) as CardStatus)"
         >
-          {{ getStatusLabel(card.status || CardStatus.TODO) }}
+          {{ getStatusLabel((card.status || CardStatus.TODO) as CardStatus) }}
         </button>
         
         <!-- 優先順序按鈕 -->
@@ -146,17 +174,17 @@
           @click.stop="togglePriority"
           class="flex items-center gap-1 text-xs px-2 py-1 rounded-sm font-medium transition-colors hover:bg-gray-100 whitespace-nowrap"
         >
-          <span>{{ getPriorityEmoji(card.priority || CardPriority.MEDIUM) }}</span>
-          <span>{{ getPriorityLabel(card.priority || CardPriority.MEDIUM) }}</span>
+          <span>{{ getPriorityEmoji((card.priority || CardPriority.MEDIUM) as CardPriority) }}</span>
+          <span>{{ getPriorityLabel((card.priority || CardPriority.MEDIUM) as CardPriority) }}</span>
         </button>
       </div>
     </div>
     
     <!-- 刪除按鈕 - 只在 hover 時顯示 -->
-    <!-- 🔧 使用 mousedown 避免與拖拽庫的衝突，類似 ListMenu 的修復方式 -->
-    <button 
+    <!-- 🔧 使用 pointerdown 支援觸控設備，避免與拖拽庫的衝突 -->
+    <button
       v-if="!isEditing"
-      @mousedown.stop="handleDeleteMouseDown"
+      @pointerdown.stop="handleDeleteMouseDown"
       @click.stop.prevent
       class="absolute top-2 right-2 p-1 rounded hover:bg-red-100 transition-colors duration-200 opacity-100' : 'opacity-0 group-hover:opacity-100"
       title="刪除卡片"
@@ -187,6 +215,7 @@
 
 <script setup lang="ts">
 import { ref, inject } from 'vue'
+import { logger } from '@/utils/logger'
 import type { CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
 import { DELETE_CARD_KEY } from '@/constants/injectionKeys'
@@ -225,7 +254,7 @@ const editInput = ref<HTMLInputElement | null>(null)
 // 🎯 純渲染：切換勾選狀態（本地 UI 狀態，已移除勾選框功能）
 // const toggleCheckbox = () => {
 //   isChecked.value = !isChecked.value
-//   console.log(`📋 [PURE-CARD] 本地勾選狀態: ${props.card.title} -> ${isChecked.value ? '已完成' : '未完成'}`)
+//   logger.debug(`[PURE-CARD] 本地勾選狀態: ${props.card.title} -> ${isChecked.value ? '已完成' : '未完成'}`)
 //   // 純渲染組件不處理業務邏輯，只管理 UI 狀態
 // }
 
@@ -267,9 +296,9 @@ const openCardModal = () => {
   emit('openModal', props.card)
 }
 
-// 🔧 處理刪除按鈕的 mousedown 事件，避免與拖拽庫衝突
-const handleDeleteMouseDown = (event: MouseEvent) => {
-  console.log('🖱️ [PURE-CARD] handleDeleteMouseDown 被觸發!', {
+// 🔧 處理刪除按鈕的 pointerdown 事件，支援觸控設備
+const handleDeleteMouseDown = (event: PointerEvent) => {
+  logger.debug('[PURE-CARD] handleDeleteMouseDown 被觸發!', {
     cardTitle: props.card.title,
     cardId: props.card.id
   })
@@ -284,7 +313,7 @@ const handleDeleteMouseDown = (event: MouseEvent) => {
 
 // 🎯 純渲染：刪除卡片 (使用 Inject 直接呼叫)
 const deleteCard = async () => {
-  console.log('🗑️ [PURE-CARD] deleteCard 被觸發!', {
+  logger.debug('[PURE-CARD] deleteCard 被觸發!', {
     cardTitle: props.card.title,
     cardId: props.card.id,
     injectedDeleteCard: !!injectedDeleteCard
@@ -292,16 +321,16 @@ const deleteCard = async () => {
   
   // 使用注入的方法，避免多層事件傳遞
   if (injectedDeleteCard) {
-    console.log('✅ [PURE-CARD] 找到注入的方法，即將呼叫...')
+    logger.debug('[PURE-CARD] 找到注入的方法，即將呼叫...')
     try {
       await injectedDeleteCard(props.card)
-      console.log('✅ [PURE-CARD] 刪除操作已委派給注入的方法')
+      logger.debug('[PURE-CARD] 刪除操作已委派給注入的方法')
     } catch (error) {
-      console.error('❌ [PURE-CARD] 注入方法執行失敗:', error)
+      logger.error('[PURE-CARD] 注入方法執行失敗:', error)
     }
   } else {
     // 降級方案：如果沒有注入，仍使用事件傳遞
-    console.warn('⚠️ [PURE-CARD] 未找到注入的 deleteCard，使用事件傳遞')
+    logger.warn('[PURE-CARD] 未找到注入的 deleteCard，使用事件傳遞')
     emit('delete', props.card)
   }
 }
@@ -364,7 +393,7 @@ const getPriorityLabel = (priority: CardPriority) => {
 
 // 切換狀態（循環：Todo → Doing → Done → Todo）
 const toggleStatus = () => {
-  const currentStatus = props.card.status || CardStatus.TODO
+  const currentStatus = (props.card.status || CardStatus.TODO) as CardStatus
   let newStatus: CardStatus
   
   switch (currentStatus) {
@@ -386,7 +415,7 @@ const toggleStatus = () => {
 
 // 切換優先順序（循環：High → Medium → Low → High）
 const togglePriority = () => {
-  const currentPriority = props.card.priority || CardPriority.MEDIUM
+  const currentPriority = (props.card.priority || CardPriority.MEDIUM) as CardPriority
   let newPriority: CardPriority
   
   switch (currentPriority) {
