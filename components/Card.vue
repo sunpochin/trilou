@@ -189,6 +189,7 @@
 import { ref, inject } from 'vue'
 import type { CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
+import { DELETE_CARD_KEY } from '@/constants/injectionKeys'
 
 
 // 🎯 純渲染組件：接收父組件傳入的資料和狀態
@@ -210,8 +211,8 @@ const emit = defineEmits<{
 }>()
 
 // 🔌 Inject - 從父層注入 deleteCard 方法
-// 使用 Provide/Inject 模式縮短事件鏈
-const injectedDeleteCard = inject<(card: CardUI | string) => Promise<void>>('deleteCard')
+// 使用型別安全的 InjectionKey
+const injectedDeleteCard = inject(DELETE_CARD_KEY)
 
 // 編輯狀態管理
 const isEditing = ref(false)

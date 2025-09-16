@@ -261,9 +261,8 @@ import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
 import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineEdit } from '@/composables/useInlineEdit'
-import { useUndo } from '@/composables/useUndo'
+import { useBoardUndo } from '@/composables/useBoardUndo'
 import { useGesture } from '@vueuse/gesture'
-import { useBoardStore } from '@/stores/boardStore'
 import type { CardUI } from '@/types'
 import { MESSAGES } from '@/constants/messages'
 import { eventBus } from '@/events/EventBus'
@@ -311,51 +310,17 @@ const {
 } = useBoardCommon()
 
 // 使用專用的操作 composables
-const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
+const { handleCardUpdateTitle, handleCardAdd } = useCardOperations()
 const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 
 // 需要單獨引入來處理手機版特有的拖拽邏輯
 const { handleCardMove, handleListMove } = useBoardView()
 
 // 🔄 Undo 復原系統
-const undoState = useUndo()
-const boardStore = useBoardStore()
+const { undoState, deleteCardWithUndo, provideDeleteCard } = useBoardUndo()
 
-// 🔄 創建整合 undo 系統的刪除函數
-const deleteCardWithUndo = async (card: CardUI) => {
-  console.log('🔥📱 [MOBILE-BOARD] deleteCardWithUndo 被呼叫!', {
-    cardTitle: card.title,
-    cardId: card.id,
-    cardType: typeof card
-  })
-  
-  try {
-    console.log('🔥📱 [MOBILE-BOARD] 開始呼叫 handleCardDelete...')
-    
-    // 使用 useCardOperations 處理刪除邏輯
-    const deleteInfo = await handleCardDelete(card)
-    
-    console.log('🔥📱 [MOBILE-BOARD] handleCardDelete 回傳:', deleteInfo)
-    
-    if (deleteInfo) {
-      console.log('🔥📱 [MOBILE-BOARD] 開始呼叫 softDeleteCard...')
-      console.log('🔥📱 [MOBILE-BOARD] undoState:', undoState)
-      console.log('🔥📱 [MOBILE-BOARD] undoState.toastState:', undoState.toastState)
-      // 使用當前組件的 undo 狀態處理軟刪除
-      undoState.softDeleteCard(deleteInfo.card, deleteInfo.listId, deleteInfo.position)
-      console.log('🔥📱 [MOBILE-BOARD] 軟刪除完成，toast 狀態:', undoState.toastState)
-      console.log('✅ [MOBILE-BOARD] 卡片已軟刪除，toast 應該已顯示')
-    } else {
-      console.error('❌ [MOBILE-BOARD] deleteInfo 為空，無法執行軟刪除')
-    }
-  } catch (error) {
-    console.error('❌ [MOBILE-BOARD] 卡片刪除失敗:', error)
-  }
-}
-
-// 🔌 Provide/Inject - 提供給子組件使用的方法
-// 使用統一的 key 讓 Card 組件能夠注入
-provide('deleteCard', deleteCardWithUndo)
+// 🔌 提供刪除函數給子組件
+provideDeleteCard()
 // #endregion ═══════════════════════ 🎯 COMPOSABLES & SETUP ═══════════════════════
 
 // #region ═══════════════════════ 📱 MOBILE SPECIFIC STATE ═══════════════════════

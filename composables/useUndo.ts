@@ -32,6 +32,7 @@
  */
 
 import { ref, reactive } from 'vue'
+import { logger } from '@/utils/logger'
 import type { CardUI } from '@/types'
 
 // 🎯 被刪除項目的資料結構
@@ -76,7 +77,7 @@ export function useUndo() {
    * 就像把東西丟到垃圾桶，但垃圾桶還沒倒掉
    */
   const softDeleteCard = (card: CardUI, listId: string, position: number) => {
-    console.log('🗑️ [UNDO] 軟刪除卡片:', { cardTitle: card.title, listId, position })
+    logger.debug('[UNDO] 軟刪除卡片:', { cardTitle: card.title, listId, position })
     
     // 存放到暫存區
     const deletedItem: DeletedItem = {
@@ -98,7 +99,7 @@ export function useUndo() {
     // 設定自動清理 (10秒後真的刪掉)
     scheduleCleanup(card.id, 10000)
     
-    console.log('✅ [UNDO] 卡片已軟刪除，可在 10 秒內復原')
+    logger.info('[UNDO] 卡片已軟刪除，可在 10 秒內復原')
   }
 
   /**
@@ -106,11 +107,11 @@ export function useUndo() {
    * 就像從垃圾桶把東西拿回來
    */
   const undoDelete = (itemId: string): DeletedItem | null => {
-    console.log('🔄 [UNDO] 準備復原項目:', itemId)
+    logger.debug('[UNDO] 準備復原項目:', itemId)
     
     const deletedItem = deletedItems.get(itemId)
     if (!deletedItem) {
-      console.error('❌ [UNDO] 找不到要復原的項目:', itemId)
+      logger.error('[UNDO] 找不到要復原的項目:', itemId)
       return null
     }
     
@@ -123,7 +124,7 @@ export function useUndo() {
     // 隱藏 Toast
     hideToast()
     
-    console.log('✅ [UNDO] 項目復原成功:', deletedItem.data.title || itemId)
+    logger.info('[UNDO] 項目復原成功:', deletedItem.data.title || itemId)
     return deletedItem
   }
 
@@ -132,7 +133,7 @@ export function useUndo() {
    * 告訴用戶「東西已經移除，但還可以復原」
    */
   const showToast = (message: string, itemId: string) => {
-    console.log('🎨 [UNDO] 顯示 Toast 通知:', message)
+    logger.debug('[UNDO] 顯示 Toast 通知:', message)
     
     toastState.visible = true
     toastState.message = message
@@ -143,7 +144,7 @@ export function useUndo() {
    * 🙈 隱藏 Toast 通知
    */
   const hideToast = () => {
-    console.log('🙈 [UNDO] 隱藏 Toast 通知')
+    logger.debug('[UNDO] 隱藏 Toast 通知')
     
     toastState.visible = false
     toastState.message = ''
@@ -155,17 +156,17 @@ export function useUndo() {
    * 就像垃圾車定時來收垃圾
    */
   const scheduleCleanup = (itemId: string, delay: number) => {
-    console.log(`⏰ [UNDO] 安排 ${delay}ms 後清理項目:`, itemId)
-    
+    logger.debug(`[UNDO] 安排 ${delay}ms 後清理項目:`, itemId)
+
     // 先取消之前的計時器 (如果有的話)
     cancelCleanup(itemId)
-    
+
     // 設定新的計時器
-    const timer = setTimeout(() => {
-      console.log('🧹 [UNDO] 自動清理時間到，永久刪除項目:', itemId)
-      permanentDelete(itemId)
+    const timer = setTimeout(async () => {
+      logger.debug('[UNDO] 自動清理時間到，永久刪除項目:', itemId)
+      await permanentDelete(itemId)
     }, delay)
-    
+
     cleanupTimers.set(itemId, timer)
   }
 
@@ -175,7 +176,7 @@ export function useUndo() {
   const cancelCleanup = (itemId: string) => {
     const timer = cleanupTimers.get(itemId)
     if (timer) {
-      console.log('🚫 [UNDO] 取消自動清理:', itemId)
+      logger.debug('[UNDO] 取消自動清理:', itemId)
       clearTimeout(timer)
       cleanupTimers.delete(itemId)
     }
@@ -185,12 +186,35 @@ export function useUndo() {
    * 🔥 永久刪除 (真的刪掉，無法復原)
    * 就像垃圾車把垃圾載走了
    */
-  const permanentDelete = (itemId: string) => {
-    console.log('🔥 [UNDO] 永久刪除項目:', itemId)
-    
+  const permanentDelete = async (itemId: string) => {
+    logger.info('[UNDO] 永久刪除項目:', itemId)
+
+    const deletedItem = deletedItems.get(itemId)
+
+    // 如果是卡片類型，呼叫後端 API 永久刪除
+    if (deletedItem && deletedItem.type === 'card') {
+      try {
+        // 動態引入 CardRepository 以避免循環依賴
+        const { cardRepository } = await import('@/repositories/CardRepository')
+        await cardRepository.deleteCard(itemId)
+        logger.info('[UNDO] 後端卡片刪除成功:', itemId)
+      } catch (error) {
+        logger.error('[UNDO] 後端卡片刪除失敗:', error)
+        // 發送錯誤通知
+        const { eventBus } = await import('@/events/EventBus')
+        eventBus.emit('notification:error', {
+          title: '永久刪除失敗',
+          message: '無法從伺服器刪除卡片，請稍後再試',
+          duration: 5000
+        })
+        // 即使後端刪除失敗，仍然從本地暫存區移除
+        // 避免用戶界面持續顯示已刪除的項目
+      }
+    }
+
     deletedItems.delete(itemId)
     cancelCleanup(itemId)
-    
+
     // 如果這個項目的 Toast 還在顯示，就隱藏它
     if (toastState.itemId === itemId) {
       hideToast()
@@ -201,7 +225,7 @@ export function useUndo() {
    * 🧹 清理所有暫存項目 (用於組件銷毀時)
    */
   const cleanup = () => {
-    console.log('🧹 [UNDO] 清理所有暫存項目和計時器')
+    logger.debug('[UNDO] 清理所有暫存項目和計時器')
     
     // 清理所有計時器
     cleanupTimers.forEach(timer => clearTimeout(timer))

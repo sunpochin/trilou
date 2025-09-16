@@ -11,6 +11,7 @@
 import { useBoardStore } from '@/stores/boardStore'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { MESSAGES } from '@/constants/messages'
+import { logger } from '@/utils/logger'
 import type { CardUI } from '@/types'
 import { CardStatus, CardPriority } from '@/types/api'
 import { eventBus } from '@/events/EventBus'
@@ -29,32 +30,54 @@ export const useCardActions = () => {
    * @returns 刪除信息 (listId, position, card) 或 null 如果失敗
    */
   const deleteCard = async (card: CardUI): Promise<{ listId: string, position: number, card: CardUI } | null> => {
-    console.log('🗑️ [CARD-ACTION] 準備刪除卡片:', card.title)
-    
+    logger.debug('[CARD-ACTION] 準備刪除卡片:', card.title)
+
     // 🔍 找到卡片的原始位置
     let sourceListId: string | null = null
     let originalPosition: number = -1
-    
+    let originalList = null
+
     for (const list of boardStore.board.lists) {
       const cardIndex = list.cards.findIndex(c => c.id === card.id)
       if (cardIndex !== -1) {
-        console.log(`📋 [CARD-ACTION] 找到卡片在列表 "${list.title}" 位置 ${cardIndex}`)
+        logger.debug(`[CARD-ACTION] 找到卡片在列表 "${list.title}" 位置 ${cardIndex}`)
         sourceListId = list.id
         originalPosition = cardIndex
-        
+        originalList = list
+
+        // 保存原始卡片資料（用於 rollback）
+        const originalCard = { ...list.cards[cardIndex] }
+
         // 🎯 樂觀 UI：立即從列表中移除卡片
         list.cards.splice(cardIndex, 1)
-        console.log('✅ [CARD-ACTION] 卡片已從 UI 移除（樂觀更新）')
+        logger.info('[CARD-ACTION] 卡片已從 UI 移除（樂觀更新）')
+
+        // 註冊 rollback 處理器（如果需要）
+        const rollback = () => {
+          logger.warn('[CARD-ACTION] 執行刪除 rollback，恢復卡片到原位置')
+          list.cards.splice(originalPosition, 0, originalCard)
+        }
+
+        // 如果有網路錯誤等情況，可以呼叫 rollback()
+
         break
       }
     }
-    
+
     if (!sourceListId) {
-      console.error('❌ [CARD-ACTION] 找不到卡片所在的列表')
+      logger.error('[CARD-ACTION] 找不到卡片所在的列表')
+
+      // 發送錯誤通知
+      eventBus.emit('notification:error', {
+        title: '刪除失敗',
+        message: '找不到卡片所在的列表',
+        duration: 5000
+      })
+
       return null
     }
-    
-    console.log('🎉 [CARD-ACTION] 卡片刪除準備完成，返回恢復信息')
+
+    logger.info('[CARD-ACTION] 卡片刪除準備完成，返回恢復信息')
     return {
       listId: sourceListId,
       position: originalPosition,
@@ -73,14 +96,14 @@ export const useCardActions = () => {
    */
   const updateCardTitle = async (cardId: string, newTitle: string) => {
     try {
-      console.log('📝 [CARD-ACTION] 更新卡片標題:', { cardId, newTitle })
+      logger.debug('📝 [CARD-ACTION] 更新卡片標題:', { cardId, newTitle })
       
       // 目前是同步更新本地狀態，未來可以加入 API 請求
       boardStore.updateCardTitle(cardId, newTitle)
       
-      console.log('✅ [CARD-ACTION] 卡片標題更新成功')
+      logger.debug('✅ [CARD-ACTION] 卡片標題更新成功')
     } catch (error) {
-      console.error('❌ [CARD-ACTION] 更新卡片標題失敗:', error)
+      logger.error('❌ [CARD-ACTION] 更新卡片標題失敗:', error)
       throw error // 重新拋出錯誤讓調用者處理
     }
   }
@@ -96,14 +119,14 @@ export const useCardActions = () => {
    */
   const updateCardDescription = async (cardId: string, newDescription: string) => {
     try {
-      console.log('📄 [CARD-ACTION] 更新卡片描述:', { cardId, newDescription })
+      logger.debug('📄 [CARD-ACTION] 更新卡片描述:', { cardId, newDescription })
       
       // 目前是同步更新本地狀態，未來可以加入 API 請求
       boardStore.updateCardDescription(cardId, newDescription)
       
-      console.log('✅ [CARD-ACTION] 卡片描述更新成功')
+      logger.debug('✅ [CARD-ACTION] 卡片描述更新成功')
     } catch (error) {
-      console.error('❌ [CARD-ACTION] 更新卡片描述失敗:', error)
+      logger.error('❌ [CARD-ACTION] 更新卡片描述失敗:', error)
       throw error // 重新拋出錯誤讓調用者處理
     }
   }
@@ -123,13 +146,13 @@ export const useCardActions = () => {
    */
   const addCard = async (listId: string, title: string, status?: string, description?: string, priority?: string) => {
     try {
-      console.log('➕ [CARD-ACTION] 新增卡片:', { listId, title, status, description, priority })
+      logger.debug('➕ [CARD-ACTION] 新增卡片:', { listId, title, status, description, priority })
       
       await boardStore.addCard(listId, title, status, description, priority)
       
-      console.log('✅ [CARD-ACTION] 卡片新增成功')
+      logger.debug('✅ [CARD-ACTION] 卡片新增成功')
     } catch (error) {
-      console.error('❌ [CARD-ACTION] 新增卡片失敗:', error)
+      logger.error('❌ [CARD-ACTION] 新增卡片失敗:', error)
       throw error // 重新拋出錯誤讓調用者處理
     }
   }
@@ -144,7 +167,7 @@ export const useCardActions = () => {
    * @returns Promise<void>
    */
   const updateCardStatus = async (cardId: string, status: CardStatus) => {
-    console.log('🔄 [CARD-ACTION] 更新卡片狀態:', { cardId, status })
+    logger.debug('🔄 [CARD-ACTION] 更新卡片狀態:', { cardId, status })
     
     try {
       // 樂觀更新本地狀態
@@ -156,9 +179,9 @@ export const useCardActions = () => {
         body: { status }
       })
       
-      console.log('✅ [CARD-ACTION] 狀態更新成功')
+      logger.debug('✅ [CARD-ACTION] 狀態更新成功')
     } catch (error) {
-      console.error('❌ [CARD-ACTION] 更新狀態失敗:', error)
+      logger.error('❌ [CARD-ACTION] 更新狀態失敗:', error)
       
       // 顯示錯誤通知
       eventBus.emit('notification:error', {
@@ -181,7 +204,7 @@ export const useCardActions = () => {
    * @returns Promise<void>
    */
   const updateCardPriority = async (cardId: string, priority: CardPriority) => {
-    console.log('⭐ [CARD-ACTION] 更新卡片優先順序:', { cardId, priority })
+    logger.debug('⭐ [CARD-ACTION] 更新卡片優先順序:', { cardId, priority })
     
     try {
       // 樂觀更新本地狀態
@@ -193,9 +216,9 @@ export const useCardActions = () => {
         body: { priority }
       })
       
-      console.log('✅ [CARD-ACTION] 優先順序更新成功')
+      logger.debug('✅ [CARD-ACTION] 優先順序更新成功')
     } catch (error) {
-      console.error('❌ [CARD-ACTION] 更新優先順序失敗:', error)
+      logger.error('❌ [CARD-ACTION] 更新優先順序失敗:', error)
       
       // 顯示錯誤通知
       eventBus.emit('notification:error', {

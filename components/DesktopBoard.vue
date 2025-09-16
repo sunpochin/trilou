@@ -163,10 +163,8 @@ import { useBoardCommon } from '@/composables/useBoardCommon'
 import { useBoardView } from '@/composables/useBoardView'
 import { useCardOperations } from '@/composables/useCardOperations'
 import { useDragAndDrop, type DragEvent } from '@/composables/useDragAndDrop'
-import { useUndo } from '@/composables/useUndo'
+import { useBoardUndo } from '@/composables/useBoardUndo'
 
-// 🏪 Store 引入 - 需要用於 undo 復原操作
-import { useBoardStore } from '@/stores/boardStore'
 
 // 📊 型別定義
 import type { CardUI } from '@/types'
@@ -217,49 +215,15 @@ const {
 } = useBoardCommon()
 
 // 📋 特定操作 Composables
-const { handleCardDelete, handleCardUpdateTitle, handleCardAdd } = useCardOperations()
+const { handleCardUpdateTitle, handleCardAdd } = useCardOperations()
 const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 const { handleCardMove, handleListMove } = useBoardView()
 
 // 🔄 Undo 復原系統
-const undoState = useUndo()
-const boardStore = useBoardStore()
+const { undoState, provideDeleteCard } = useBoardUndo()
 
-// 🔄 創建整合 undo 系統的刪除函數
-const deleteCardWithUndo = async (card: CardUI) => {
-  console.log('🔥🔥🔥 [DESKTOP-BOARD] deleteCardWithUndo 被呼叫!', {
-    cardTitle: card.title,
-    cardId: card.id,
-    cardType: typeof card
-  })
-  
-  try {
-    console.log('🔥🔥🔥 [DESKTOP-BOARD] 開始呼叫 handleCardDelete...')
-    
-    // 使用 useCardOperations 處理刪除邏輯
-    const deleteInfo = await handleCardDelete(card)
-    
-    console.log('🔥🔥🔥 [DESKTOP-BOARD] handleCardDelete 回傳:', deleteInfo)
-    
-    if (deleteInfo) {
-      console.log('🔥🔥🔥 [DESKTOP-BOARD] 開始呼叫 softDeleteCard...')
-      console.log('🔥🔥🔥 [DESKTOP-BOARD] undoState:', undoState)
-      console.log('🔥🔥🔥 [DESKTOP-BOARD] undoState.toastState:', undoState.toastState)
-      // 使用當前組件的 undo 狀態處理軟刪除
-      undoState.softDeleteCard(deleteInfo.card, deleteInfo.listId, deleteInfo.position)
-      console.log('🔥🔥🔥 [DESKTOP-BOARD] 軟刪除完成，toast 狀態:', undoState.toastState)
-      console.log('✅ [DESKTOP-BOARD] 卡片已軟刪除，toast 應該已顯示')
-    } else {
-      console.error('❌ [DESKTOP-BOARD] deleteInfo 為空，無法執行軟刪除')
-    }
-  } catch (error) {
-    console.error('❌ [DESKTOP-BOARD] 卡片刪除失敗:', error)
-  }
-}
-
-// 🔌 Provide/Inject - 提供給子組件使用的方法
-// 使用 Symbol 作為 key 確保唯一性，避免命名衝突
-provide('deleteCard', deleteCardWithUndo)
+// 🔌 提供刪除函數給子組件
+provideDeleteCard()
 
 // 🤖 AI 生成狀態
 const aiGeneratingListId = ref<string | null>(null)
