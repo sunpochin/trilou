@@ -25,6 +25,9 @@ export interface CardUI {
   priority?: string                     // 卡片優先順序，如 "high", "medium", "low"
   createdAt?: Date                      // 卡片建立時間
   updatedAt?: Date                      // 卡片最後更新時間
+  completedAt?: Date                   // 完成時間
+  startedAt?: Date                      // 開始執行時間
+  movedAt?: Date                        // 最後移動時間
 }
 
 export interface ListUI {

@@ -80,7 +80,7 @@ export class CardRepository {
    * @returns Promise<Card[]> - 所有卡片的陣列（前端格式）
    * @throws Error - 如果 API 呼叫失敗或轉換失敗
    */
-  async getAllCards(): Promise<Card[]> {
+  async getAllCards(): Promise<CardUI[]> {
     try {
       // 📞 呼叫 API 取得原始資料
       const apiCards: CardUI[] = await $fetch('/api/cards')
@@ -141,7 +141,7 @@ export class CardRepository {
    * @returns Promise<Card> - 新建立的卡片（前端格式）
    * @throws Error - 如果新增失敗或驗證失敗
    */
-  async createCard(title: string, listId: string, description?: string, status?: string, priority?: string): Promise<Card> {
+  async createCard(title: string, listId: string, description?: string, status?: string, priority?: string): Promise<CardUI> {
     try {
       console.log('📞 [REPO] 呼叫 API 新增卡片:', { title, listId, description, status, priority })
       
@@ -277,7 +277,10 @@ export class CardRepository {
       // 如果 API 回應包含 created_at，則轉換為 Date 物件
       createdAt: apiCard.created_at ? new Date(apiCard.created_at) : undefined,
       // 如果 API 回應包含 updated_at，則轉換為 Date 物件
-      updatedAt: apiCard.updated_at ? new Date(apiCard.updated_at) : undefined
+      updatedAt: apiCard.updated_at ? new Date(apiCard.updated_at) : undefined,
+      completedAt: apiCard.completed_at ? new Date(apiCard.completed_at) : undefined,
+      startedAt: apiCard.started_at ? new Date(apiCard.started_at) : undefined,
+      movedAt: apiCard.moved_at ? new Date(apiCard.moved_at) : undefined
     }
   }
 
