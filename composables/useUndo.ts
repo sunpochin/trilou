@@ -207,8 +207,15 @@ export function useUndo() {
           message: '無法從伺服器刪除卡片，請稍後再試',
           duration: 5000
         })
-        // 即使後端刪除失敗，仍然從本地暫存區移除
-        // 避免用戶界面持續顯示已刪除的項目
+      }
+    } else if (deletedItem && deletedItem.type === 'list') {
+      // 處理列表類型的永久刪除（如果未來有軟刪除列表的需求）
+      try {
+        const { listRepository } = await import('@/repositories/ListRepository')
+        await listRepository.deleteList(itemId)
+        logger.info('[UNDO] 後端列表刪除成功:', itemId)
+      } catch (error) {
+        logger.error('[UNDO] 後端列表刪除失敗:', error)
       }
     }
 
@@ -247,6 +254,18 @@ export function useUndo() {
    * 🔍 檢查特定項目是否在暫存區 (除錯用)
    */
   const hasDeletedItem = (itemId: string) => deletedItems.has(itemId)
+
+  // 🔄 註冊瀏覽器關閉事件，確保在關閉前執行所有待處理的刪除
+  if (process.client) {
+    window.addEventListener('beforeunload', () => {
+      // 當頁面關閉時，嘗試對所有待刪除項目執行永久刪除
+      // 注意：這在某些瀏覽器可能不保證完成所有非同步請求
+      // 但對於 Supabase/fetch 來說，這能提高成功機率
+      deletedItems.forEach((_, itemId) => {
+        permanentDelete(itemId)
+      })
+    })
+  }
 
   return {
     // 狀態

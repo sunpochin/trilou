@@ -80,7 +80,7 @@ export const useRealtime = () => {
         break
         
       case 'DELETE':
-        boardStore.syncRemoveList(oldRecord.id)
+        boardStore.syncRemoveList(String(oldRecord.id))
         break
     }
   }
@@ -103,7 +103,7 @@ export const useRealtime = () => {
         break
         
       case 'DELETE':
-        boardStore.syncRemoveCard(oldRecord.id)
+        boardStore.syncRemoveCard(String(oldRecord.id))
         break
     }
   }

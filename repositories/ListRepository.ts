@@ -206,13 +206,13 @@ export class ListRepository {
    * @param apiList - API 回傳的列表資料
    * @returns List - 前端格式的列表資料
    */
-  private transformApiList(apiList: any): ListUI {
+  public transformApiList(apiList: any): ListUI {
     if (!apiList || typeof apiList !== 'object') {
       throw new Error('無效的 API 列表資料')
     }
 
     return {
-      id: apiList.id,
+      id: String(apiList.id),
       title: apiList.title,
       position: apiList.position,
       cards: []  // 空的卡片陣列，會由其他地方填入

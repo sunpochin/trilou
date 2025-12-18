@@ -250,16 +250,15 @@ export class CardRepository {
    * list_id               →  listId       (蛇形→駝峰)
    * position              →  position     (不變)
    * 
-   * 🔧 為什麼是 private？
-   * - 這是內部使用的工具函數
-   * - 外部不需要知道轉換的細節
-   * - 如果 API 格式改變，只需要修改這個函數
+   * 🔧 為什麼是 public？
+   * - 供 Realtime Sync 等外部功能使用
+   * - 集中管理轉換邏輯
    * 
    * 🔧 參數說明：
    * @param apiCard - API 回傳的卡片資料（蛇形命名）
    * @returns Card - 前端格式的卡片資料（駝峰命名）
    */
-  private transformApiCard(apiCard: any): CardUI {
+  public transformApiCard(apiCard: any): CardUI {
     // 確保 apiCard 是物件
     if (!apiCard || typeof apiCard !== 'object') {
       // 或者可以拋出一個錯誤，取決於您希望如何處理這種情況
@@ -267,7 +266,7 @@ export class CardRepository {
     }
 
     return {
-      id: apiCard.id,
+      id: String(apiCard.id),
       title: apiCard.title,
       description: apiCard.description,
       listId: apiCard.list_id, // 轉換 snake_case to camelCase
