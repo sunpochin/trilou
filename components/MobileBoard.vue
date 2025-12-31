@@ -58,7 +58,7 @@
       <!-- 💡 十歲小朋友解釋：這個容器讓你可以「拖曳整個列表」換位置！ -->
       <draggable
         v-if="isListDragMode"
-        class="flex overflow-x-auto scroll-smooth mobile-lists-container gap-2 p-1"
+        class="flex overflow-x-auto scroll-smooth snap-x snap-mandatory mobile-lists-container gap-2 p-1"
         :list="viewData.lists"
         @change="onListMove"
         tag="div"
@@ -73,18 +73,26 @@
         chosen-class="mobile-list-chosen"
         drag-class="mobile-list-drag"
         handle=".list-drag-handle"
+        ref="mobileDragContainer"
+        style="scroll-snap-type: x mandatory;"
       >
-        <div v-for="list in viewData.lists" :key="list.id" class="mobile-list-wrapper">
+        <div v-for="list in viewData.lists" :key="list.id" class="mobile-list-wrapper snap-center">
           <!-- 🎯 列表拖曳把手 - 長按這裡可以拖動整個列表 -->
-          <div class="list-drag-handle bg-gray-300 hover:bg-gray-400 rounded-t-lg p-2 flex items-center justify-center cursor-move">
+          <div class="list-drag-handle bg-pink-300 hover:bg-gray-400 rounded-t-lg p-2 flex items-center justify-center cursor-move">
             <div class="flex items-center gap-2 text-gray-600">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
-              </svg>
+              <!-- 經典拖曳圖示：三條橫線 -->
+              <div class="flex flex-col gap-0.5">
+                <div class="w-4 h-0.5 bg-current rounded-full"></div>
+                <div class="w-4 h-0.5 bg-current rounded-full"></div>
+                <div class="w-4 h-0.5 bg-current rounded-full"></div>
+              </div>
               <span class="text-xs font-medium">長按拖動列表</span>
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
-              </svg>
+              <!-- 經典拖曳圖示：三條橫線 -->
+              <div class="flex flex-col gap-0.5">
+                <div class="w-4 h-0.5 bg-current rounded-full"></div>
+                <div class="w-4 h-0.5 bg-current rounded-full"></div>
+                <div class="w-4 h-0.5 bg-current rounded-full"></div>
+              </div>
             </div>
           </div>
           <ListItem
@@ -110,33 +118,45 @@
       </draggable>
       
       <!-- 原本的滑動模式 (預設) -->
-      <div 
+      <div
         v-else
-        class="flex overflow-x-auto scroll-smooth snap-x snap-mandatory mobile-lists-container gap-2 p-1" 
+        class="flex overflow-x-auto scroll-smooth snap-x snap-mandatory mobile-lists-container gap-2 p-1"
         ref="mobileListsContainer"
         style="scroll-snap-type: x mandatory;"
       >
-        <ListItem
-          v-for="list in viewData.lists" 
-          :key="list.id"
-          :list="list"
-          :dragging="draggingState.isDragging"
-          :is-mobile="true"
-          :is-dragging-disabled="isDraggingDisabled"
-          :ai-generating-list-id="aiGeneratingListId"
-          @card-move="onCardMove"
-          @open-card-modal="openCardModal"
-          @card-delete="deleteCardWithUndo"
-          @drag-start="onDragStart"
-          @drag-end="onDragEnd"
-          @card-update-title="onCardUpdateTitle"
-          @list-add-card="onListAddCard"
-          @list-delete="onListDelete"
-          @list-update-title="onListUpdateTitle"
-          @ai-generate="onAiGenerate"
-          class="mobile-list-item snap-center"
-          style="width: calc(100vw - 2rem); max-width: 400px;"
-        />
+        <div v-for="list in viewData.lists" :key="list.id" class="mobile-list-scroll-wrapper snap-center">
+          <!-- 🎯 滑動提示區域 - 按住這裡可以左右滑動瀏覽 -->
+          <div class="bg-blue-300 hover:bg-blue-400 rounded-t-lg p-2 flex items-center justify-center">
+            <div class="flex items-center gap-2 text-white">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+              </svg>
+              <span class="text-xs font-medium">按壓左右瀏覽</span>
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+          </div>
+          <ListItem
+            :list="list"
+            :dragging="draggingState.isDragging"
+            :is-mobile="true"
+            :is-dragging-disabled="isDraggingDisabled"
+            :ai-generating-list-id="aiGeneratingListId"
+            @card-move="onCardMove"
+            @open-card-modal="openCardModal"
+            @card-delete="deleteCardWithUndo"
+            @drag-start="onDragStart"
+            @drag-end="onDragEnd"
+            @card-update-title="onCardUpdateTitle"
+            @list-add-card="onListAddCard"
+            @list-delete="onListDelete"
+            @list-update-title="onListUpdateTitle"
+            @ai-generate="onAiGenerate"
+            class="mobile-list-item"
+            style="width: calc(100vw - 2rem); max-width: 400px;"
+          />
+        </div>
       </div>
       
       <!-- 🔄 切換拖曳模式按鈕 -->
@@ -328,6 +348,7 @@ provideDeleteCard()
 // 看板容器的 DOM 引用
 const boardContainerRef = ref<HTMLElement | null>(null)
 const mobileListsContainer = ref<HTMLElement | null>(null)
+const mobileDragContainer = ref<HTMLElement | null>(null) // 排序模式容器引用
 
 // 🎯 簡化方案：移除複雜的字體縮放和瀏覽器偵測
 // 接受合理限制，提供穩定的使用者體驗
@@ -340,6 +361,16 @@ const isListDragMode = ref(false)
 const toggleListDragMode = () => {
   isListDragMode.value = !isListDragMode.value
   console.log(`📱 [MOBILE] 切換到${isListDragMode.value ? '排序' : '滑動'}模式`)
+
+  // 切換模式後重新初始化手勢系統
+  nextTick(() => {
+    // 先清理舊的事件監聽器
+    cleanupFunctions.value.forEach(cleanup => cleanup())
+    cleanupFunctions.value = []
+
+    // 重新初始化手勢
+    setupMobileGestures()
+  })
 }
 
 // 📱 手機版長按 + 拖拽系統
@@ -359,12 +390,22 @@ const cleanupFunctions = ref<(() => void)[]>([])
 
 // 🎯 進階手機手勢初始化（整合自 TrelloBoard）
 const setupMobileGestures = () => {
-  if (!mobileListsContainer.value) {
-    console.error('❌ [MOBILE-BOARD] 無法初始化：mobileListsContainer 不存在')
+  // 根據當前模式選擇容器
+  let container = null
+
+  if (isListDragMode.value) {
+    // 排序模式：draggable 組件需要取得其 $el
+    const dragRef = mobileDragContainer.value as any
+    container = dragRef?.$el || dragRef
+  } else {
+    // 滑動模式：直接使用 DOM 元素
+    container = mobileListsContainer.value
+  }
+
+  if (!container) {
+    console.error('❌ [MOBILE-BOARD] 無法初始化：列表容器不存在')
     return
   }
-  
-  const container = mobileListsContainer.value
   console.log('📱 [MOBILE-BOARD] 初始化手機版手勢系統')
   
   // 🎯 只處理非拖拽區域的列表切換手勢
@@ -408,7 +449,7 @@ const setupMobileGestures = () => {
   }
   
   const handleListTouchEnd = () => {
-    if (isListGesture && mobileListsContainer.value) {
+    if (isListGesture) {
       handleMobileListSnapBack()
     }
     isListGesture = false
@@ -434,13 +475,25 @@ const setupMobileGestures = () => {
 
 // 🎯 手機版列表智慧對齊 - 滑動後自動對齊到最近的列表中心
 const handleMobileListSnapBack = () => {
-  if (!mobileListsContainer.value || isListSnapping.value) return
-  
+  // 根據當前模式選擇正確的容器
+  let container = null
+
+  if (isListDragMode.value) {
+    // 排序模式：draggable 組件需要取得其 $el
+    const dragRef = mobileDragContainer.value as any
+    container = dragRef?.$el || dragRef
+  } else {
+    // 滑動模式：直接使用 DOM 元素
+    container = mobileListsContainer.value
+  }
+
+  if (!container || isListSnapping.value) return
+
   isListSnapping.value = true
-  const container = mobileListsContainer.value
   
   // 取得第一個列表元素計算寬度
-  const firstList = container.querySelector('.mobile-list-item') as HTMLElement
+  const selector = isListDragMode.value ? '.mobile-list-wrapper' : '.mobile-list-scroll-wrapper'
+  const firstList = container.querySelector(selector) as HTMLElement
   const listWidth = firstList ? firstList.offsetWidth + 16 : 320
   
   // 計算滾動位置

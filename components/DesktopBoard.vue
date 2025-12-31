@@ -222,7 +222,7 @@ const { handleCardDragMove, handleListDragMove } = useDragAndDrop()
 const { handleCardMove, handleListMove } = useBoardView()
 
 // 🔄 Undo 復原系統
-const { undoState, provideDeleteCard, undoLastDelete } = useBoardUndo()
+const { undoState, deleteCardWithUndo, provideDeleteCard, undoLastDelete } = useBoardUndo()
 
 // 🔌 提供刪除函數給子組件
 provideDeleteCard()

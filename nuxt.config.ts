@@ -13,20 +13,27 @@ export default defineNuxtConfig({
       ]
     }
   },
-  devServer: {
-    host: '0.0.0.0', // 讓外部可連進來
+  // Dev Server 對外開放
+  server: {
+    host: '0.0.0.0',
     port: 3000,
+  },
+
+
+  nitro: {
+    compressPublicAssets: false,
   },
   vite: {
     server: {
       host: '0.0.0.0',
-      allowedHosts: [
-        'gogo.sunpochin.space', // 👈 加上你的固定 Tunnel 網域
-      ],
+      allowedHosts: ['sunpochin.space'],
       hmr: {
         protocol: 'wss',
-        host: 'gogo.sunpochin.space',
+        host: 'sunpochin.space',
         port: 443,
+      },
+      headers: {
+        'Cache-Control': 'no-store',
       },
     },
   },
