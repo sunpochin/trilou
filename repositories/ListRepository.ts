@@ -91,12 +91,13 @@ export class ListRepository {
    * @param listId - 要刪除的列表 ID
    * @returns Promise<void> - 不回傳資料
    */
-  async deleteList(listId: string): Promise<void> {
+  async deleteList(listId: string, options: { keepalive?: boolean } = {}): Promise<void> {
     try {
       console.log(`🚀 [LIST-REPO] 開始刪除列表: ${listId}`)
       
       await $fetch(`/api/lists/${listId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        ...options
       })
       
       console.log('✅ [LIST-REPO] 列表刪除完成')

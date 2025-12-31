@@ -186,8 +186,8 @@ export function useUndo() {
    * 🔥 永久刪除 (真的刪掉，無法復原)
    * 就像垃圾車把垃圾載走了
    */
-  const permanentDelete = async (itemId: string) => {
-    logger.info('[UNDO] 永久刪除項目:', itemId)
+  const permanentDelete = async (itemId: string, options: { keepalive?: boolean } = {}) => {
+    logger.info('[UNDO] 永久刪除項目:', itemId, '選項:', options)
 
     const deletedItem = deletedItems.get(itemId)
 
@@ -196,7 +196,7 @@ export function useUndo() {
       try {
         // 動態引入 CardRepository 以避免循環依賴
         const { cardRepository } = await import('@/repositories/CardRepository')
-        await cardRepository.deleteCard(itemId)
+        await cardRepository.deleteCard(itemId, options)
         logger.info('[UNDO] 後端卡片刪除成功:', itemId)
       } catch (error) {
         logger.error('[UNDO] 後端卡片刪除失敗:', error)
@@ -212,7 +212,7 @@ export function useUndo() {
       // 處理列表類型的永久刪除（如果未來有軟刪除列表的需求）
       try {
         const { listRepository } = await import('@/repositories/ListRepository')
-        await listRepository.deleteList(itemId)
+        await listRepository.deleteList(itemId, options)
         logger.info('[UNDO] 後端列表刪除成功:', itemId)
       } catch (error) {
         logger.error('[UNDO] 後端列表刪除失敗:', error)
@@ -259,10 +259,9 @@ export function useUndo() {
   if (process.client) {
     window.addEventListener('beforeunload', () => {
       // 當頁面關閉時，嘗試對所有待刪除項目執行永久刪除
-      // 注意：這在某些瀏覽器可能不保證完成所有非同步請求
-      // 但對於 Supabase/fetch 來說，這能提高成功機率
+      // 使用 keepalive: true 選項來提高請求成功送出的機率
       deletedItems.forEach((_, itemId) => {
-        permanentDelete(itemId)
+        permanentDelete(itemId, { keepalive: true })
       })
     })
   }

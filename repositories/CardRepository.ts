@@ -211,14 +211,18 @@ export class CardRepository {
    * 
    * 🔧 參數說明：
    * @param cardId - 要刪除的卡片 ID
+   * @param options - 額外選項，例如是否使用 keepalive
    * @returns Promise<void> - 無回傳值，成功完成或拋出錯誤
    * @throws Error - 如果刪除失敗或沒有權限
    */
-  async deleteCard(cardId: string): Promise<void> {
+  async deleteCard(cardId: string, options?: { keepalive?: boolean }): Promise<void> {
     try {
       // 📞 呼叫 API 刪除卡片
       // 使用 DELETE 方法和卡片 ID
-      await $fetch(`/api/cards/${cardId}`, { method: 'DELETE' })
+      await $fetch(`/api/cards/${cardId}`, { 
+        method: 'DELETE',
+        ...options
+      })
       
       // 🎉 如果執行到這裡，表示刪除成功
       // 不需要回傳任何值，Promise<void> 表示「任務完成」
