@@ -80,7 +80,7 @@ export class CardRepository {
    * @returns Promise<Card[]> - 所有卡片的陣列（前端格式）
    * @throws Error - 如果 API 呼叫失敗或轉換失敗
    */
-  async getAllCards(): Promise<Card[]> {
+  async getAllCards(): Promise<CardUI[]> {
     try {
       // 📞 呼叫 API 取得原始資料
       const apiCards: CardUI[] = await $fetch('/api/cards')
@@ -141,7 +141,7 @@ export class CardRepository {
    * @returns Promise<Card> - 新建立的卡片（前端格式）
    * @throws Error - 如果新增失敗或驗證失敗
    */
-  async createCard(title: string, listId: string, description?: string, status?: string, priority?: string): Promise<Card> {
+  async createCard(title: string, listId: string, description?: string, status?: string, priority?: string): Promise<CardUI> {
     try {
       console.log('📞 [REPO] 呼叫 API 新增卡片:', { title, listId, description, status, priority })
       
@@ -211,14 +211,18 @@ export class CardRepository {
    * 
    * 🔧 參數說明：
    * @param cardId - 要刪除的卡片 ID
+   * @param options - 額外選項，例如是否使用 keepalive
    * @returns Promise<void> - 無回傳值，成功完成或拋出錯誤
    * @throws Error - 如果刪除失敗或沒有權限
    */
-  async deleteCard(cardId: string): Promise<void> {
+  async deleteCard(cardId: string, options?: { keepalive?: boolean }): Promise<void> {
     try {
       // 📞 呼叫 API 刪除卡片
       // 使用 DELETE 方法和卡片 ID
-      await $fetch(`/api/cards/${cardId}`, { method: 'DELETE' })
+      await $fetch(`/api/cards/${cardId}`, { 
+        method: 'DELETE',
+        ...options
+      })
       
       // 🎉 如果執行到這裡，表示刪除成功
       // 不需要回傳任何值，Promise<void> 表示「任務完成」
@@ -250,16 +254,15 @@ export class CardRepository {
    * list_id               →  listId       (蛇形→駝峰)
    * position              →  position     (不變)
    * 
-   * 🔧 為什麼是 private？
-   * - 這是內部使用的工具函數
-   * - 外部不需要知道轉換的細節
-   * - 如果 API 格式改變，只需要修改這個函數
+   * 🔧 為什麼是 public？
+   * - 供 Realtime Sync 等外部功能使用
+   * - 集中管理轉換邏輯
    * 
    * 🔧 參數說明：
    * @param apiCard - API 回傳的卡片資料（蛇形命名）
    * @returns Card - 前端格式的卡片資料（駝峰命名）
    */
-  private transformApiCard(apiCard: any): CardUI {
+  public transformApiCard(apiCard: any): CardUI {
     // 確保 apiCard 是物件
     if (!apiCard || typeof apiCard !== 'object') {
       // 或者可以拋出一個錯誤，取決於您希望如何處理這種情況
@@ -267,7 +270,7 @@ export class CardRepository {
     }
 
     return {
-      id: apiCard.id,
+      id: String(apiCard.id),
       title: apiCard.title,
       description: apiCard.description,
       listId: apiCard.list_id, // 轉換 snake_case to camelCase
@@ -277,7 +280,10 @@ export class CardRepository {
       // 如果 API 回應包含 created_at，則轉換為 Date 物件
       createdAt: apiCard.created_at ? new Date(apiCard.created_at) : undefined,
       // 如果 API 回應包含 updated_at，則轉換為 Date 物件
-      updatedAt: apiCard.updated_at ? new Date(apiCard.updated_at) : undefined
+      updatedAt: apiCard.updated_at ? new Date(apiCard.updated_at) : undefined,
+      completedAt: apiCard.completed_at ? new Date(apiCard.completed_at) : undefined,
+      startedAt: apiCard.started_at ? new Date(apiCard.started_at) : undefined,
+      movedAt: apiCard.moved_at ? new Date(apiCard.moved_at) : undefined
     }
   }
 

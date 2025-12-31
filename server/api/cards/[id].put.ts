@@ -58,6 +58,7 @@
 
 // 引入資料庫連接工具
 import { serverSupabaseClient } from '@/server/utils/supabase'
+import { CardStatus } from '@/types/api'
 
 export default defineEventHandler(async (event) => {
   // 🔌 連接到資料庫
@@ -127,7 +128,7 @@ export default defineEventHandler(async (event) => {
     const { data: cardAccess, error: accessError } = await supabase
       .from('cards')
       .select(`
-        list_id,
+        *,
         lists!inner (
           user_id
         )
@@ -155,6 +156,9 @@ export default defineEventHandler(async (event) => {
         message: '你沒有權限修改這張卡片（不是你的）'
       })
     }
+    
+    // 將獲取的資料賦值給 beforeUpdate，用於之後的邏輯判斷
+    const beforeUpdate = cardAccess
     
     console.log('✅ 確認無誤，這張卡片是你的，可以修改')
 
@@ -195,15 +199,37 @@ export default defineEventHandler(async (event) => {
     if (body.status !== undefined) updateData.status = body.status  // 支援更新 AI 任務狀態
     if (body.priority !== undefined) updateData.priority = body.priority  // 支援更新優先順序
 
+    // 🕒 自動處理時間戳記
+    const now = new Date().toISOString()
+
+    // 1. 如果位置、列表或狀態改變，更新 moved_at（用於流動分析）
+    const isMoved = (body.list_id !== undefined && body.list_id !== beforeUpdate?.list_id) || 
+                   (typeof body.position === 'number' && body.position !== beforeUpdate?.position) ||
+                   (body.status !== undefined && body.status !== beforeUpdate?.status)
+    
+    if (isMoved) {
+      updateData.moved_at = now
+      console.log('🕒 [API] 檢測到移動，更新 moved_at')
+    }
+
+    // 2. 當卡片移到 Done 時且先前尚未完成，寫入 completed_at
+    if (body.status === CardStatus.DONE && beforeUpdate?.status !== CardStatus.DONE) {
+      if (!beforeUpdate?.completed_at) {
+        updateData.completed_at = now
+        console.log('🕒 [API] 卡片進入 Done，寫入 completed_at')
+      }
+    }
+
+    // 3. 第一次進入 In Progress (Doing) 時寫入 started_at
+    if (body.status === CardStatus.DOING && beforeUpdate?.status !== CardStatus.DOING) {
+      if (!beforeUpdate?.started_at) {
+        updateData.started_at = now
+        console.log('🕒 [API] 卡片進入 Doing，寫入 started_at')
+      }
+    }
+
     console.log('📝 [API] 準備更新的資料:', JSON.stringify(updateData, null, 2))
 
-    // 查詢更新前的卡片狀態
-    const { data: beforeUpdate } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle() // ✅ 查無資料時不回傳錯誤
-    
     console.log('📊 [API] 更新前的卡片狀態:', beforeUpdate)
 
     // 更新卡片

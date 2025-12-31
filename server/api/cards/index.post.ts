@@ -44,6 +44,7 @@
 // 建立新卡片的 API 端點
 import { serverSupabaseClient } from '@/server/utils/supabase'
 import { ensureUserExists } from '@/server/utils/userHelpers'
+import { CardStatus } from '@/types/api'
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseClient(event)
@@ -141,8 +142,11 @@ export default defineEventHandler(async (event) => {
         description: body.description,
         position: position,
         list_id: body.list_id,
-        status: body.status || 'todo',        // 預設狀態為 'todo'
-        priority: body.priority || 'medium'   // 預設優先級為 'medium'
+        status: body.status || CardStatus.TODO,        // 預設狀態為 'todo'
+        priority: body.priority || 'medium',   // 預設優先級為 'medium'
+        moved_at: new Date().toISOString(),    // 初始移動時間
+        started_at: (body.status === CardStatus.DOING) ? new Date().toISOString() : null,
+        completed_at: (body.status === CardStatus.DONE) ? new Date().toISOString() : null
       })
       .select()
       .maybeSingle() // ✅ 查無資料時不回傳錯誤

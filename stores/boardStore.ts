@@ -662,6 +662,64 @@ export const useBoardStore = defineStore('board', {
         // 即使建立預設列表失敗，也不要影響整體應用運作
         // 用戶仍可手動建立列表
       }
+    },
+
+    // 📡 Realtime 同步 Actions：處理來自其他用戶的變動
+    // 這些 Action 僅更新本地狀態，不應再打 API
+
+    syncAddList(newList: ListUI) {
+      if (this.board.lists.find(l => l.id === newList.id)) return
+      this.board.lists.push(newList)
+      this.board.lists.sort((a, b) => (a.position || 0) - (b.position || 0))
+    },
+
+    syncUpdateList(updatedList: ListUI) {
+      const index = this.board.lists.findIndex(l => l.id === updatedList.id)
+      if (index !== -1) {
+        const cards = this.board.lists[index].cards
+        this.board.lists[index] = { ...updatedList, cards }
+        this.board.lists.sort((a, b) => (a.position || 0) - (b.position || 0))
+      }
+    },
+
+    syncRemoveList(listId: string) {
+      this.board.lists = this.board.lists.filter(l => l.id !== listId)
+    },
+
+    syncAddCard(newCard: CardUI) {
+      const list = this.board.lists.find(l => l.id === newCard.listId)
+      if (list) {
+        if (list.cards.find(c => c.id === newCard.id)) return
+        list.cards.push(newCard)
+        list.cards.sort((a, b) => (a.position || 0) - (b.position || 0))
+      }
+    },
+
+    syncUpdateCard(updatedCard: CardUI) {
+      // 在所有列表中尋找卡片（因為卡片可能被移動到另一個列表）
+      // 1. 先從舊列表中移除（如果有的話）
+      for (const list of this.board.lists) {
+        const index = list.cards.findIndex(c => c.id === updatedCard.id)
+        if (index !== -1) {
+          list.cards.splice(index, 1)
+        }
+      }
+      // 2. 加入到新列表
+      const targetList = this.board.lists.find(l => l.id === updatedCard.listId)
+      if (targetList) {
+        targetList.cards.push(updatedCard)
+        targetList.cards.sort((a, b) => (a.position || 0) - (b.position || 0))
+      }
+    },
+
+    syncRemoveCard(cardId: string) {
+      for (const list of this.board.lists) {
+        const index = list.cards.findIndex(c => c.id === cardId)
+        if (index !== -1) {
+          list.cards.splice(index, 1)
+          break
+        }
+      }
     }
   }
 })

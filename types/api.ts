@@ -59,6 +59,9 @@ export interface Card {
   priority: CardPriority // 卡片優先順序：高、中或低
   created_at: string   // 建立時間（ISO 格式）
   updated_at: string   // 最後更新時間（ISO 格式）
+  completed_at?: string // 完成時間（ISO 格式）
+  started_at?: string   // 開始執行時間（ISO 格式）
+  moved_at?: string     // 最後移動時間（ISO 格式）
 }
 
 /**
@@ -137,6 +140,9 @@ export interface UpdateCardRequest {
   list_id?: string     // 新的所屬列表 ID（可選，用於跨列表移動）
   status?: CardStatus  // 新的卡片狀態（可選）
   priority?: CardPriority // 新的卡片優先順序（可選）
+  completed_at?: string   // 完成時間（可選，通常由後端自動更新）
+  started_at?: string     // 開始執行時間（可選，通常由後端自動更新）
+  moved_at?: string       // 最後移動時間（可選，通常由後端自動更新）
 }
 
 /**

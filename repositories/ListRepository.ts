@@ -91,12 +91,13 @@ export class ListRepository {
    * @param listId - 要刪除的列表 ID
    * @returns Promise<void> - 不回傳資料
    */
-  async deleteList(listId: string): Promise<void> {
+  async deleteList(listId: string, options: { keepalive?: boolean } = {}): Promise<void> {
     try {
       console.log(`🚀 [LIST-REPO] 開始刪除列表: ${listId}`)
       
       await $fetch(`/api/lists/${listId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        ...options
       })
       
       console.log('✅ [LIST-REPO] 列表刪除完成')
@@ -206,13 +207,13 @@ export class ListRepository {
    * @param apiList - API 回傳的列表資料
    * @returns List - 前端格式的列表資料
    */
-  private transformApiList(apiList: any): ListUI {
+  public transformApiList(apiList: any): ListUI {
     if (!apiList || typeof apiList !== 'object') {
       throw new Error('無效的 API 列表資料')
     }
 
     return {
-      id: apiList.id,
+      id: String(apiList.id),
       title: apiList.title,
       position: apiList.position,
       cards: []  // 空的卡片陣列，會由其他地方填入

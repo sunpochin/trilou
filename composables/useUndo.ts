@@ -186,8 +186,8 @@ export function useUndo() {
    * 🔥 永久刪除 (真的刪掉，無法復原)
    * 就像垃圾車把垃圾載走了
    */
-  const permanentDelete = async (itemId: string) => {
-    logger.info('[UNDO] 永久刪除項目:', itemId)
+  const permanentDelete = async (itemId: string, options: { keepalive?: boolean } = {}) => {
+    logger.info('[UNDO] 永久刪除項目:', itemId, '選項:', options)
 
     const deletedItem = deletedItems.get(itemId)
 
@@ -196,7 +196,7 @@ export function useUndo() {
       try {
         // 動態引入 CardRepository 以避免循環依賴
         const { cardRepository } = await import('@/repositories/CardRepository')
-        await cardRepository.deleteCard(itemId)
+        await cardRepository.deleteCard(itemId, options)
         logger.info('[UNDO] 後端卡片刪除成功:', itemId)
       } catch (error) {
         logger.error('[UNDO] 後端卡片刪除失敗:', error)
@@ -207,8 +207,15 @@ export function useUndo() {
           message: '無法從伺服器刪除卡片，請稍後再試',
           duration: 5000
         })
-        // 即使後端刪除失敗，仍然從本地暫存區移除
-        // 避免用戶界面持續顯示已刪除的項目
+      }
+    } else if (deletedItem && deletedItem.type === 'list') {
+      // 處理列表類型的永久刪除（如果未來有軟刪除列表的需求）
+      try {
+        const { listRepository } = await import('@/repositories/ListRepository')
+        await listRepository.deleteList(itemId, options)
+        logger.info('[UNDO] 後端列表刪除成功:', itemId)
+      } catch (error) {
+        logger.error('[UNDO] 後端列表刪除失敗:', error)
       }
     }
 
@@ -247,6 +254,17 @@ export function useUndo() {
    * 🔍 檢查特定項目是否在暫存區 (除錯用)
    */
   const hasDeletedItem = (itemId: string) => deletedItems.has(itemId)
+
+  // 🔄 註冊瀏覽器關閉事件，確保在關閉前執行所有待處理的刪除
+  if (process.client) {
+    window.addEventListener('beforeunload', () => {
+      // 當頁面關閉時，嘗試對所有待刪除項目執行永久刪除
+      // 使用 keepalive: true 選項來提高請求成功送出的機率
+      deletedItems.forEach((_, itemId) => {
+        permanentDelete(itemId, { keepalive: true })
+      })
+    })
+  }
 
   return {
     // 狀態
